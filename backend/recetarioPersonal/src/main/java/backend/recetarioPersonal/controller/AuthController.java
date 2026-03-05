@@ -1,9 +1,9 @@
 package backend.recetarioPersonal.controller;
 
-import backend.recetarioPersonal.dto.LoginRequest;
-import backend.recetarioPersonal.dto.RegistroRequest;
-import backend.recetarioPersonal.dto.UsuarioDto;
-import backend.recetarioPersonal.dto.VerificarRequest;
+import backend.recetarioPersonal.view.LoginRequest;
+import backend.recetarioPersonal.view.RegistroRequest;
+import backend.recetarioPersonal.view.UsuarioDto;
+import backend.recetarioPersonal.view.VerificarRequest;
 import backend.recetarioPersonal.service.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

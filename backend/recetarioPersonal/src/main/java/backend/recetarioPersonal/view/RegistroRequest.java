@@ -1,4 +1,4 @@
-package backend.recetarioPersonal.dto;
+package backend.recetarioPersonal.view;
 
 /**
  * DTO para la petición de creación de nueva cuenta.

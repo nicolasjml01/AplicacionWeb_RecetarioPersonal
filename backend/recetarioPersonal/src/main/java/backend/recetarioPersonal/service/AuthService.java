@@ -1,9 +1,9 @@
 package backend.recetarioPersonal.service;
 
-import backend.recetarioPersonal.dto.LoginRequest;
-import backend.recetarioPersonal.dto.RegistroRequest;
-import backend.recetarioPersonal.dto.UsuarioDto;
-import backend.recetarioPersonal.dto.VerificarRequest;
+import backend.recetarioPersonal.view.LoginRequest;
+import backend.recetarioPersonal.view.RegistroRequest;
+import backend.recetarioPersonal.view.UsuarioDto;
+import backend.recetarioPersonal.view.VerificarRequest;
 import backend.recetarioPersonal.model.Usuario;
 import org.springframework.stereotype.Service;
 

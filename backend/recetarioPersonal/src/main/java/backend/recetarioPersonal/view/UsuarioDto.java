@@ -1,4 +1,4 @@
-package backend.recetarioPersonal.dto;
+package backend.recetarioPersonal.view;
 
 /**
  * DTO de respuesta: datos del usuario que devolvemos al front (sin contraseña).
