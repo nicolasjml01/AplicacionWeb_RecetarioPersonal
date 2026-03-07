@@ -1,7 +1,7 @@
 package backend.recetarioPersonal.view;
 
-public class LoginRequest {
-    private String username;
-    private String password;
-    
-}
+/**
+ * Client sends username and password in the request body.
+ * Record provides constructor and getters for JSON binding.
+ */
+public record LoginRequest(String username, String password) {}
