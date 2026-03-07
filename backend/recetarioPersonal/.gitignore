@@ -31,3 +31,18 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Logs y temporales ###
+*.log
+*.tmp
+logs/
+
+### Config local / secretos (no subir) ###
+application-local.properties
+application-*.local.properties
+.env
+.env.local
+
+### Windows ###
+Thumbs.db
+desktop.ini

@@ -1,0 +1,30 @@
+# Documentación interna (no va a main / entrega)
+docs/
+
+# Config del editor (opcional: quita el comentario si no quieres subirla)
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Frontend (por si añades luego)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+.next/
+out/
+
+# Entornos y secretos
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Logs y temporales en raíz
+*.log
+tmp/
+temp/
