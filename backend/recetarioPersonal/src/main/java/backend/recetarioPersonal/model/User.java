@@ -7,14 +7,16 @@ package backend.recetarioPersonal.model;
 public class User {
     private long id;
     private String name;
+    private String lastName;
     private String username;
     private String email;
     private String password;
     private boolean verified;
 
-    public User(long id, String name, String username, String email, String password, boolean verified) {
+    public User(long id, String name, String lastName, String username, String email, String password, boolean verified) {
         this.id = id;
         this.name = name;
+        this.lastName = lastName;
         this.username = username;
         this.email = email;
         this.password = password;
@@ -24,6 +26,7 @@ public class User {
     public User() {
         this.id = 0;
         this.name = "";
+        this.lastName = "";
         this.username = "";
         this.email = "";
         this.password = "";
@@ -44,6 +47,14 @@ public class User {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
     public String getUsername() {
