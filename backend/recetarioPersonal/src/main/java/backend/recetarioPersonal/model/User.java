@@ -1,10 +1,16 @@
 package backend.recetarioPersonal.model;
 
+import jakarta.persistence.*;
+
 /**
  * Domain model: user in memory (later will map to DB).
  * All names in English for consistency across the project.
  */
+@Entity
+@Table(name = "Users")
 public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
     private String name;
     private String lastName;
