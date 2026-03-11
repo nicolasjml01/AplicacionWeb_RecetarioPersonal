@@ -1,5 +1,6 @@
 package backend.recetarioPersonal.service;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.UserRepository;
@@ -8,8 +9,6 @@ import backend.recetarioPersonal.view.LoginRequest;
 import backend.recetarioPersonal.view.RegisterRequest;
 import backend.recetarioPersonal.view.UserDto;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -18,9 +17,11 @@ import java.util.Optional;
 @Service
 public class AuthService {
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     
-    public AuthService(UserRepository userRepository) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
     /**
      * Converts a User (internal model, has password) to UserDto (what we send to client, no password).
@@ -45,7 +46,7 @@ public class AuthService {
         Optional<User> byUsername = userRepository.findByUsername(login);
         Optional<User> byEmail = userRepository.findByEmail(login);
         return byUsername.or(() -> byEmail)
-            .filter(u -> u.getPassword().equals(request.password()))
+            .filter(u -> passwordEncoder.matches(request.password(), u.getPassword()))
             //.filter(User::isVerified)
             .map(this::toDto);
     }
@@ -74,7 +75,7 @@ public class AuthService {
         user.setLastName(request.lastName());
         user.setUsername(request.username());
         user.setEmail(request.email());
-        user.setPassword(request.password());
+        user.setPassword(passwordEncoder.encode(request.password()));
         user.setVerified(false);
         // Saves the user in the database
         User saved = userRepository.save(user);
