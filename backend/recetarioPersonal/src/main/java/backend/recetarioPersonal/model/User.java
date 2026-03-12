@@ -7,20 +7,23 @@ import jakarta.persistence.*;
  * All names in English for consistency across the project.
  */
 @Entity
-@Table(name = "Users")
+@Table(name = "users")
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private long userId;
     private String name;
     private String lastName;
+    @Column(nullable = false, unique = true)
     private String username;
+    @Column(nullable = false, unique = true)
     private String email;
+    @Column(nullable = false)
     private String password;
     private boolean verified;
 
     public User(long id, String name, String lastName, String username, String email, String password, boolean verified) {
-        this.id = id;
+        this.userId = userId;
         this.name = name;
         this.lastName = lastName;
         this.username = username;
@@ -30,7 +33,7 @@ public class User {
     }
 
     public User() {
-        this.id = 0;
+        this.userId = 0;
         this.name = "";
         this.lastName = "";
         this.username = "";
@@ -40,11 +43,11 @@ public class User {
     }
 
     public long getId() {
-        return id;
+        return userId;
     }
 
-    public void setId(long id) {
-        this.id = id;
+    public void setId(long userId) {
+        this.userId = userId;
     }
 
     public String getName() {
