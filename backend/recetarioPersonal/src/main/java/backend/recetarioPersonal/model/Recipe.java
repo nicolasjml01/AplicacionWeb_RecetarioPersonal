@@ -1,4 +1,4 @@
-package backend.recetarioPersonal.model;
+/*package backend.recetarioPersonal.model;
 
 import jakarta.persistence.*;
 
@@ -33,3 +33,4 @@ public class Recipe {
         this.name = name;
     }
 }
+*/
