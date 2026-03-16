@@ -22,8 +22,7 @@ public class User {
     private String password;
     private boolean verified;
 
-    public User(long id, String name, String lastName, String username, String email, String password, boolean verified) {
-        this.userId = userId;
+    public User(String name, String lastName, String username, String email, String password, boolean verified) {
         this.name = name;
         this.lastName = lastName;
         this.username = username;
@@ -32,15 +31,7 @@ public class User {
         this.verified = verified;
     }
 
-    public User() {
-        this.userId = 0;
-        this.name = "";
-        this.lastName = "";
-        this.username = "";
-        this.email = "";
-        this.password = "";
-        this.verified = false;
-    }
+    public User() {}
 
     public long getId() {
         return userId;
