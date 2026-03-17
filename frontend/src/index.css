@@ -180,3 +180,95 @@ body {
   color: var(--color-text-secondary);
   text-align: center;
 }
+
+/* ----- Main app layout (logged-in screens) ----- */
+.main-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 70px;
+  max-width: 480px;   /* mobile width */
+  margin: 0 auto;     /* layout center in the middle of the screen */
+}
+
+.main-layout__content {
+  flex: 1;
+  padding: var(--space-md);
+}
+
+.page-placeholder {
+  text-align: center;
+  padding: var(--space-lg);
+  color: var(--color-text);
+}
+
+.page-placeholder h1 {
+  margin: 0 0 var(--space-sm);
+  font-size: 1.25rem;
+  color: var(--color-text);
+}
+
+.page-placeholder p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}
+
+/* ----- Bottom navigation (fixed at bottom) ----- */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px; /* same value as in .main-layout for mobile width */
+  z-index: 100;
+  background: var(--color-card);
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-sm) 0;
+  padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom));
+}
+
+.bottom-nav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  max-width: 100%;
+}
+
+.bottom-nav__item {
+  flex: 1;
+  min-width: 0;
+}
+
+.bottom-nav__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  text-decoration: none;
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 500;
+  border-radius: var(--radius);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.bottom-nav__link:hover {
+  color: var(--color-text);
+}
+
+.bottom-nav__link--active {
+  color: var(--color-primary);
+}
+
+.bottom-nav__icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
