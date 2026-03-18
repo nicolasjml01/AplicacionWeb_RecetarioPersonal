@@ -48,8 +48,8 @@ public class IngredientService {
         if (existing.isPresent()) {
             return existing.get();
         }
-        IngredientCategory own = categoryRepository.findByName("Own")
-                .orElseThrow(() -> new IllegalStateException("Category 'Own' must exist. Run the DataLoader seed."));
+        IngredientCategory own = categoryRepository.findByName("Propios")   
+                .orElseThrow(() -> new IllegalStateException("Category 'Propios' must exist. Run the DataLoader seed."));
         Ingredient newIngredient = new Ingredient();
         newIngredient.setName(trimmed);
         newIngredient.setCategory(own);

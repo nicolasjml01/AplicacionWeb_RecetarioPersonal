@@ -8,6 +8,6 @@ public record ShoppingListItemDto(
     Long userId,
     IngredientDto ingredient,
     float quantity,
-    String measurementUnit,
+    UnitOfMeasureDto unitOfMeasure,
     boolean bought
 ) {}

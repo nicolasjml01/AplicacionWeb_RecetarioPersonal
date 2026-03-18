@@ -1,0 +1,19 @@
+gramos;g
+kilogramos;kg
+litros;L
+mililitros;ml
+cucharadas;cda
+cucharaditas;cdta
+tazas;taza
+unidades;ud
+rebanadas;reb
+dientes;dte
+hojas;hoj
+ramas;rama
+manojos;manojo
+pellizcos;pellizco
+al gusto;
+rodajas;rod
+filetes;filete
+lonchas;loncha
+trozos;trozo

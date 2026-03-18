@@ -18,8 +18,9 @@ public class ShoppingListItem {
     private boolean bought;
     @Column(nullable = false)
     private float quantity;
-    @Column(name = "measurementUnit", nullable = true)
-    private String measurementUnit;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unitOfMeasureId", nullable = true)
+    private UnitOfMeasure unitOfMeasure;
 
     public ShoppingListItem() {
     }
@@ -64,11 +65,11 @@ public class ShoppingListItem {
         this.quantity = quantity;
     }
 
-    public String getMeasurementUnit() {
-        return measurementUnit;
+    public UnitOfMeasure getUnitOfMeasure() {
+        return unitOfMeasure;
     }
-
-    public void setMeasurementUnit(String measurementUnit) {
-        this.measurementUnit = measurementUnit;
+    
+    public void setUnitOfMeasure(UnitOfMeasure unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
     }
 }

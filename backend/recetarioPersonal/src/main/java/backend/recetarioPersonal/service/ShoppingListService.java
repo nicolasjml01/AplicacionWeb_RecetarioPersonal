@@ -1,6 +1,7 @@
 package backend.recetarioPersonal.service;
 
 import backend.recetarioPersonal.model.ShoppingListItem;
+import backend.recetarioPersonal.model.UnitOfMeasure;
 import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.ShoppingListItemRepository;
 import backend.recetarioPersonal.repository.UserRepository;
@@ -16,13 +17,16 @@ public class ShoppingListService {
     private final ShoppingListItemRepository itemRepository;
     private final UserRepository userRepository;
     private final IngredientService ingredientService;
+    private final UnitOfMeasureService unitOfMeasureService;
+
 
     public ShoppingListService(ShoppingListItemRepository itemRepository,
                               UserRepository userRepository,
-                              IngredientService ingredientService) {
+                              IngredientService ingredientService, UnitOfMeasureService unitOfMeasureService){
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
         this.ingredientService = ingredientService;
+        this.unitOfMeasureService = unitOfMeasureService;
     }
 
     /**
@@ -36,12 +40,17 @@ public class ShoppingListService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
         var ingredient = ingredientService.findOrCreateByName(request.ingredientName());
+        // Find or create the unit of measure
+        UnitOfMeasure unit = null;
+        if (request.measurementUnit() != null && !request.measurementUnit().isBlank()) {
+            unit = unitOfMeasureService.findOrCreateByName(request.measurementUnit());
+        }
 
         ShoppingListItem item = new ShoppingListItem();
         item.setUser(user);
         item.setIngredient(ingredient);
         item.setQuantity(request.quantity());
-        item.setMeasurementUnit(request.measurementUnit());
+        item.setUnitOfMeasure(unit);
         item.setBought(false);
         item = itemRepository.save(item);
 
@@ -71,7 +80,11 @@ public class ShoppingListService {
             item.setQuantity(request.quantity());
         }
         if (request.measurementUnit() != null) {
-            item.setMeasurementUnit(request.measurementUnit());
+            if (request.measurementUnit().isBlank()) {
+                item.setUnitOfMeasure(null);
+            } else {
+                item.setUnitOfMeasure(unitOfMeasureService.findOrCreateByName(request.measurementUnit()));
+            }
         }
         item = itemRepository.save(item);
         return toDto(item);
@@ -88,12 +101,18 @@ public class ShoppingListService {
 
     private ShoppingListItemDto toDto(ShoppingListItem item) {
         var ingredientDto = ingredientToDto(item.getIngredient());
+        UnitOfMeasureDto unitDto = item.getUnitOfMeasure() != null
+        ? new UnitOfMeasureDto(
+                item.getUnitOfMeasure().getUnitId(),
+                item.getUnitOfMeasure().getName(),
+                item.getUnitOfMeasure().getSymbol())
+        : null;
         return new ShoppingListItemDto(
                 item.getShoppingListItemId(),
                 item.getUser().getId(),
                 ingredientDto,
                 item.getQuantity(),
-                item.getMeasurementUnit(),
+                unitDto,
                 item.isBought()
         );
     }
