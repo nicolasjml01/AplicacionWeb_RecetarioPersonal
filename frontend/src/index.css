@@ -272,3 +272,249 @@ body {
   object-fit: contain;
   display: block;
 }
+
+/* ===== Shopping page ===== */
+.shopping-page {
+  text-align: left;
+}
+
+.shopping-title {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+}
+
+.shopping-search {
+  position: relative;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.shopping-plus {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-primary);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.shopping-search__input {
+  flex: 1;
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-card);
+}
+
+.shopping-search__dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.25rem;
+  z-index: 50;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.shopping-search__result {
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.6rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.shopping-search__result:hover {
+  background: rgba(45, 90, 39, 0.08);
+}
+
+.shopping-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.shopping-card {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  align-items: center;
+}
+
+.shopping-card__imageBtn {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.shopping-card__image {
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+}
+
+.shopping-card__body {
+  flex: 1;
+}
+
+.shopping-card__name {
+  font-weight: 650;
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+}
+
+.shopping-card__meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.shopping-card__metaBtn {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  border-radius: var(--radius);
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.shopping-card__metaSep {
+  display: inline-block;
+  width: 0.2rem;
+}
+
+.shopping-hint {
+  margin-top: 0.75rem;
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+.shopping-error {
+  margin-top: 0.75rem;
+  color: #b91c1c;
+  font-size: 0.95rem;
+}
+
+.shopping-error--top {
+  margin-top: 0.5rem;
+}
+
+/* Buttons for modal: reuse .btn but add a secondary */
+.btn--secondary {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 100;
+}
+
+.modal {
+  width: 100%;
+  max-width: 520px;
+  background: var(--color-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 1rem;
+}
+
+.modal__title {
+  margin: 0 0 0.5rem;
+}
+
+.modal__subtitle {
+  margin-bottom: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modal__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.modal__input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.modal__unitList {
+  margin-top: 0.75rem;
+}
+
+.modal__unitListTitle {
+  margin-bottom: 0.5rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.modal__unitListScroll {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.25rem;
+  background: #fff;
+}
+
+.modal__unitOption {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0.55rem 0.6rem;
+  cursor: pointer;
+  border-radius: 6px;
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.modal__unitOption:hover {
+  background: rgba(45, 90, 39, 0.08);
+}
+
+.modal__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
