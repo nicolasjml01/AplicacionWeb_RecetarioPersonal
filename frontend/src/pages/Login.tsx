@@ -1,24 +1,24 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { login } from '../api/auth';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { login } from "../api/auth";
 
 export function Login() {
-  const [loginValue, setLoginValue] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [loginValue, setLoginValue] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
     try {
       const user = await login(loginValue, password);
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      navigate('/home', { replace: true });
+      localStorage.setItem("currentUser", JSON.stringify(user));
+      navigate("/home", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed.');
+      setError(err instanceof Error ? err.message : "Login failed.");
     } finally {
       setLoading(false);
     }
@@ -44,7 +44,9 @@ export function Login() {
         <div className="form-group">
           <div className="form-label-row">
             <label htmlFor="password">Password</label>
-            <Link to="/forgot-password" className="auth-link auth-link--small">Forgot password?</Link>
+            <Link to="/forgot-password" className="auth-link auth-link--small">
+              Forgot password?
+            </Link>
           </div>
           <input
             id="password"
@@ -56,13 +58,20 @@ export function Login() {
             required
           />
         </div>
-        {error && <p className="auth-error" role="alert">{error}</p>}
+        {error && (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        )}
         <button type="submit" className="btn btn--primary" disabled={loading}>
-          {loading ? 'Signing in…' : 'Log in'}
+          {loading ? "Signing in…" : "Log in"}
         </button>
       </form>
       <p className="auth-footer">
-        Don't have an account? <Link to="/register" className="auth-link">Create account</Link>
+        Don't have an account?{" "}
+        <Link to="/register" className="auth-link">
+          Create account
+        </Link>
       </p>
     </>
   );

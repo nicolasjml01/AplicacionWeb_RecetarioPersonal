@@ -98,106 +98,106 @@ Kiwi verde;Vegetales y Frutas
 Kiwi amarillo;Vegetales y Frutas
 Piña natural;Vegetales y Frutas
 Papaya;Vegetales y Frutas
-Pechuga de pollo entera;Carnicería; Charcuteria y Pescados
-Contramuslo de pollo;Carnicería; Charcuteria y Pescados
-Alas de pollo;Carnicería; Charcuteria y Pescados
-Pollo picantón;Carnicería; Charcuteria y Pescados
-Pavo fileteado;Carnicería; Charcuteria y Pescados
-Solomillo de ternera;Carnicería; Charcuteria y Pescados
-Entrecot de ternera;Carnicería; Charcuteria y Pescados
-Chuletón de buey;Carnicería; Charcuteria y Pescados
-Ternera para guisar;Carnicería; Charcuteria y Pescados
-Carne picada de vacuno;Carnicería; Charcuteria y Pescados
-Carne picada de cerdo;Carnicería; Charcuteria y Pescados
-Carne picada mixta;Carnicería; Charcuteria y Pescados
-Lomo de cerdo;Carnicería; Charcuteria y Pescados
-Solomillo de cerdo;Carnicería; Charcuteria y Pescados
-Secreto ibérico;Carnicería; Charcuteria y Pescados
-Presa ibérica;Carnicería; Charcuteria y Pescados
-Pluma ibérica;Carnicería; Charcuteria y Pescados
-Costillas de cerdo;Carnicería; Charcuteria y Pescados
-Panceta fresca;Carnicería; Charcuteria y Pescados
-Manitas de cerdo;Carnicería; Charcuteria y Pescados
-Cordero lechal;Carnicería; Charcuteria y Pescados
-Chuletas de cordero;Carnicería; Charcuteria y Pescados
-Pierna de cordero;Carnicería; Charcuteria y Pescados
-Conejo entero;Carnicería; Charcuteria y Pescados
-Hígado de ternera;Carnicería; Charcuteria y Pescados
-Callos de vacuno;Carnicería; Charcuteria y Pescados
-Mollejas de cordero;Carnicería; Charcuteria y Pescados
-Jamón ibérico de bellota;Carnicería; Charcuteria y Pescados
-Jamón serrano gran reserva;Carnicería; Charcuteria y Pescados
-Paleta de cebo;Carnicería; Charcuteria y Pescados
-Chorizo dulce;Carnicería; Charcuteria y Pescados
-Chorizo picante;Carnicería; Charcuteria y Pescados
-Chorizo de León;Carnicería; Charcuteria y Pescados
-Chistorra;Carnicería; Charcuteria y Pescados
-Salchichón de Vic;Carnicería; Charcuteria y Pescados
-Fuet de Olot;Carnicería; Charcuteria y Pescados
-Lomo embuchado;Carnicería; Charcuteria y Pescados
-Cecina de León;Carnicería; Charcuteria y Pescados
-Morcilla de Burgos;Carnicería; Charcuteria y Pescados
-Morcilla de cebolla;Carnicería; Charcuteria y Pescados
-Sobrasada de Mallorca;Carnicería; Charcuteria y Pescados
-Mortadela con aceitunas;Carnicería; Charcuteria y Pescados
-Chopped de pavo;Carnicería; Charcuteria y Pescados
-Pechuga de pollo asada;Carnicería; Charcuteria y Pescados
-Jamón cocido extra;Carnicería; Charcuteria y Pescados
-Lacón cocido;Carnicería; Charcuteria y Pescados
-Bacon ahumado;Carnicería; Charcuteria y Pescados
-Salchichas tipo Frankfurt;Carnicería; Charcuteria y Pescados
-Salchichas de carnicería;Carnicería; Charcuteria y Pescados
-Huevo de gallina XL;Carnicería; Charcuteria y Pescados
-Huevo de codorniz;Carnicería; Charcuteria y Pescados
-Merluza del Cantábrico;Carnicería; Charcuteria y Pescados
-Rodaja de merluza;Carnicería; Charcuteria y Pescados
-Cocochas de merluza;Carnicería; Charcuteria y Pescados
-Bacalao fresco;Carnicería; Charcuteria y Pescados
-Bacalao salado;Carnicería; Charcuteria y Pescados
-Skrei;Carnicería; Charcuteria y Pescados
-Salmón fresco;Carnicería; Charcuteria y Pescados
-Lomo de salmón;Carnicería; Charcuteria y Pescados
-Trucha asalmonada;Carnicería; Charcuteria y Pescados
-Lubina de estero;Carnicería; Charcuteria y Pescados
-Dorada real;Carnicería; Charcuteria y Pescados
-Atún rojo;Carnicería; Charcuteria y Pescados
-Bonito del Norte;Carnicería; Charcuteria y Pescados
-Emperador;Carnicería; Charcuteria y Pescados
-Sardina de la costa;Carnicería; Charcuteria y Pescados
-Boquerón fresco;Carnicería; Charcuteria y Pescados
-Anchoa fresca;Carnicería; Charcuteria y Pescados
-Jurel;Carnicería; Charcuteria y Pescados
-Caballa;Carnicería; Charcuteria y Pescados
-Lenguado de playa;Carnicería; Charcuteria y Pescados
-Gallo del norte;Carnicería; Charcuteria y Pescados
-Rodaballo salvaje;Carnicería; Charcuteria y Pescados
-Bacalladilla;Carnicería; Charcuteria y Pescados
-Rape fresco;Carnicería; Charcuteria y Pescados
-Pixín;Carnicería; Charcuteria y Pescados
-Congrio;Carnicería; Charcuteria y Pescados
-Raya fresca;Carnicería; Charcuteria y Pescados
-Cazón en adobo;Carnicería; Charcuteria y Pescados
-Pulpo cocido;Carnicería; Charcuteria y Pescados
-Pulpo fresco;Carnicería; Charcuteria y Pescados
-Sepia limpia;Carnicería; Charcuteria y Pescados
-Calamar nacional;Carnicería; Charcuteria y Pescados
-Puntillitas;Carnicería; Charcuteria y Pescados
-Potón;Carnicería; Charcuteria y Pescados
-Anillas de calamar;Carnicería; Charcuteria y Pescados
-Gambón;Carnicería; Charcuteria y Pescados
-Gamba blanca de Huelva;Carnicería; Charcuteria y Pescados
-Gamba roja de Denia;Carnicería; Charcuteria y Pescados
-Langostino tigre;Carnicería; Charcuteria y Pescados
-Cigala de tronco;Carnicería; Charcuteria y Pescados
-Bogavante vivo;Carnicería; Charcuteria y Pescados
-Buey de mar;Carnicería; Charcuteria y Pescados
-Centollo gallego;Carnicería; Charcuteria y Pescados
-Nécora;Carnicería; Charcuteria y Pescados
-Mejillón de batea;Carnicería; Charcuteria y Pescados
-Almeja fina;Carnicería; Charcuteria y Pescados
-Chirla;Carnicería; Charcuteria y Pescados
-Berberecho gallego;Carnicería; Charcuteria y Pescados
-Vieira gallega;Carnicería; Charcuteria y Pescados
+Pechuga de pollo entera;Carnicería, Charcuteria y Pescados
+Contramuslo de pollo;Carnicería, Charcuteria y Pescados
+Alas de pollo;Carnicería, Charcuteria y Pescados
+Pollo picantón;Carnicería, Charcuteria y Pescados
+Pavo fileteado;Carnicería, Charcuteria y Pescados
+Solomillo de ternera;Carnicería, Charcuteria y Pescados
+Entrecot de ternera;Carnicería, Charcuteria y Pescados
+Chuletón de buey;Carnicería, Charcuteria y Pescados
+Ternera para guisar;Carnicería, Charcuteria y Pescados
+Carne picada de vacuno;Carnicería, Charcuteria y Pescados
+Carne picada de cerdo;Carnicería, Charcuteria y Pescados
+Carne picada mixta;Carnicería, Charcuteria y Pescados
+Lomo de cerdo;Carnicería, Charcuteria y Pescados
+Solomillo de cerdo;Carnicería, Charcuteria y Pescados
+Secreto ibérico;Carnicería, Charcuteria y Pescados
+Presa ibérica;Carnicería, Charcuteria y Pescados
+Pluma ibérica;Carnicería, Charcuteria y Pescados
+Costillas de cerdo;Carnicería, Charcuteria y Pescados
+Panceta fresca;Carnicería, Charcuteria y Pescados
+Manitas de cerdo;Carnicería, Charcuteria y Pescados
+Cordero lechal;Carnicería, Charcuteria y Pescados
+Chuletas de cordero;Carnicería, Charcuteria y Pescados
+Pierna de cordero;Carnicería, Charcuteria y Pescados
+Conejo entero;Carnicería, Charcuteria y Pescados
+Hígado de ternera;Carnicería, Charcuteria y Pescados
+Callos de vacuno;Carnicería, Charcuteria y Pescados
+Mollejas de cordero;Carnicería, Charcuteria y Pescados
+Jamón ibérico de bellota;Carnicería, Charcuteria y Pescados
+Jamón serrano gran reserva;Carnicería, Charcuteria y Pescados
+Paleta de cebo;Carnicería, Charcuteria y Pescados
+Chorizo dulce;Carnicería, Charcuteria y Pescados
+Chorizo picante;Carnicería, Charcuteria y Pescados
+Chorizo de León;Carnicería, Charcuteria y Pescados
+Chistorra;Carnicería, Charcuteria y Pescados
+Salchichón de Vic;Carnicería, Charcuteria y Pescados
+Fuet de Olot;Carnicería, Charcuteria y Pescados
+Lomo embuchado;Carnicería, Charcuteria y Pescados
+Cecina de León;Carnicería, Charcuteria y Pescados
+Morcilla de Burgos;Carnicería, Charcuteria y Pescados
+Morcilla de cebolla;Carnicería, Charcuteria y Pescados
+Sobrasada de Mallorca;Carnicería, Charcuteria y Pescados
+Mortadela con aceitunas;Carnicería, Charcuteria y Pescados
+Chopped de pavo;Carnicería, Charcuteria y Pescados
+Pechuga de pollo asada;Carnicería, Charcuteria y Pescados
+Jamón cocido extra;Carnicería, Charcuteria y Pescados
+Lacón cocido;Carnicería, Charcuteria y Pescados
+Bacon ahumado;Carnicería, Charcuteria y Pescados
+Salchichas tipo Frankfurt;Carnicería, Charcuteria y Pescados
+Salchichas de Carnicería,Carnicería, Charcuteria y Pescados
+Huevo de gallina XL;Carnicería, Charcuteria y Pescados
+Huevo de codorniz;Carnicería, Charcuteria y Pescados
+Merluza del Cantábrico;Carnicería, Charcuteria y Pescados
+Rodaja de merluza;Carnicería, Charcuteria y Pescados
+Cocochas de merluza;Carnicería, Charcuteria y Pescados
+Bacalao fresco;Carnicería, Charcuteria y Pescados
+Bacalao salado;Carnicería, Charcuteria y Pescados
+Skrei;Carnicería, Charcuteria y Pescados
+Salmón fresco;Carnicería, Charcuteria y Pescados
+Lomo de salmón;Carnicería, Charcuteria y Pescados
+Trucha asalmonada;Carnicería, Charcuteria y Pescados
+Lubina de estero;Carnicería, Charcuteria y Pescados
+Dorada real;Carnicería, Charcuteria y Pescados
+Atún rojo;Carnicería, Charcuteria y Pescados
+Bonito del Norte;Carnicería, Charcuteria y Pescados
+Emperador;Carnicería, Charcuteria y Pescados
+Sardina de la costa;Carnicería, Charcuteria y Pescados
+Boquerón fresco;Carnicería, Charcuteria y Pescados
+Anchoa fresca;Carnicería, Charcuteria y Pescados
+Jurel;Carnicería, Charcuteria y Pescados
+Caballa;Carnicería, Charcuteria y Pescados
+Lenguado de playa;Carnicería, Charcuteria y Pescados
+Gallo del norte;Carnicería, Charcuteria y Pescados
+Rodaballo salvaje;Carnicería, Charcuteria y Pescados
+Bacalladilla;Carnicería, Charcuteria y Pescados
+Rape fresco;Carnicería, Charcuteria y Pescados
+Pixín;Carnicería, Charcuteria y Pescados
+Congrio;Carnicería, Charcuteria y Pescados
+Raya fresca;Carnicería, Charcuteria y Pescados
+Cazón en adobo;Carnicería, Charcuteria y Pescados
+Pulpo cocido;Carnicería, Charcuteria y Pescados
+Pulpo fresco;Carnicería, Charcuteria y Pescados
+Sepia limpia;Carnicería, Charcuteria y Pescados
+Calamar nacional;Carnicería, Charcuteria y Pescados
+Puntillitas;Carnicería, Charcuteria y Pescados
+Potón;Carnicería, Charcuteria y Pescados
+Anillas de calamar;Carnicería, Charcuteria y Pescados
+Gambón;Carnicería, Charcuteria y Pescados
+Gamba blanca de Huelva;Carnicería, Charcuteria y Pescados
+Gamba roja de Denia;Carnicería, Charcuteria y Pescados
+Langostino tigre;Carnicería, Charcuteria y Pescados
+Cigala de tronco;Carnicería, Charcuteria y Pescados
+Bogavante vivo;Carnicería, Charcuteria y Pescados
+Buey de mar;Carnicería, Charcuteria y Pescados
+Centollo gallego;Carnicería, Charcuteria y Pescados
+Nécora;Carnicería, Charcuteria y Pescados
+Mejillón de batea;Carnicería, Charcuteria y Pescados
+Almeja fina;Carnicería, Charcuteria y Pescados
+Chirla;Carnicería, Charcuteria y Pescados
+Berberecho gallego;Carnicería, Charcuteria y Pescados
+Vieira gallega;Carnicería, Charcuteria y Pescados
 Arroz bomba;Granos y Pastas
 Arroz redondo;Granos y Pastas
 Arroz largo;Granos y Pastas

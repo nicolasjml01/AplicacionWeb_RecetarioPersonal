@@ -1,28 +1,34 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { register } from '../api/auth';
-import type { RegisterRequest } from '../types/auth';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { register } from "../api/auth";
+import type { RegisterRequest } from "../types/auth";
 
 export function Register() {
-  const [name, setName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [name, setName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
     try {
-      const data: RegisterRequest = { name, lastName, username, email, password };
+      const data: RegisterRequest = {
+        name,
+        lastName,
+        username,
+        email,
+        password,
+      };
       await register(data);
-      navigate('/home', { replace: true });
+      navigate("/home", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed.');
+      setError(err instanceof Error ? err.message : "Registration failed.");
     } finally {
       setLoading(false);
     }
@@ -30,7 +36,9 @@ export function Register() {
 
   return (
     <>
-      <Link to="/login" className="auth-back" aria-label="Back to login">← Back</Link>
+      <Link to="/login" className="auth-back" aria-label="Back to login">
+        ← Back
+      </Link>
       <h1 className="auth-title">Create account</h1>
       <form onSubmit={handleSubmit} className="auth-form">
         <div className="form-group">
@@ -94,13 +102,20 @@ export function Register() {
             minLength={8}
           />
         </div>
-        {error && <p className="auth-error" role="alert">{error}</p>}
+        {error && (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        )}
         <button type="submit" className="btn btn--primary" disabled={loading}>
-          {loading ? 'Creating account…' : 'Create account'}
+          {loading ? "Creating account…" : "Create account"}
         </button>
       </form>
       <p className="auth-footer">
-        Already have an account? <Link to="/login" className="auth-link">Log in</Link>
+        Already have an account?{" "}
+        <Link to="/login" className="auth-link">
+          Log in
+        </Link>
       </p>
     </>
   );

@@ -1,6 +1,6 @@
-import type { User } from '../types/auth';
+import type { User } from "../types/auth";
 
-const KEY = 'currentUser';
+const KEY = "currentUser";
 
 export function getCurrentUser(): User | null {
   const raw = localStorage.getItem(KEY);

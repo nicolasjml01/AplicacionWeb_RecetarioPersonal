@@ -1,12 +1,12 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthLayout } from './components/AuthLayout';
-import { MainLayout } from './components/MainLayout';
-import { Login } from './pages/Login';
-import { Register } from './pages/Register';
-import { Home } from './pages/Home';
-import { Calendar } from './pages/Calendar';
-import { Shopping } from './pages/Shopping';
-import { Account } from './pages/Account';
+import { Routes, Route, Navigate } from "react-router-dom";
+import { AuthLayout } from "./components/AuthLayout";
+import { MainLayout } from "./components/MainLayout";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
+import { Home } from "./pages/Home";
+import { Calendar } from "./pages/Calendar";
+import { Shopping } from "./pages/Shopping";
+import { Account } from "./pages/Account";
 
 function App() {
   return (

@@ -1,11 +1,16 @@
 package backend.recetarioPersonal.service;
 
 import backend.recetarioPersonal.model.ShoppingListItem;
+import backend.recetarioPersonal.model.Ingredient;
 import backend.recetarioPersonal.model.UnitOfMeasure;
 import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.ShoppingListItemRepository;
 import backend.recetarioPersonal.repository.UserRepository;
-import backend.recetarioPersonal.view.*;
+import backend.recetarioPersonal.view.CreateShoppingListItemRequest;
+import backend.recetarioPersonal.view.IngredientDto;
+import backend.recetarioPersonal.view.ShoppingListItemDto;
+import backend.recetarioPersonal.view.UnitOfMeasureDto;
+import backend.recetarioPersonal.view.UpdateShoppingListItemRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,10 +24,12 @@ public class ShoppingListService {
     private final IngredientService ingredientService;
     private final UnitOfMeasureService unitOfMeasureService;
 
-
-    public ShoppingListService(ShoppingListItemRepository itemRepository,
-                              UserRepository userRepository,
-                              IngredientService ingredientService, UnitOfMeasureService unitOfMeasureService){
+    public ShoppingListService(
+            ShoppingListItemRepository itemRepository,
+            UserRepository userRepository,
+            IngredientService ingredientService,
+            UnitOfMeasureService unitOfMeasureService
+    ) {
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
         this.ingredientService = ingredientService;
@@ -72,7 +79,7 @@ public class ShoppingListService {
         if (item.getUser().getId() != userId) {
             throw new IllegalArgumentException("Item does not belong to user");
         }
-        if (request.bought() == true) {
+        if (Boolean.TRUE.equals(request.bought())) {
             itemRepository.delete(item);
             return null;
         }
@@ -102,11 +109,12 @@ public class ShoppingListService {
     private ShoppingListItemDto toDto(ShoppingListItem item) {
         var ingredientDto = ingredientToDto(item.getIngredient());
         UnitOfMeasureDto unitDto = item.getUnitOfMeasure() != null
-        ? new UnitOfMeasureDto(
-                item.getUnitOfMeasure().getUnitId(),
-                item.getUnitOfMeasure().getName(),
-                item.getUnitOfMeasure().getSymbol())
-        : null;
+                ? new UnitOfMeasureDto(
+                        item.getUnitOfMeasure().getUnitId(),
+                        item.getUnitOfMeasure().getName(),
+                        item.getUnitOfMeasure().getSymbol()
+                )
+                : null;
         return new ShoppingListItemDto(
                 item.getShoppingListItemId(),
                 item.getUser().getId(),
@@ -117,7 +125,7 @@ public class ShoppingListService {
         );
     }
 
-    private IngredientDto ingredientToDto(backend.recetarioPersonal.model.Ingredient ing) {
+    private IngredientDto ingredientToDto(Ingredient ing) {
         Long catId = ing.getCategory() != null ? ing.getCategory().getCategoryId() : null;
         String catName = ing.getCategory() != null ? ing.getCategory().getName() : null;
         return new IngredientDto(ing.getIngredientId(), ing.getName(), catId, catName);

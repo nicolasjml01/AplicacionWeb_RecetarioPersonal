@@ -4,11 +4,17 @@ import backend.recetarioPersonal.model.Ingredient;
 import backend.recetarioPersonal.model.IngredientCategory;
 import backend.recetarioPersonal.repository.IngredientCategoryRepository;
 import backend.recetarioPersonal.repository.IngredientRepository;
+import backend.recetarioPersonal.view.IngredientCategoryCatalogDto;
 import backend.recetarioPersonal.view.IngredientDto;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class IngredientService {
@@ -16,8 +22,10 @@ public class IngredientService {
     private final IngredientRepository ingredientRepository;
     private final IngredientCategoryRepository categoryRepository;
 
-    public IngredientService(IngredientRepository ingredientRepository,
-                            IngredientCategoryRepository categoryRepository) {
+    public IngredientService(
+            IngredientRepository ingredientRepository,
+            IngredientCategoryRepository categoryRepository
+    ) {
         this.ingredientRepository = ingredientRepository;
         this.categoryRepository = categoryRepository;
     }
@@ -48,7 +56,7 @@ public class IngredientService {
         if (existing.isPresent()) {
             return existing.get();
         }
-        IngredientCategory own = categoryRepository.findByName("Propios")   
+        IngredientCategory own = categoryRepository.findByName("Propios")
                 .orElseThrow(() -> new IllegalStateException("Category 'Propios' must exist. Run the DataLoader seed."));
         Ingredient newIngredient = new Ingredient();
         newIngredient.setName(trimmed);
@@ -65,5 +73,55 @@ public class IngredientService {
                 categoryId,
                 categoryName
         );
+    }
+
+    /**
+     * Returns all categories with their ingredients.
+     * "Propios"/"Own" is always first, even if empty.
+     */
+    public List<IngredientCategoryCatalogDto> getCatalogGroupedByCategory() {
+        var categories = categoryRepository.findAll();
+        var allIngredients = ingredientRepository.findAll();
+
+        Map<Long, List<IngredientDto>> ingredientsByCategoryId = allIngredients.stream()
+                .map(this::toDto)
+                .collect(Collectors.groupingBy(dto -> dto.categoryId() != null ? dto.categoryId() : -1L));
+
+        List<IngredientCategoryCatalogDto> result = new ArrayList<>();
+
+        for (var category : categories) {
+            List<IngredientDto> ingredients = ingredientsByCategoryId.getOrDefault(
+                    category.getCategoryId(),
+                    List.of()
+            ).stream()
+                    .sorted(Comparator.comparing(IngredientDto::name, String.CASE_INSENSITIVE_ORDER))
+                    .toList();
+
+            result.add(new IngredientCategoryCatalogDto(
+                    category.getCategoryId(),
+                    category.getName(),
+                    ingredients
+            ));
+        }
+
+        result = result.stream()
+                .sorted((a, b) -> {
+                    boolean aOwn = isOwnCategory(a.categoryName());
+                    boolean bOwn = isOwnCategory(b.categoryName());
+                    if (aOwn && !bOwn) return -1;
+                    if (!aOwn && bOwn) return 1;
+                    return a.categoryName().compareToIgnoreCase(b.categoryName());
+                })
+                .toList();
+
+        return result;
+    }
+
+    private boolean isOwnCategory(String name) {
+        if (name == null) {
+            return false;
+        }
+        String n = name.trim().toLowerCase(Locale.ROOT);
+        return n.equals("propios") || n.equals("propio") || n.equals("own");
     }
 }
