@@ -28,7 +28,7 @@ public class AuthService {
      */
     private UserDto toDto(User user) {
         return new UserDto(
-                user.getId(),
+                user.getUserId(),
                 user.getName(),
                 user.getLastName(),
                 user.getUsername(),

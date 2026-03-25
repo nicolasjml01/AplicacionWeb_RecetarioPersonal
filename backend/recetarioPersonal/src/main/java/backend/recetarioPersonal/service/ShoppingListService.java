@@ -76,7 +76,7 @@ public class ShoppingListService {
     public ShoppingListItemDto updateItem(Long itemId, long userId, UpdateShoppingListItemRequest request) {
         ShoppingListItem item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Shopping list item not found: " + itemId));
-        if (item.getUser().getId() != userId) {
+        if (item.getUser().getUserId() != userId) {
             throw new IllegalArgumentException("Item does not belong to user");
         }
         if (Boolean.TRUE.equals(request.bought())) {
@@ -100,7 +100,7 @@ public class ShoppingListService {
     public void deleteItem(Long itemId, long userId) {
         ShoppingListItem item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Shopping list item not found: " + itemId));
-        if (item.getUser().getId() != userId) {
+        if (item.getUser().getUserId() != userId) {
             throw new IllegalArgumentException("Item does not belong to user");
         }
         itemRepository.delete(item);
@@ -117,7 +117,7 @@ public class ShoppingListService {
                 : null;
         return new ShoppingListItemDto(
                 item.getShoppingListItemId(),
-                item.getUser().getId(),
+                item.getUser().getUserId(),
                 ingredientDto,
                 item.getQuantity(),
                 unitDto,
