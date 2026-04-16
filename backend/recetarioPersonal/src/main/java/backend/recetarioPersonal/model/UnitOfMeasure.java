@@ -3,17 +3,18 @@ package backend.recetarioPersonal.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "unitOfMeasure")
+@Table(name = "units_of_measure")
 public class UnitOfMeasure {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "unit_id")
     private Long unitId;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @Column(length = 20)
+    @Column(name = "symbol", length = 20)
     private String symbol;
 
     public UnitOfMeasure() {

@@ -27,12 +27,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/h2-console/**").permitAll()
-                .anyRequest().permitAll()  // o .authenticated() if you want to protect the rest
+                .anyRequest().permitAll()
             )
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
-            .headers(headers -> headers.frameOptions(f -> f.sameOrigin()))  // allows frames from the same origin (H2)
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/**"));
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"));
         return http.build();
 }
 }

@@ -3,23 +3,33 @@ package backend.recetarioPersonal.model;
 import jakarta.persistence.*;
 
 /**
- * Domain model: user in memory (later will map to DB).
- * All names in English for consistency across the project.
+ * Persisted user account (PostgreSQL via JPA).
+ * Field names in English; column names in snake_case to match Flyway migrations.
  */
 @Entity
 @Table(name = "users")
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id")
     private long userId;
+
+    @Column(name = "name")
     private String name;
+
+    @Column(name = "last_name")
     private String lastName;
-    @Column(nullable = false, unique = true)
+
+    @Column(name = "username", nullable = false, unique = true)
     private String username;
-    @Column(nullable = false, unique = true)
+
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
-    @Column(nullable = false)
+
+    @Column(name = "password", nullable = false)
     private String password;
+
+    @Column(name = "verified", nullable = false)
     private boolean verified;
 
     public User(String name, String lastName, String username, String email, String password, boolean verified) {
@@ -88,6 +98,4 @@ public class User {
     public void setVerified(boolean verified) {
         this.verified = verified;
     }
-
-
 }

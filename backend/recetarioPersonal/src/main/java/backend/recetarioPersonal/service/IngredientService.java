@@ -2,11 +2,14 @@ package backend.recetarioPersonal.service;
 
 import backend.recetarioPersonal.model.Ingredient;
 import backend.recetarioPersonal.model.IngredientCategory;
+import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.IngredientCategoryRepository;
 import backend.recetarioPersonal.repository.IngredientRepository;
+import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.view.IngredientCategoryCatalogDto;
 import backend.recetarioPersonal.view.IngredientDto;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -21,46 +24,55 @@ public class IngredientService {
 
     private final IngredientRepository ingredientRepository;
     private final IngredientCategoryRepository categoryRepository;
+    private final UserRepository userRepository;
 
     public IngredientService(
             IngredientRepository ingredientRepository,
-            IngredientCategoryRepository categoryRepository
+            IngredientCategoryRepository categoryRepository,
+            UserRepository userRepository
     ) {
         this.ingredientRepository = ingredientRepository;
         this.categoryRepository = categoryRepository;
+        this.userRepository = userRepository;
     }
 
     /**
-     * Search ingredients by name (partial, case-insensitive). Used by the search UI.
+     * Search ingredients visible to this user: platform catalog plus their own rows.
      */
-    public List<IngredientDto> searchByName(String query) {
+    @Transactional(readOnly = true)
+    public List<IngredientDto> searchByName(String query, long userId) {
         if (query == null || query.isBlank()) {
             return List.of();
         }
-        return ingredientRepository.findByNameContainingIgnoreCase(query.trim())
+        return ingredientRepository.searchVisibleToUser(query.trim(), userId)
                 .stream()
                 .map(this::toDto)
                 .toList();
     }
 
     /**
-     * Returns the ingredient with the given name, or creates it with category "Own" if it does not exist.
-     * Used when adding an item to the shopping list by name.
+     * Resolves by exact name within this user's visible set, or creates a user-owned ingredient in "Propios".
      */
-    public Ingredient findOrCreateByName(String name) {
+    @Transactional
+    public Ingredient findOrCreateByName(String name, long userId) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Ingredient name cannot be blank");
         }
         String trimmed = name.trim();
-        Optional<Ingredient> existing = ingredientRepository.findByName(trimmed);
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        Optional<Ingredient> existing = ingredientRepository.findVisibleToUserByExactName(trimmed, userId);
         if (existing.isPresent()) {
             return existing.get();
         }
         IngredientCategory own = categoryRepository.findByName("Propios")
-                .orElseThrow(() -> new IllegalStateException("Category 'Propios' must exist. Run the DataLoader seed."));
+                .orElseThrow(() -> new IllegalStateException("Category 'Propios' must exist. Apply Flyway migrations (V2 seed)."));
         Ingredient newIngredient = new Ingredient();
         newIngredient.setName(trimmed);
         newIngredient.setCategory(own);
+        User ownerRef = userRepository.getReferenceById(userId);
+        newIngredient.setOwner(ownerRef);
         return ingredientRepository.save(newIngredient);
     }
 
@@ -76,14 +88,14 @@ public class IngredientService {
     }
 
     /**
-     * Returns all categories with their ingredients.
-     * "Propios"/"Own" is always first, even if empty.
+     * Catalog for one user: global categories, but only catalog + that user's ingredients listed.
      */
-    public List<IngredientCategoryCatalogDto> getCatalogGroupedByCategory() {
+    @Transactional(readOnly = true)
+    public List<IngredientCategoryCatalogDto> getCatalogGroupedByCategory(long userId) {
         var categories = categoryRepository.findAll();
-        var allIngredients = ingredientRepository.findAll();
+        var visible = ingredientRepository.findAllVisibleToUser(userId);
 
-        Map<Long, List<IngredientDto>> ingredientsByCategoryId = allIngredients.stream()
+        Map<Long, List<IngredientDto>> ingredientsByCategoryId = visible.stream()
                 .map(this::toDto)
                 .collect(Collectors.groupingBy(dto -> dto.categoryId() != null ? dto.categoryId() : -1L));
 

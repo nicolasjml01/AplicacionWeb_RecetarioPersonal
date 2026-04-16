@@ -23,6 +23,8 @@ out/
 .env.local
 .env.*.local
 *.pem
+application-*.local.properties
+application-local.properties
 
 # Logs y temporales en raíz
 *.log

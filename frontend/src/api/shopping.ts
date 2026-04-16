@@ -20,13 +20,14 @@ function readErrorMessage(res: Response): Promise<string> {
 }
 
 export async function searchIngredients(
+  userId: number,
   query: string,
 ): Promise<IngredientDto[]> {
   const q = query.trim();
   if (!q) return [];
 
   const res = await fetch(
-    `${API_BASE}/api/ingredients?search=${encodeURIComponent(q)}`,
+    `${API_BASE}/api/users/${userId}/ingredients?search=${encodeURIComponent(q)}`,
   );
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as IngredientDto[];
@@ -80,10 +81,12 @@ export async function patchShoppingItem(
   return (await res.json()) as ShoppingListItemDto;
 }
 
-export async function getIngredientsCatalog(): Promise<
-  IngredientCategoryCatalogDto[]
-> {
-  const res = await fetch(`${API_BASE}/api/ingredients/catalog`);
+export async function getIngredientsCatalog(
+  userId: number,
+): Promise<IngredientCategoryCatalogDto[]> {
+  const res = await fetch(
+    `${API_BASE}/api/users/${userId}/ingredients/catalog`,
+  );
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as IngredientCategoryCatalogDto[];
 }

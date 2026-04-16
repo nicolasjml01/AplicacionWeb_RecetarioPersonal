@@ -98,10 +98,11 @@ export function Shopping() {
   }
 
   async function loadCatalog() {
+    if (userId == null) return;
     setLoadingCatalog(true);
     setCatalogError("");
     try {
-      const data = await getIngredientsCatalog();
+      const data = await getIngredientsCatalog(userId);
       setCatalogCategories(data);
 
       // keep all categories collapsed by default
@@ -122,8 +123,13 @@ export function Shopping() {
   // Initial loads
   useEffect(() => {
     loadUnits();
-    loadCatalog();
   }, []);
+
+  useEffect(() => {
+    if (userId == null) return;
+    loadCatalog();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   useEffect(() => {
     if (userId == null) return;
@@ -139,12 +145,16 @@ export function Shopping() {
       setSearchError("");
       return;
     }
+    if (userId == null) {
+      setIngredientResults([]);
+      return;
+    }
 
     const handle = window.setTimeout(async () => {
       setSearchLoading(true);
       setSearchError("");
       try {
-        const results = await searchIngredients(q);
+        const results = await searchIngredients(userId, q);
         setIngredientResults(results);
       } catch (e) {
         setSearchError(
@@ -156,7 +166,7 @@ export function Shopping() {
     }, 300);
 
     return () => window.clearTimeout(handle);
-  }, [search]);
+  }, [search, userId]);
 
   const selectedIngredientName = modal.open ? modal.ingredientName : undefined;
   const editItemId = modal.open ? modal.itemId : undefined;

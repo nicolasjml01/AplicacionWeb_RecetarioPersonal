@@ -3,23 +3,29 @@ package backend.recetarioPersonal.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "shoppingListItems")
+@Table(name = "shopping_list_items")
 public class ShoppingListItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "shopping_list_item_id")
     private Long shoppingListItemId;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "userId", nullable = false, referencedColumnName = "userId")
+    @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "user_id")
     private User user;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ingredientId", nullable = false)
+    @JoinColumn(name = "ingredient_id", nullable = false, referencedColumnName = "ingredient_id")
     private Ingredient ingredient;
-    @Column(nullable = false)
+
+    @Column(name = "bought", nullable = false)
     private boolean bought;
-    @Column(nullable = false)
+
+    @Column(name = "quantity", nullable = false)
     private float quantity;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "unitOfMeasureId", nullable = true)
+    @JoinColumn(name = "unit_of_measure_id", nullable = true, referencedColumnName = "unit_id")
     private UnitOfMeasure unitOfMeasure;
 
     public ShoppingListItem() {
@@ -68,7 +74,7 @@ public class ShoppingListItem {
     public UnitOfMeasure getUnitOfMeasure() {
         return unitOfMeasure;
     }
-    
+
     public void setUnitOfMeasure(UnitOfMeasure unitOfMeasure) {
         this.unitOfMeasure = unitOfMeasure;
     }
