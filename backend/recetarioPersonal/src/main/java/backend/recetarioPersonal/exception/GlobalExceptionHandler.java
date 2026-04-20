@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.dao.DataIntegrityViolationException;
+
 
 /**
  * Maps exceptions thrown by services to appropriate HTTP responses.
@@ -29,5 +31,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
         String msg = ex.getMessage() != null ? ex.getMessage() : "Internal configuration error";
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse(msg, 500));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String msg = "Conflict with existing data (possibly duplicated name).";
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(msg, 409));
     }
 }

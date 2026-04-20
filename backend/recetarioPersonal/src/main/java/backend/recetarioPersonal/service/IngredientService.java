@@ -25,15 +25,18 @@ public class IngredientService {
     private final IngredientRepository ingredientRepository;
     private final IngredientCategoryRepository categoryRepository;
     private final UserRepository userRepository;
-
+    private final RecentIngredientService recentIngredientService;
+    
     public IngredientService(
             IngredientRepository ingredientRepository,
             IngredientCategoryRepository categoryRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            RecentIngredientService recentIngredientService
     ) {
         this.ingredientRepository = ingredientRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.recentIngredientService = recentIngredientService;
     }
 
     /**
@@ -62,7 +65,8 @@ public class IngredientService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        Optional<Ingredient> existing = ingredientRepository.findVisibleToUserByExactName(trimmed, userId);
+        Optional<Ingredient> existing = ingredientRepository.findVisibleToUserByExactNameIgnoreCase(trimmed, userId);
+        
         if (existing.isPresent()) {
             return existing.get();
         }
@@ -99,6 +103,17 @@ public class IngredientService {
                 .map(this::toDto)
                 .collect(Collectors.groupingBy(dto -> dto.categoryId() != null ? dto.categoryId() : -1L));
 
+        List<IngredientDto> recentDtos = recentIngredientService.getRecentIngredients(userId)
+        .stream()
+        .map(this::toDto)
+        .toList();
+        
+        IngredientCategoryCatalogDto recentCategory = new IngredientCategoryCatalogDto(
+            -999L,
+            "Recientes",
+            recentDtos
+        );
+
         List<IngredientCategoryCatalogDto> result = new ArrayList<>();
 
         for (var category : categories) {
@@ -126,7 +141,10 @@ public class IngredientService {
                 })
                 .toList();
 
-        return result;
+        List<IngredientCategoryCatalogDto> finalResult = new ArrayList<>();
+        finalResult.add(recentCategory);
+        finalResult.addAll(result);
+        return finalResult;
     }
 
     private boolean isOwnCategory(String name) {

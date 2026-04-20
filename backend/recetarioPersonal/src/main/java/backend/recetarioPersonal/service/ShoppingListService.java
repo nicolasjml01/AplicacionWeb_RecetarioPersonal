@@ -1,7 +1,12 @@
 package backend.recetarioPersonal.service;
 
-import backend.recetarioPersonal.model.ShoppingListItem;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import backend.recetarioPersonal.model.Ingredient;
+import backend.recetarioPersonal.model.ShoppingListItem;
 import backend.recetarioPersonal.model.UnitOfMeasure;
 import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.ShoppingListItemRepository;
@@ -11,10 +16,6 @@ import backend.recetarioPersonal.view.IngredientDto;
 import backend.recetarioPersonal.view.ShoppingListItemDto;
 import backend.recetarioPersonal.view.UnitOfMeasureDto;
 import backend.recetarioPersonal.view.UpdateShoppingListItemRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class ShoppingListService {
@@ -23,17 +24,21 @@ public class ShoppingListService {
     private final UserRepository userRepository;
     private final IngredientService ingredientService;
     private final UnitOfMeasureService unitOfMeasureService;
+    private final RecentIngredientService recentIngredientService;
+    
 
     public ShoppingListService(
-            ShoppingListItemRepository itemRepository,
-            UserRepository userRepository,
-            IngredientService ingredientService,
-            UnitOfMeasureService unitOfMeasureService
+        ShoppingListItemRepository itemRepository,
+        UserRepository userRepository,
+        IngredientService ingredientService,
+        UnitOfMeasureService unitOfMeasureService,
+        RecentIngredientService recentIngredientService
     ) {
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
         this.ingredientService = ingredientService;
         this.unitOfMeasureService = unitOfMeasureService;
+        this.recentIngredientService = recentIngredientService;
     }
 
     /**
@@ -47,6 +52,7 @@ public class ShoppingListService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
         var ingredient = ingredientService.findOrCreateByName(request.ingredientName(), userId);
+        recentIngredientService.touch(userId, ingredient);
         // Find or create the unit of measure
         UnitOfMeasure unit = null;
         if (request.measurementUnit() != null && !request.measurementUnit().isBlank()) {
@@ -80,6 +86,7 @@ public class ShoppingListService {
             throw new IllegalArgumentException("Item does not belong to user");
         }
         if (Boolean.TRUE.equals(request.bought())) {
+            recentIngredientService.touch(userId, item.getIngredient());
             itemRepository.delete(item);
             return null;
         }
@@ -103,6 +110,7 @@ public class ShoppingListService {
         if (item.getUser().getUserId() != userId) {
             throw new IllegalArgumentException("Item does not belong to user");
         }
+        recentIngredientService.touch(userId, item.getIngredient());
         itemRepository.delete(item);
     }
 
@@ -130,4 +138,6 @@ public class ShoppingListService {
         String catName = ing.getCategory() != null ? ing.getCategory().getName() : null;
         return new IngredientDto(ing.getIngredientId(), ing.getName(), catId, catName);
     }
+
+    
 }

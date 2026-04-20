@@ -13,26 +13,29 @@ import java.util.Optional;
  */
 public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
 
-    @Query("""
-            select i from Ingredient i
-            left join fetch i.category
-            where lower(i.name) like lower(concat('%', :q, '%'))
-              and (i.owner is null or i.owner.userId = :userId)
-            """)
-    List<Ingredient> searchVisibleToUser(@Param("q") String q, @Param("userId") long userId);
+        @Query("""
+                select i from Ingredient i
+                left join fetch i.category
+                where lower(i.name) like lower(concat('%', :q, '%'))
+                and (i.owner is null or i.owner.userId = :userId)
+                """)
+        List<Ingredient> searchVisibleToUser(@Param("q") String q, @Param("userId") long userId);
 
-    @Query("""
-            select i from Ingredient i
-            left join fetch i.category
-            where i.name = :name
-              and (i.owner is null or i.owner.userId = :userId)
-            """)
-    Optional<Ingredient> findVisibleToUserByExactName(@Param("name") String name, @Param("userId") long userId);
-
-    @Query("""
-            select i from Ingredient i
-            left join fetch i.category
-            where i.owner is null or i.owner.userId = :userId
-            """)
-    List<Ingredient> findAllVisibleToUser(@Param("userId") long userId);
-}
+        @Query("""
+                select i from Ingredient i
+                left join fetch i.category
+                where lower(i.name) = lower(:name)
+                and (i.owner is null or i.owner.userId = :userId)
+                """)
+        Optional<Ingredient> findVisibleToUserByExactNameIgnoreCase(
+                @Param("name") String name,
+                @Param("userId") long userId
+        );
+        
+        @Query("""
+                select i from Ingredient i
+                left join fetch i.category
+                where i.owner is null or i.owner.userId = :userId
+                """)
+        List<Ingredient> findAllVisibleToUser(@Param("userId") long userId);
+        }
