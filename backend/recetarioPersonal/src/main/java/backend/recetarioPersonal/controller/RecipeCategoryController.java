@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/recipe-categories")
+@RequestMapping("/api/users/{userId}/recipe-categories")
 public class RecipeCategoryController {
 
     private final RecipeCategoryService recipeCategoryService;
@@ -22,25 +22,30 @@ public class RecipeCategoryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<RecipeCategoryDto>> list() {
-        return ResponseEntity.ok(recipeCategoryService.findAll());
+    public ResponseEntity<List<RecipeCategoryDto>> list(@PathVariable long userId) {
+        return ResponseEntity.ok(recipeCategoryService.findAll(userId));
     }
 
     @PostMapping
-    public ResponseEntity<RecipeCategoryDto> create(@RequestBody @Valid CreateRecipeCategoryRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(recipeCategoryService.create(request));
+    public ResponseEntity<RecipeCategoryDto> create(
+            @PathVariable long userId,
+            @RequestBody @Valid CreateRecipeCategoryRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(recipeCategoryService.create(userId, request));
     }
 
     @PutMapping("/{categoryId}")
     public ResponseEntity<RecipeCategoryDto> update(
+            @PathVariable long userId,
             @PathVariable Long categoryId,
             @RequestBody @Valid UpdateRecipeCategoryRequest request) {
-        return ResponseEntity.ok(recipeCategoryService.update(categoryId, request));
+        return ResponseEntity.ok(recipeCategoryService.update(userId, categoryId, request));
     }
 
     @DeleteMapping("/{categoryId}")
-    public ResponseEntity<Void> delete(@PathVariable Long categoryId) {
-        recipeCategoryService.delete(categoryId);
+    public ResponseEntity<Void> delete(
+            @PathVariable long userId,
+            @PathVariable Long categoryId) {
+        recipeCategoryService.delete(userId, categoryId);
         return ResponseEntity.noContent().build();
     }
 }
