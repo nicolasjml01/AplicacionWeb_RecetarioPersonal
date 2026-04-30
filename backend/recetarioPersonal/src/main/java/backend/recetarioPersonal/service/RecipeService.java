@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class RecipeService {
@@ -93,5 +92,67 @@ public class RecipeService {
                 recipe.getDescription(),
                 categories
         );
+    }
+
+    @Transactional(readOnly = true)
+    public RecipeDto findOneByUser(long userId, Long recipeId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+    
+        Recipe recipe = recipeRepository.findByRecipeIdAndOwner_UserId(recipeId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Recipe not found: " + recipeId));
+    
+        return toDto(recipe);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipeDto> findAllByUser(long userId, Long categoryId, String recipeSearch, String categorySearch) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        String r = recipeSearch == null ? "" : recipeSearch.trim();
+        String c = categorySearch == null ? "" : categorySearch.trim();
+
+        boolean hasRecipeSearch = !r.isBlank();
+        boolean hasCategorySearch = !c.isBlank();
+
+        if (categoryId != null) {
+            RecipeCategory category = recipeCategoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new IllegalArgumentException("Recipe category not found: " + categoryId));
+
+            if (category.getOwner().getUserId() != userId) {
+                throw new IllegalArgumentException("Category does not belong to user.");
+            }
+        }
+
+        List<Recipe> recipes;
+
+        if (categoryId == null && !hasRecipeSearch && !hasCategorySearch) {
+            recipes = recipeRepository.findByOwner_UserIdOrderByRecipeIdDesc(userId);
+
+        } else if (categoryId != null && !hasRecipeSearch && !hasCategorySearch) {
+            recipes = recipeRepository.findDistinctByOwner_UserIdAndCategories_CategoryIdOrderByRecipeIdDesc(userId, categoryId);
+
+        } else if (categoryId == null && hasRecipeSearch && !hasCategorySearch) {
+            recipes = recipeRepository.findDistinctByOwner_UserIdAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(userId, r);
+
+        } else if (categoryId == null && !hasRecipeSearch && hasCategorySearch) {
+            recipes = recipeRepository.findDistinctByOwner_UserIdAndCategories_NameContainingIgnoreCaseOrderByRecipeIdDesc(userId, c);
+
+        } else if (categoryId != null && hasRecipeSearch && !hasCategorySearch) {
+            recipes = recipeRepository.findDistinctByOwner_UserIdAndCategories_CategoryIdAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(
+                    userId, categoryId, r);
+
+        } else if (categoryId == null) { // hasRecipeSearch && hasCategorySearch
+            recipes = recipeRepository.findDistinctByOwner_UserIdAndCategories_NameContainingIgnoreCaseAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(
+                    userId, c, r);
+
+        } else { // categoryId != null && hasRecipeSearch && hasCategorySearch
+            recipes = recipeRepository
+                    .findDistinctByOwner_UserIdAndCategories_CategoryIdAndCategories_NameContainingIgnoreCaseAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(
+                            userId, categoryId, c, r);
+        }
+
+        return recipes.stream().map(this::toDto).toList();
     }
 }

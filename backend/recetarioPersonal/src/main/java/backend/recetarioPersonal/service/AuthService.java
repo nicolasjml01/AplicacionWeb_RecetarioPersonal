@@ -2,7 +2,10 @@ package backend.recetarioPersonal.service;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import backend.recetarioPersonal.model.RecipeCategory;
 import backend.recetarioPersonal.model.User;
+import backend.recetarioPersonal.repository.RecipeCategoryRepository;
 import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.service.util.PasswordValidator;
 import backend.recetarioPersonal.view.LoginRequest;
@@ -16,12 +19,17 @@ import java.util.Optional;
  */
 @Service
 public class AuthService {
+    private static final String DEFAULT_CATEGORY_NAME = "Sin categoría";
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RecipeCategoryRepository recipeCategoryRepository;
+
     
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, RecipeCategoryRepository recipeCategoryRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.recipeCategoryRepository = recipeCategoryRepository;
     }
     /**
      * Converts a User (internal model, has password) to UserDto (what we send to client, no password).
@@ -77,8 +85,15 @@ public class AuthService {
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setVerified(false);
+        
         // Saves the user in the database
         User saved = userRepository.save(user);
+
+        RecipeCategory defaultCategory = new RecipeCategory();
+        defaultCategory.setOwner(saved);
+        defaultCategory.setName(DEFAULT_CATEGORY_NAME);
+        recipeCategoryRepository.save(defaultCategory);
+        
         return toDto(saved);
     }
 

@@ -44,6 +44,9 @@ public class RecipeCategoryService {
         if (normalized.isBlank()) {
             throw new IllegalArgumentException("Category name is required.");
         }
+        if (isDefaultCategory(normalized)) {
+            throw new IllegalArgumentException("Default category name is reserved.");
+        }
         if (categoryRepository.existsByOwner_UserIdAndNameIgnoreCase(userId, normalized)) {
             throw new IllegalArgumentException("Recipe category already exists.");
         }
@@ -75,6 +78,10 @@ public class RecipeCategoryService {
         String normalized = normalize(request.name());
         if (normalized.isBlank()) {
             throw new IllegalArgumentException("Category name is required.");
+        }
+
+        if (isDefaultCategory(normalized) && !isDefaultCategory(category.getName())) {
+            throw new IllegalArgumentException("Default category name is reserved.");
         }
 
         categoryRepository.findByOwner_UserIdAndNameIgnoreCase(userId, normalized).ifPresent(existing -> {

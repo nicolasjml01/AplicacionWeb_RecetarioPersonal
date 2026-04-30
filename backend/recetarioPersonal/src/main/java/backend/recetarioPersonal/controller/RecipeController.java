@@ -1,10 +1,10 @@
 package backend.recetarioPersonal.controller;
 
 import backend.recetarioPersonal.service.RecipeService;
-import backend.recetarioPersonal.view.CreateRecipeRequest;
 import backend.recetarioPersonal.view.RecipeDto;
-import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
+
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,11 +18,21 @@ public class RecipeController {
         this.recipeService = recipeService;
     }
 
-    @PostMapping
-    public ResponseEntity<RecipeDto> create(
+    @GetMapping
+    public ResponseEntity<List<RecipeDto>> list(
             @PathVariable long userId,
-            @RequestBody @Valid CreateRecipeRequest request
-    ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(recipeService.create(userId, request));
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String recipeSearch,
+            @RequestParam(required = false) String categorySearch) {
+        return ResponseEntity.ok(
+                recipeService.findAllByUser(userId, categoryId, recipeSearch, categorySearch)
+        );
+    }
+
+    @GetMapping("/{recipeId}")
+    public ResponseEntity<RecipeDto> getOne(
+            @PathVariable long userId,
+            @PathVariable Long recipeId) {
+        return ResponseEntity.ok(recipeService.findOneByUser(userId, recipeId));
     }
 }
