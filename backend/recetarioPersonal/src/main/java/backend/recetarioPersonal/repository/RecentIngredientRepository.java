@@ -13,7 +13,7 @@ public interface RecentIngredientRepository extends JpaRepository<RecentIngredie
 
     Optional<RecentIngredient> findByUser_UserIdAndIngredient_IngredientId(Long userId, Long ingredientId);
 
-    List<RecentIngredient> findTop15ByUser_UserIdOrderByLastUsedAtDesc(Long userId);
+    List<RecentIngredient> findTop10ByUser_UserIdOrderByLastUsedAtDesc(Long userId);
 
     @Modifying
     @Query(value = """
@@ -24,8 +24,8 @@ public interface RecentIngredientRepository extends JpaRepository<RecentIngredie
             FROM recent_ingredients
             WHERE user_id = :userId
             ORDER BY last_used_at DESC
-            LIMIT 15
+            LIMIT 10
           )
         """, nativeQuery = true)
-    void deleteOlderThanTop15(@Param("userId") long userId);
+    void deleteOlderThanTop10(@Param("userId") long userId);
 }

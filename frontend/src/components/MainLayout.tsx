@@ -3,11 +3,18 @@ import { BottomNav } from "./BottomNav";
 
 export function MainLayout() {
   return (
-    <div className="main-layout">
-      <main className="main-layout__content">
+    <div className="app-shell">
+      <aside className="app-sidebar">
+        <BottomNav mode="sidebar" />
+      </aside>
+
+      <main className="app-content">
         <Outlet />
       </main>
-      <BottomNav />
+
+      <div className="app-bottom-nav">
+        <BottomNav mode="bottom" />
+      </div>
     </div>
   );
 }

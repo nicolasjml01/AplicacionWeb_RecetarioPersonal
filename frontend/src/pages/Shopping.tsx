@@ -105,12 +105,14 @@ export function Shopping() {
       const data = await getIngredientsCatalog(userId);
       setCatalogCategories(data);
 
-      // keep all categories collapsed by default
-      const nextExpanded: Record<number, boolean> = {};
-      for (const c of data) {
-        nextExpanded[c.categoryId] = false;
-      }
-      setExpandedCategories(nextExpanded);
+      // Keep previous accordion state. New categories start collapsed.
+      setExpandedCategories((prev) => {
+        const nextExpanded: Record<number, boolean> = {};
+        for (const c of data) {
+          nextExpanded[c.categoryId] = prev[c.categoryId] ?? false;
+        }
+        return nextExpanded;
+      });
     } catch (e) {
       setCatalogError(
         e instanceof Error ? e.message : "Failed to load ingredient catalog.",
@@ -274,6 +276,7 @@ export function Shopping() {
     try {
       await patchShoppingItem(userId, itemId, { bought: true });
       await loadList();
+      await loadCatalog();
     } catch (e) {
       setListError(
         e instanceof Error ? e.message : "Failed to mark as bought.",
@@ -284,198 +287,203 @@ export function Shopping() {
   return (
     <div className="shopping-page">
       <h1 className="shopping-title">Shopping list</h1>
+      <div className="shopping-layout">
+        {/* LEFT: categories catalog (fixed on desktop/tablet) */}
+        <section className="shopping-layout__left">
+          <div className="shopping-panel shopping-panel--catalog">
+            <div className="shopping-panel__title">Categories</div>
+            <section className="shopping-catalog">
+              {loadingCatalog ? (
+                <div className="shopping-hint">Loading categories...</div>
+              ) : (
+                catalogCategories.map((cat) => {
+                  const isOpen = expandedCategories[cat.categoryId] ?? false;
+                  const isOwn = ["propios", "propio", "own"].includes(
+                    cat.categoryName.trim().toLowerCase(),
+                  );
 
-      {/* TOP: items to buy */}
-      <section className="shopping-top-strip">
-        {loadingList ? (
-          <div className="shopping-hint">Loading shopping list...</div>
-        ) : shoppingItems.length === 0 ? (
-          <div className="shopping-hint">No items to buy right now.</div>
-        ) : (
-          shoppingItems.map((item) => {
-            const unitLabel =
-              item.unitOfMeasure?.symbol && item.unitOfMeasure.symbol !== ""
-                ? item.unitOfMeasure.symbol
-                : (item.unitOfMeasure?.name ?? "—");
+                  return (
+                    <div key={cat.categoryId} className="shopping-accordion">
+                      <button
+                        type="button"
+                        className="shopping-accordion__header"
+                        onClick={() => toggleCategory(cat.categoryId)}
+                      >
+                        <span>{cat.categoryName}</span>
+                        <span>{isOpen ? "▾" : "▸"}</span>
+                      </button>
 
-            return (
-              <div className="shopping-top-card" key={item.shoppingListItemId}>
-                <button
-                  type="button"
-                  className="shopping-top-card__imageBtn"
-                  onClick={() => handleMarkBought(item.shoppingListItemId)}
-                  aria-label={`Mark ${item.ingredient.name} as bought`}
-                >
-                  <img
-                    src="/logoShoppingList.png"
-                    alt=""
-                    className="shopping-top-card__image"
-                  />
-                </button>
+                      {isOpen && (
+                        <div className="shopping-accordion__body">
+                          {cat.ingredients.length === 0 ? (
+                            isOwn ? (
+                              <div className="shopping-hint">No ingredients yet.</div>
+                            ) : (
+                              <div className="shopping-hint">Empty category.</div>
+                            )
+                          ) : (
+                            cat.ingredients.map((ing) => (
+                              <button
+                                key={ing.ingredientId}
+                                type="button"
+                                className="shopping-accordion__ingredient"
+                                onClick={() => openAddModal(ing.name)}
+                              >
+                                {ing.name}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+              {catalogError && <div className="shopping-error">{catalogError}</div>}
+            </section>
+          </div>
+        </section>
 
-                <div className="shopping-top-card__name">
-                  {item.ingredient.name}
-                </div>
+        {/* RIGHT: shopping list + search */}
+        <section className="shopping-layout__right">
+          <div className="shopping-panel shopping-panel--list">
+            <div className="shopping-panel__title">Your list</div>
+            <section className="shopping-top-strip">
+              {loadingList ? (
+                <div className="shopping-hint">Loading shopping list...</div>
+              ) : shoppingItems.length === 0 ? (
+                <div className="shopping-hint">No items to buy right now.</div>
+              ) : (
+                shoppingItems.map((item) => {
+                  const unitLabel =
+                    item.unitOfMeasure?.symbol && item.unitOfMeasure.symbol !== ""
+                      ? item.unitOfMeasure.symbol
+                      : (item.unitOfMeasure?.name ?? "—");
 
-                <div className="shopping-top-card__bottom">
-                  <button
-                    type="button"
-                    className="shopping-top-card__editBtn"
-                    onClick={() => openEditModal(item)}
-                  >
-                    {item.quantity}
-                  </button>
-                  <button
-                    type="button"
-                    className="shopping-top-card__editBtn"
-                    onClick={() => openEditModal(item)}
-                  >
-                    {unitLabel}
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </section>
+                  return (
+                    <div className="shopping-top-card" key={item.shoppingListItemId}>
+                      <button
+                        type="button"
+                        className="shopping-top-card__imageBtn"
+                        onClick={() => handleMarkBought(item.shoppingListItemId)}
+                        aria-label={`Mark ${item.ingredient.name} as bought`}
+                      >
+                        <img
+                          src="/logoShoppingList.png"
+                          alt=""
+                          className="shopping-top-card__image"
+                        />
+                      </button>
 
-      {listError && (
-        <div className="shopping-error shopping-error--top">{listError}</div>
-      )}
+                      <div className="shopping-top-card__name">{item.ingredient.name}</div>
 
-      {/* CENTER: categories accordion */}
-      <section className="shopping-catalog">
-        {loadingCatalog ? (
-          <div className="shopping-hint">Loading categories...</div>
-        ) : (
-          catalogCategories.map((cat) => {
-            const isOpen = expandedCategories[cat.categoryId] ?? false;
-            const isOwn = ["propios", "propio", "own"].includes(
-              cat.categoryName.trim().toLowerCase(),
-            );
-
-            return (
-              <div key={cat.categoryId} className="shopping-accordion">
-                <button
-                  type="button"
-                  className="shopping-accordion__header"
-                  onClick={() => toggleCategory(cat.categoryId)}
-                >
-                  <span>{cat.categoryName}</span>
-                  <span>{isOpen ? "▾" : "▸"}</span>
-                </button>
-
-                {isOpen && (
-                  <div className="shopping-accordion__body">
-                    {cat.ingredients.length === 0 ? (
-                      isOwn ? (
-                        <div className="shopping-hint">No ingredients yet.</div>
-                      ) : (
-                        <div className="shopping-hint">Empty category.</div>
-                      )
-                    ) : (
-                      cat.ingredients.map((ing) => (
+                      <div className="shopping-top-card__bottom">
                         <button
-                          key={ing.ingredientId}
                           type="button"
-                          className="shopping-accordion__ingredient"
-                          onClick={() => openAddModal(ing.name)}
+                          className="shopping-top-card__editBtn"
+                          onClick={() => openEditModal(item)}
                         >
-                          {ing.name}
+                          {item.quantity}
                         </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-        {catalogError && <div className="shopping-error">{catalogError}</div>}
-      </section>
+                        <button
+                          type="button"
+                          className="shopping-top-card__editBtn"
+                          onClick={() => openEditModal(item)}
+                        >
+                          {unitLabel}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </section>
+            {listError && <div className="shopping-error shopping-error--top">{listError}</div>}
+          </div>
 
-      {/* FIXED BOTTOM SEARCH */}
-      <section className="shopping-search-fixed">
-        {showSearchDropdown && (
-          <button
-            type="button"
-            className="shopping-search-overlay"
-            aria-label="Close search results"
-            onClick={() => {
-              setIngredientResults([]);
-              setSearch("");
-            }}
-          />
-        )}
-        <div className="shopping-search">
-          <button
-            type="button"
-            className="shopping-plus"
-            aria-label="Focus search"
-            onClick={() => searchInputRef.current?.focus()}
-          >
-            +
-          </button>
+          <section className="shopping-search-fixed">
+            {showSearchDropdown && (
+              <button
+                type="button"
+                className="shopping-search-overlay"
+                aria-label="Close search results"
+                onClick={() => {
+                  setIngredientResults([]);
+                  setSearchError("");
+                }}
+              />
+            )}
+            <div className="shopping-search">
+              <button
+                type="button"
+                className="shopping-plus"
+                aria-label="Focus search"
+                onClick={() => searchInputRef.current?.focus()}
+              >
+                +
+              </button>
 
-          <input
-            ref={searchInputRef}
-            className="shopping-search__input"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search ingredients..."
-          />
+              <input
+                ref={searchInputRef}
+                className="shopping-search__input"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search ingredients..."
+              />
 
-          {showSearchDropdown && (
-            <div
-              className="shopping-search__dropdown"
-              role="listbox"
-              aria-label="Ingredient results"
-            >
-              {ingredientResults.map((ing) => (
-                <button
-                  key={ing.ingredientId}
-                  type="button"
-                  className="shopping-search__result"
-                  onClick={() => {
-                    openAddModal(ing.name);
-                    setSearch("");
-                    setIngredientResults([]);
-                  }}
+              {showSearchDropdown && (
+                <div
+                  className="shopping-search__dropdown"
+                  role="listbox"
+                  aria-label="Ingredient results"
                 >
-                  {ing.name}
-                </button>
-              ))}
-              {search.trim() &&
-                !ingredientResults.some(
-                  (ing) =>
-                    ing.name.trim().toLowerCase() ===
-                    search.trim().toLowerCase(),
-                ) && (
-                  <button
-                    type="button"
-                    className="shopping-search__result"
-                    onClick={() => {
-                      openAddModal(search.trim());
-                      setSearch("");
-                      setIngredientResults([]);
-                    }}
-                  >
-                    Add "{search.trim()}"
-                  </button>
-                )}
+                  {ingredientResults.map((ing) => (
+                    <button
+                      key={ing.ingredientId}
+                      type="button"
+                      className="shopping-search__result"
+                      onClick={() => {
+                        openAddModal(ing.name);
+                        setSearch("");
+                        setIngredientResults([]);
+                      }}
+                    >
+                      {ing.name}
+                    </button>
+                  ))}
+                  {search.trim() &&
+                    !ingredientResults.some(
+                      (ing) =>
+                        ing.name.trim().toLowerCase() ===
+                        search.trim().toLowerCase(),
+                    ) && (
+                      <button
+                        type="button"
+                        className="shopping-search__result"
+                        onClick={() => {
+                          openAddModal(search.trim());
+                          setSearch("");
+                          setIngredientResults([]);
+                        }}
+                      >
+                        Add "{search.trim()}"
+                      </button>
+                    )}
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {searchLoading && <div className="shopping-hint">Searching...</div>}
-        {searchError && <div className="shopping-error">{searchError}</div>}
-        {unitsError && <div className="shopping-error">{unitsError}</div>}
-      </section>
+            {searchLoading && <div className="shopping-hint">Searching...</div>}
+            {searchError && <div className="shopping-error">{searchError}</div>}
+            {unitsError && <div className="shopping-error">{unitsError}</div>}
+          </section>
+        </section>
+      </div>
 
       {/* Modal */}
       {modal.open && (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal">
+          <div className="shopping-modal">
             <h2 className="modal__title">
               {modal.mode === "add" ? "Add item" : "Edit item"}
             </h2>

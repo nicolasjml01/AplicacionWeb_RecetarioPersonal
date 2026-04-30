@@ -51,12 +51,12 @@ public class RecentIngredientService {
             recentRepository.save(row);
         }
 
-        recentRepository.deleteOlderThanTop15(userId);
+        recentRepository.deleteOlderThanTop10(userId);
     }
 
     @Transactional(readOnly = true)
     public List<Ingredient> getRecentIngredients(long userId) {
-        return recentRepository.findTop15ByUser_UserIdOrderByLastUsedAtDesc(userId)
+        return recentRepository.findTop10ByUser_UserIdOrderByLastUsedAtDesc(userId)
                 .stream()
                 .map(RecentIngredient::getIngredient)
                 .toList();

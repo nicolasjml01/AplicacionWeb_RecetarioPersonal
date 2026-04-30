@@ -52,7 +52,6 @@ public class ShoppingListService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
         var ingredient = ingredientService.findOrCreateByName(request.ingredientName(), userId);
-        recentIngredientService.touch(userId, ingredient);
         // Find or create the unit of measure
         UnitOfMeasure unit = null;
         if (request.measurementUnit() != null && !request.measurementUnit().isBlank()) {
