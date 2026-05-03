@@ -3,40 +3,13 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
 import { getRecipe } from "../api/recipes";
 import type { RecipeDto } from "../types/recipes";
+import { RECIPE_DEFAULT_COVER_PATH } from "../constants/recipeAssets";
+import { resolveMediaUrl } from "../utils/mediaUrl";
 
 type LocationState = { fromCategoryId?: number } | null;
 
-function RecipePreparation({ description }: { description: string | null }) {
-  const text = description?.trim() ?? "";
-  if (!text) {
-    return (
-      <p className="recipe-detail__empty">
-        Aún no hay texto de preparación. Cuando edites la receta podrás añadir
-        descripción o pasos (una línea por paso).
-      </p>
-    );
-  }
-
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  if (lines.length <= 1) {
-    return <p className="recipe-detail__prose">{lines[0]}</p>;
-  }
-
-  return (
-    <ol className="recipe-detail__steps">
-      {lines.map((line, i) => (
-        <li key={i}>{line}</li>
-      ))}
-    </ol>
-  );
-}
-
 /**
- * Read-only recipe detail: title, categories, placeholder for photos, description / line-based steps.
+ * Read-only recipe detail: title, categories, placeholder for photos / steps.
  */
 export function RecipeDetailPage() {
   const navigate = useNavigate();
@@ -124,16 +97,74 @@ export function RecipeDetailPage() {
             </section>
           )}
 
-          <section className="recipe-detail__section" aria-label="Fotos">
-            <h2 className="recipe-detail__section-title">Fotos</h2>
-            <div className="recipe-detail__photo-placeholder">
-              Aquí mostraremos las fotos de la receta cuando las añadas.
-            </div>
-          </section>
+          {recipe.steps.length > 0 && (
+            <section className="recipe-detail__section" aria-label="Pasos">
+              <h2 className="recipe-detail__section-title">Pasos</h2>
+              <ol className="recipe-detail__steps">
+                {recipe.steps.map((s) => (
+                  <li key={s.stepId}>
+                    <p className="recipe-detail__prose">{s.content}</p>
+                    {s.media.length > 0 && (
+                      <div className="recipe-detail__media-grid recipe-detail__media-grid--inline">
+                        {[...s.media]
+                          .sort((a, b) => a.displayOrder - b.displayOrder)
+                          .map((m) => (
+                            <figure key={m.mediaId} className="recipe-detail__media-cell">
+                              {m.contentType.startsWith("video/") ? (
+                                <video
+                                  className="recipe-detail__media-thumb"
+                                  controls
+                                  src={resolveMediaUrl(m.url)}
+                                />
+                              ) : (
+                                <img className="recipe-detail__media-thumb" src={resolveMediaUrl(m.url)} alt="" />
+                              )}
+                            </figure>
+                          ))}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
 
-          <section className="recipe-detail__section" aria-label="Preparación">
-            <h2 className="recipe-detail__section-title">Preparación</h2>
-            <RecipePreparation description={recipe.description} />
+          <section className="recipe-detail__section" aria-label="Fotos y vídeos">
+            <h2 className="recipe-detail__section-title">Galería de la receta</h2>
+            {recipe.recipeLevelMedia.length === 0 &&
+            recipe.steps.every((s) => s.media.length === 0) ? (
+              <div className="recipe-detail__photo-placeholder recipe-detail__photo-placeholder--default">
+                <img
+                  src={RECIPE_DEFAULT_COVER_PATH}
+                  alt=""
+                  className="recipe-detail__default-cover-hero"
+                  loading="lazy"
+                />
+                <p>Aún no has añadido fotos ni vídeos. Esta es la vista por defecto.</p>
+              </div>
+            ) : recipe.recipeLevelMedia.length > 0 ? (
+              <div className="recipe-detail__media-grid">
+                {[...recipe.recipeLevelMedia]
+                  .sort((a, b) => a.displayOrder - b.displayOrder)
+                  .map((m) => (
+                    <figure key={m.mediaId} className="recipe-detail__media-cell">
+                      {m.contentType.startsWith("video/") ? (
+                        <video
+                          className="recipe-detail__media-thumb"
+                          controls
+                          src={resolveMediaUrl(m.url)}
+                        />
+                      ) : (
+                        <img className="recipe-detail__media-thumb" src={resolveMediaUrl(m.url)} alt="" />
+                      )}
+                    </figure>
+                  ))}
+              </div>
+            ) : (
+              <p className="recipe-detail__empty">
+                No hay galería global; hay archivos adjuntos en los pasos (ver arriba).
+              </p>
+            )}
           </section>
         </div>
       )}

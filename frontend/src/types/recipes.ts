@@ -6,6 +6,7 @@ export interface RecipeCategoryDto {
 export interface RecipeMediaDto {
   mediaId: number;
   recipeStepId: number | null;
+  displayOrder: number;
   url: string;
   contentType: string;
 }
@@ -21,7 +22,6 @@ export interface RecipeDto {
   recipeId: number;
   ownerUserId: number;
   title: string;
-  description: string | null;
   categories: RecipeCategoryDto[];
   steps: RecipeStepDto[];
   recipeLevelMedia: RecipeMediaDto[];

@@ -1,4 +1,5 @@
 import type { RecipeDto, RecipeCategoryDto } from "../../types/recipes";
+import { RecipeMiniTile } from "../recipe/RecipeMiniTile";
 
 type Props = {
   category: RecipeCategoryDto;
@@ -8,16 +9,14 @@ type Props = {
 
 export function CategoryCard({ category, previewRecipes, onOpenCategory }: Props) {
   return (
-    <button className="home-category-card" onClick={() => onOpenCategory(category.categoryId)}>
+    <button type="button" className="home-category-card" onClick={() => onOpenCategory(category.categoryId)}>
       <div className="home-category-card__title">{category.name}</div>
-      <div className="home-category-card__preview">
+      <div className="home-category-card__preview home-category-card__preview--grid">
         {previewRecipes.length === 0 ? (
-          <div className="home-category-card__empty">Sin recetas todavía</div>
+          <div className="home-category-card__empty home-category-card__empty--span">Sin recetas todavía</div>
         ) : (
           previewRecipes.slice(0, 4).map((r) => (
-            <div key={r.recipeId} className="home-category-card__item">
-              {r.title}
-            </div>
+            <RecipeMiniTile key={r.recipeId} recipe={r} layout="compact" />
           ))
         )}
       </div>

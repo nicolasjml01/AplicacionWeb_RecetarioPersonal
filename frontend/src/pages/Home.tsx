@@ -163,7 +163,10 @@ export function Home() {
             setFabOpen(false);
             setCategoryModalOpen(true);
           }}
-          onAddRecipe={() => console.log("Abrir modal de receta")}
+          onAddRecipe={() => {
+            setFabOpen(false);
+            navigate("/home/recipes/new");
+          }}
         />
       </div>
 

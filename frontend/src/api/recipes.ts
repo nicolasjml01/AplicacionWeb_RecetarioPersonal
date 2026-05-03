@@ -1,10 +1,31 @@
-import type { RecipeDto } from "../types/recipes";
+import type { RecipeDto, RecipeStepDto } from "../types/recipes";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+
+async function readErrorMessage(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { message?: string };
+    if (body.message) return body.message;
+  } catch {
+    // ignore
+  }
+  return `Error (${res.status})`;
+}
 
 export type GetRecipesOptions = {
   categoryId?: number;
   recipeSearch?: string;
+};
+
+export type CreateRecipePayload = {
+  title: string;
+  /** null or empty → backend assigns "Sin categoría". */
+  categoryIds: number[] | null;
+};
+
+export type CreateRecipeStepPayload = {
+  stepNumber: number;
+  content: string;
 };
 
 export async function getRecipes(
@@ -35,4 +56,42 @@ export async function getRecipe(
   if (res.status === 404) throw new Error("Receta no encontrada.");
   if (!res.ok) throw new Error("No se pudo cargar la receta.");
   return res.json() as Promise<RecipeDto>;
+}
+
+export async function createRecipe(
+  userId: number,
+  payload: CreateRecipePayload
+): Promise<RecipeDto> {
+  const url = `${API_BASE}/api/users/${userId}/recipes`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: payload.title.trim(),
+      categoryIds:
+        payload.categoryIds != null && payload.categoryIds.length > 0
+          ? payload.categoryIds
+          : null,
+    }),
+  });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return res.json() as Promise<RecipeDto>;
+}
+
+export async function addRecipeStep(
+  userId: number,
+  recipeId: number,
+  payload: CreateRecipeStepPayload
+): Promise<RecipeStepDto> {
+  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/steps`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      stepNumber: payload.stepNumber,
+      content: payload.content.trim(),
+    }),
+  });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return res.json() as Promise<RecipeStepDto>;
 }

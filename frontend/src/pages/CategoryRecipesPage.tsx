@@ -4,6 +4,7 @@ import { getCurrentUserId } from "../auth/session";
 import { getRecipeCategories } from "../api/recipeCategories";
 import { getRecipes } from "../api/recipes";
 import type { RecipeDto } from "../types/recipes";
+import { RecipeMiniTile } from "../components/recipe/RecipeMiniTile";
 
 /**
  * Lists recipes for one category. Search is debounced and updates results without unmounting the input
@@ -141,14 +142,14 @@ export function CategoryRecipesPage() {
             <button
               key={r.recipeId}
               type="button"
-              className="home-category-card"
+              className="category-recipe-card"
               onClick={() =>
                 navigate(`/home/recipes/${r.recipeId}`, {
                   state: { fromCategoryId: categoryId },
                 })
               }
             >
-              <div className="home-category-card__title">{r.title}</div>
+              <RecipeMiniTile recipe={r} layout="comfortable" />
             </button>
           ))
         )}

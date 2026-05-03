@@ -9,6 +9,7 @@ import { Shopping } from "./pages/Shopping";
 import { Account } from "./pages/Account";
 import { CategoryRecipesPage } from "./pages/CategoryRecipesPage.tsx";
 import { RecipeDetailPage } from "./pages/RecipeDetailPage.tsx";
+import { CreateRecipePage } from "./pages/CreateRecipePage.tsx";
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
       <Route element={<MainLayout />}>
         <Route path="/home" element={<Home />} />
         <Route path="/home/categories/:categoryId" element={<CategoryRecipesPage />} />
+        <Route path="/home/recipes/new" element={<CreateRecipePage />} />
         <Route path="/home/recipes/:recipeId" element={<RecipeDetailPage />} />
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/shopping" element={<Shopping />} />
