@@ -7,10 +7,18 @@ import backend.recetarioPersonal.repository.RecipeCategoryRepository;
 import backend.recetarioPersonal.repository.RecipeRepository;
 import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.view.CreateRecipeRequest;
+import backend.recetarioPersonal.view.CreateRecipeStepRequest;
 import backend.recetarioPersonal.view.RecipeCategoryDto;
 import backend.recetarioPersonal.view.RecipeDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import backend.recetarioPersonal.model.RecipeMedia;
+import backend.recetarioPersonal.model.RecipeStep;
+import backend.recetarioPersonal.repository.RecipeMediaRepository;
+import backend.recetarioPersonal.repository.RecipeStepRepository;
+import backend.recetarioPersonal.view.RecipeMediaDto;
+import backend.recetarioPersonal.view.RecipeStepDto;
+import java.util.stream.Collectors;
 
 import java.util.*;
 
@@ -18,16 +26,22 @@ import java.util.*;
 public class RecipeService {
 
     private static final String DEFAULT_CATEGORY_NAME = "Sin categoría";
+    private final RecipeStepRepository recipeStepRepository;
+    private final RecipeMediaRepository recipeMediaRepository;
 
     private final RecipeRepository recipeRepository;
     private final RecipeCategoryRepository recipeCategoryRepository;
     private final UserRepository userRepository;
 
     public RecipeService(
+            RecipeStepRepository recipeStepRepository,
+            RecipeMediaRepository recipeMediaRepository,
             RecipeRepository recipeRepository,
             RecipeCategoryRepository recipeCategoryRepository,
             UserRepository userRepository
     ) {
+        this.recipeStepRepository = recipeStepRepository;
+        this.recipeMediaRepository = recipeMediaRepository;
         this.recipeRepository = recipeRepository;
         this.recipeCategoryRepository = recipeCategoryRepository;
         this.userRepository = userRepository;
@@ -36,7 +50,7 @@ public class RecipeService {
     @Transactional
     public RecipeDto create(long userId, CreateRecipeRequest request) {
         User owner = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
 
         Set<RecipeCategory> categories = resolveCategories(userId, request.categoryIds());
 
@@ -47,7 +61,7 @@ public class RecipeService {
         recipe.setCategories(categories);
 
         Recipe saved = recipeRepository.save(recipe);
-        return toDto(saved);
+        return toSummaryDto(saved);
     }
 
     private Set<RecipeCategory> resolveCategories(long userId, List<Long> categoryIds) {
@@ -60,12 +74,12 @@ public class RecipeService {
 
         List<RecipeCategory> fetched = recipeCategoryRepository.findAllById(categoryIds);
         if (fetched.size() != new HashSet<>(categoryIds).size()) {
-            throw new IllegalArgumentException("Some categories do not exist.");
+            throw new IllegalArgumentException("Algunas categorías no existen.");
         }
 
         boolean invalidOwner = fetched.stream().anyMatch(c -> c.getOwner().getUserId() != userId);
         if (invalidOwner) {
-            throw new IllegalArgumentException("Some categories do not belong to this user.");
+            throw new IllegalArgumentException("Algunas categorías no pertenecen a este usuario.");
         }
 
         return new HashSet<>(fetched);
@@ -79,36 +93,85 @@ public class RecipeService {
         return recipeCategoryRepository.save(c);
     }
 
-    private RecipeDto toDto(Recipe recipe) {
+    private RecipeDto toSummaryDto(Recipe recipe) {
         List<RecipeCategoryDto> categories = recipe.getCategories().stream()
                 .map(c -> new RecipeCategoryDto(c.getCategoryId(), c.getName()))
                 .sorted(Comparator.comparing(RecipeCategoryDto::name, String.CASE_INSENSITIVE_ORDER))
                 .toList();
-
+    
         return new RecipeDto(
                 recipe.getRecipeId(),
                 recipe.getOwner().getUserId(),
                 recipe.getTitle(),
                 recipe.getDescription(),
-                categories
+                categories,
+                List.of(),
+                List.of()
         );
+    }
+    
+    private RecipeDto toDetailDto(Recipe recipe) {
+        List<RecipeCategoryDto> categories = recipe.getCategories().stream()
+                .map(c -> new RecipeCategoryDto(c.getCategoryId(), c.getName()))
+                .sorted(Comparator.comparing(RecipeCategoryDto::name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    
+        long recipeId = recipe.getRecipeId();
+        List<RecipeStep> stepEntities = recipeStepRepository.findByRecipe_RecipeIdOrderByStepNumberAsc(recipeId);
+        List<RecipeMedia> allMedia = recipeMediaRepository.findByRecipe_RecipeId(recipeId);
+    
+        var mediaByStepId = allMedia.stream()
+                .filter(m -> m.getStep() != null)
+                .collect(Collectors.groupingBy(m -> m.getStep().getStepId()));
+    
+        List<RecipeStepDto> steps = stepEntities.stream()
+                .map(s -> new RecipeStepDto(
+                        s.getStepId(),
+                        s.getStepNumber(),
+                        s.getContent(),
+                        mediaByStepId.getOrDefault(s.getStepId(), List.of()).stream()
+                                .map(this::toMediaDto)
+                                .toList()
+                ))
+                .toList();
+    
+        List<RecipeMediaDto> recipeLevel = allMedia.stream()
+                .filter(m -> m.getStep() == null)
+                .map(this::toMediaDto)
+                .toList();
+    
+        return new RecipeDto(
+                recipe.getRecipeId(),
+                recipe.getOwner().getUserId(),
+                recipe.getTitle(),
+                recipe.getDescription(),
+                categories,
+                steps,
+                recipeLevel
+        );
+    }
+    
+    private RecipeMediaDto toMediaDto(RecipeMedia m) {
+        String url = RecipeMediaService.MEDIA_URL_PREFIX + m.getRelativePath();
+        Long stepId = m.getStep() != null ? m.getStep().getStepId() : null;
+        return new RecipeMediaDto(m.getMediaId(), stepId, url, m.getContentType());
     }
 
     @Transactional(readOnly = true)
     public RecipeDto findOneByUser(long userId, Long recipeId) {
         userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
     
         Recipe recipe = recipeRepository.findByRecipeIdAndOwner_UserId(recipeId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Recipe not found: " + recipeId));
+                .orElseThrow(() -> new IllegalArgumentException("Receta no encontrada: " + recipeId));
     
-        return toDto(recipe);
+        return toDetailDto(recipe);
     }
 
     @Transactional(readOnly = true)
     public List<RecipeDto> findAllByUser(long userId, Long categoryId, String recipeSearch, String categorySearch) {
         userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
 
         String r = recipeSearch == null ? "" : recipeSearch.trim();
         String c = categorySearch == null ? "" : categorySearch.trim();
@@ -118,10 +181,10 @@ public class RecipeService {
 
         if (categoryId != null) {
             RecipeCategory category = recipeCategoryRepository.findById(categoryId)
-                    .orElseThrow(() -> new IllegalArgumentException("Recipe category not found: " + categoryId));
+                    .orElseThrow(() -> new IllegalArgumentException("Categoría de receta no encontrada: " + categoryId));
 
             if (category.getOwner().getUserId() != userId) {
-                throw new IllegalArgumentException("Category does not belong to user.");
+                throw new IllegalArgumentException("La categoría no pertenece al usuario.");
             }
         }
 
@@ -153,6 +216,29 @@ public class RecipeService {
                             userId, categoryId, c, r);
         }
 
-        return recipes.stream().map(this::toDto).toList();
+        return recipes.stream().map(this::toSummaryDto).toList();
+    }
+
+    @Transactional
+    public RecipeStepDto addStep(long userId, long recipeId, CreateRecipeStepRequest request) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
+        Recipe recipe = recipeRepository.findByRecipeIdAndOwner_UserId(recipeId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Receta no encontrada: " + recipeId));
+    
+        boolean numberTaken = recipeStepRepository
+                .findByRecipe_RecipeIdOrderByStepNumberAsc(recipeId)
+                .stream()
+                .anyMatch(s -> s.getStepNumber() == request.stepNumber());
+        if (numberTaken) {
+            throw new IllegalArgumentException("Ya existe un paso con ese número en esta receta.");
+        }
+    
+        RecipeStep step = new RecipeStep();
+        step.setRecipe(recipe);
+        step.setStepNumber(request.stepNumber());
+        step.setContent(request.content().trim());
+        RecipeStep saved = recipeStepRepository.save(step);
+        return new RecipeStepDto(saved.getStepId(), saved.getStepNumber(), saved.getContent(), List.of());
     }
 }
