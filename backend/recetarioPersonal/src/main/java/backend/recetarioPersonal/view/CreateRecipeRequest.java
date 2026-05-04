@@ -6,5 +6,6 @@ import java.util.List;
 
 public record CreateRecipeRequest(
         @NotBlank @Size(max = 255) String title,
-        List<Long> categoryIds
+        List<Long> categoryIds,
+        Boolean draft // true for draft, false for published
 ) {}

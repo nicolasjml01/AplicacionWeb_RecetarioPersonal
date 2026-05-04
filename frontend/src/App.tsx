@@ -10,6 +10,7 @@ import { Account } from "./pages/Account";
 import { CategoryRecipesPage } from "./pages/CategoryRecipesPage.tsx";
 import { RecipeDetailPage } from "./pages/RecipeDetailPage.tsx";
 import { CreateRecipePage } from "./pages/CreateRecipePage.tsx";
+import { DraftRecipesPage } from "./pages/DraftRecipesPage";
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route element={<MainLayout />}>
         <Route path="/home" element={<Home />} />
+        <Route path="/home/drafts" element={<DraftRecipesPage />} />
         <Route path="/home/categories/:categoryId" element={<CategoryRecipesPage />} />
         <Route path="/home/recipes/new" element={<CreateRecipePage />} />
         <Route path="/home/recipes/:recipeId" element={<RecipeDetailPage />} />

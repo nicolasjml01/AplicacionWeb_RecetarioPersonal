@@ -167,6 +167,10 @@ export function Home() {
             setFabOpen(false);
             navigate("/home/recipes/new");
           }}
+          onOpenDrafts={() => {
+            setFabOpen(false);
+            navigate("/home/drafts");
+          }}
         />
       </div>
 

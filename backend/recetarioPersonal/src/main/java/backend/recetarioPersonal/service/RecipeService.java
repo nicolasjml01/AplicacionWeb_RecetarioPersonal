@@ -3,6 +3,7 @@ package backend.recetarioPersonal.service;
 import backend.recetarioPersonal.model.Recipe;
 import backend.recetarioPersonal.model.RecipeCategory;
 import backend.recetarioPersonal.model.RecipeMedia;
+import backend.recetarioPersonal.model.RecipePublicationState;
 import backend.recetarioPersonal.model.RecipeStep;
 import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.RecipeCategoryRepository;
@@ -66,6 +67,9 @@ public class RecipeService {
         recipe.setOwner(owner);
         recipe.setTitle(request.title().trim());
         recipe.setCategories(categories);
+        recipe.setPublicationState(Boolean.TRUE.equals(request.draft())
+                ? RecipePublicationState.DRAFT
+                : RecipePublicationState.PUBLISHED);
 
         Recipe saved = recipeRepository.save(recipe);
         return toSummaryDto(saved, null);
@@ -184,6 +188,7 @@ public class RecipeService {
                 recipe.getRecipeId(),
                 recipe.getOwner().getUserId(),
                 recipe.getTitle(),
+                recipe.getPublicationState().name(),
                 categories,
                 List.of(),
                 recipeLevel
@@ -254,6 +259,7 @@ public class RecipeService {
                 recipe.getRecipeId(),
                 recipe.getOwner().getUserId(),
                 recipe.getTitle(),
+                recipe.getPublicationState().name(),
                 categories,
                 steps,
                 recipeLevel
@@ -288,6 +294,42 @@ public class RecipeService {
     }
 
     @Transactional(readOnly = true)
+    public List<RecipeDto> findDraftsByUser(long userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
+        List<Recipe> recipes = recipeRepository.findByOwner_UserIdAndPublicationStateOrderByRecipeIdDesc(
+                userId, RecipePublicationState.DRAFT);
+        Map<Long, RecipeMediaDto> covers = loadCoverMediaByRecipeId(recipes);
+        return recipes.stream()
+                .map(recipe -> toSummaryDto(recipe, covers.get(recipe.getRecipeId())))
+                .toList();
+    }
+
+    @Transactional
+    public RecipeDto publish(long userId, long recipeId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
+        Recipe recipe = recipeRepository.findByRecipeIdAndOwner_UserId(recipeId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Receta no encontrada: " + recipeId));
+        if (recipe.getPublicationState() != RecipePublicationState.DRAFT) {
+            throw new IllegalArgumentException("Solo se pueden publicar recetas en borrador.");
+        }
+        if (recipe.getTitle().trim().isBlank()) {
+            throw new IllegalArgumentException("El título de la receta no puede estar vacío.");
+        }
+        List<RecipeStep> stepEntities = recipeStepRepository.findByRecipe_RecipeIdOrderByStepNumberAsc(recipeId);
+        boolean hasStepContent = stepEntities.stream().anyMatch(s -> !s.getContent().trim().isBlank());
+        if (stepEntities.isEmpty() || !hasStepContent) {
+            throw new IllegalArgumentException("Añade al menos un paso con texto antes de publicar.");
+        }
+        recipe.setPublicationState(RecipePublicationState.PUBLISHED);
+        recipeRepository.save(recipe);
+        Recipe reloaded = recipeRepository.findByRecipeIdAndOwner_UserId(recipeId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Receta no encontrada: " + recipeId));
+        return toDetailDto(reloaded);
+    }
+
+    @Transactional(readOnly = true)
     public List<RecipeDto> findAllByUser(long userId, Long categoryId, String recipeSearch, String categorySearch) {
         userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
@@ -307,32 +349,36 @@ public class RecipeService {
             }
         }
 
+        RecipePublicationState published = RecipePublicationState.PUBLISHED;
         List<Recipe> recipes;
 
         if (categoryId == null && !hasRecipeSearch && !hasCategorySearch) {
-            recipes = recipeRepository.findByOwner_UserIdOrderByRecipeIdDesc(userId);
+            recipes = recipeRepository.findByOwner_UserIdAndPublicationStateOrderByRecipeIdDesc(userId, published);
 
         } else if (categoryId != null && !hasRecipeSearch && !hasCategorySearch) {
-            recipes = recipeRepository.findDistinctByOwner_UserIdAndCategories_CategoryIdOrderByRecipeIdDesc(userId, categoryId);
+            recipes = recipeRepository.findDistinctByOwner_UserIdAndPublicationStateAndCategories_CategoryIdOrderByRecipeIdDesc(
+                    userId, published, categoryId);
 
         } else if (categoryId == null && hasRecipeSearch && !hasCategorySearch) {
-            recipes = recipeRepository.findDistinctByOwner_UserIdAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(userId, r);
+            recipes = recipeRepository.findDistinctByOwner_UserIdAndPublicationStateAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(
+                    userId, published, r);
 
         } else if (categoryId == null && !hasRecipeSearch && hasCategorySearch) {
-            recipes = recipeRepository.findDistinctByOwner_UserIdAndCategories_NameContainingIgnoreCaseOrderByRecipeIdDesc(userId, c);
+            recipes = recipeRepository.findDistinctByOwner_UserIdAndPublicationStateAndCategories_NameContainingIgnoreCaseOrderByRecipeIdDesc(
+                    userId, published, c);
 
         } else if (categoryId != null && hasRecipeSearch && !hasCategorySearch) {
-            recipes = recipeRepository.findDistinctByOwner_UserIdAndCategories_CategoryIdAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(
-                    userId, categoryId, r);
+            recipes = recipeRepository.findDistinctByOwner_UserIdAndPublicationStateAndCategories_CategoryIdAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(
+                    userId, published, categoryId, r);
 
         } else if (categoryId == null) {
-            recipes = recipeRepository.findDistinctByOwner_UserIdAndCategories_NameContainingIgnoreCaseAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(
-                    userId, c, r);
+            recipes = recipeRepository.findDistinctByOwner_UserIdAndPublicationStateAndCategories_NameContainingIgnoreCaseAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(
+                    userId, published, c, r);
 
         } else {
             recipes = recipeRepository
-                    .findDistinctByOwner_UserIdAndCategories_CategoryIdAndCategories_NameContainingIgnoreCaseAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(
-                            userId, categoryId, c, r);
+                    .findDistinctByOwner_UserIdAndPublicationStateAndCategories_CategoryIdAndCategories_NameContainingIgnoreCaseAndTitleContainingIgnoreCaseOrderByRecipeIdDesc(
+                            userId, published, categoryId, c, r);
         }
 
         Map<Long, RecipeMediaDto> covers = loadCoverMediaByRecipeId(recipes);

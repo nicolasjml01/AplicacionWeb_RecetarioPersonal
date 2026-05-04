@@ -39,12 +39,23 @@ public class RecipeController {
     @GetMapping
     public ResponseEntity<List<RecipeDto>> list(
             @PathVariable long userId,
+            @RequestParam(required = false) Boolean draftsOnly,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String recipeSearch,
             @RequestParam(required = false) String categorySearch) {
+        if (Boolean.TRUE.equals(draftsOnly)) {
+            return ResponseEntity.ok(recipeService.findDraftsByUser(userId));
+        }
         return ResponseEntity.ok(
                 recipeService.findAllByUser(userId, categoryId, recipeSearch, categorySearch)
         );
+    }
+
+    @PostMapping("/{recipeId}/publish")
+    public ResponseEntity<RecipeDto> publish(
+            @PathVariable long userId,
+            @PathVariable long recipeId) {
+        return ResponseEntity.ok(recipeService.publish(userId, recipeId));
     }
 
     @GetMapping("/{recipeId}")

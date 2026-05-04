@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
 import { getRecipe } from "../api/recipes";
 import type { RecipeDto } from "../types/recipes";
@@ -83,6 +83,18 @@ export function RecipeDetailPage() {
       </header>
 
       {error && <p className="home-error">{error}</p>}
+
+      {!loading && !error && recipe && recipe.publicationState === "DRAFT" && (
+        <div className="recipe-detail__draft-banner" role="status">
+          <p>
+            Esta receta es un <strong>borrador</strong>: no aparece en el inicio ni en las categorías hasta
+            que la publiques desde el editor.
+          </p>
+          <Link className="recipe-detail__draft-link" to={`/home/recipes/new?draftId=${recipe.recipeId}`}>
+            Continuar editando
+          </Link>
+        </div>
+      )}
 
       {!loading && !error && recipe && (
         <div className="recipe-detail__content">

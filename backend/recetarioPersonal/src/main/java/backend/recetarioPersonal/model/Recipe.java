@@ -21,6 +21,10 @@ public class Recipe {
     @Column(name = "title", nullable = false)
     private String title;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "publication_state", nullable = false, length = 20)
+    private RecipePublicationState publicationState = RecipePublicationState.PUBLISHED;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -69,6 +73,14 @@ public class Recipe {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public RecipePublicationState getPublicationState() {
+        return publicationState;
+    }
+
+    public void setPublicationState(RecipePublicationState publicationState) {
+        this.publicationState = publicationState;
     }
 
     public LocalDateTime getCreatedAt() {

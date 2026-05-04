@@ -15,12 +15,17 @@ async function readErrorMessage(res: Response): Promise<string> {
 export type GetRecipesOptions = {
   categoryId?: number;
   recipeSearch?: string;
+  categorySearch?: string;
+  /** Solo borradores (excluye filtros de categoría en el servidor). */
+  draftsOnly?: boolean;
 };
 
 export type CreateRecipePayload = {
   title: string;
   /** null or empty → backend assigns "Sin categoría". */
   categoryIds: number[] | null;
+  /** Si es true, la receta no aparece en home/categorías hasta publicar. */
+  draft?: boolean;
 };
 
 export type CreateRecipeStepPayload = {
@@ -28,16 +33,29 @@ export type CreateRecipeStepPayload = {
   content: string;
 };
 
+export type PatchRecipePayload = {
+  title?: string;
+  categoryIds?: number[] | null;
+};
+
+export type PatchRecipeStepPayload = {
+  stepNumber?: number;
+  content?: string;
+};
+
 export async function getRecipes(
   userId: number,
   options?: GetRecipesOptions
 ): Promise<RecipeDto[]> {
   const params = new URLSearchParams();
+  if (options?.draftsOnly) params.set("draftsOnly", "true");
   if (options?.categoryId != null) {
     params.set("categoryId", String(options.categoryId));
   }
   const q = options?.recipeSearch?.trim();
   if (q) params.set("recipeSearch", q);
+  const cs = options?.categorySearch?.trim();
+  if (cs) params.set("categorySearch", cs);
 
   const qs = params.toString();
   const url = `${API_BASE}/api/users/${userId}/recipes${qs ? `?${qs}` : ""}`;
@@ -63,17 +81,42 @@ export async function createRecipe(
   payload: CreateRecipePayload
 ): Promise<RecipeDto> {
   const url = `${API_BASE}/api/users/${userId}/recipes`;
+  const body: Record<string, unknown> = {
+    title: payload.title.trim(),
+    categoryIds:
+      payload.categoryIds != null && payload.categoryIds.length > 0
+        ? payload.categoryIds
+        : null,
+  };
+  if (payload.draft === true) body.draft = true;
+
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title: payload.title.trim(),
-      categoryIds:
-        payload.categoryIds != null && payload.categoryIds.length > 0
-          ? payload.categoryIds
-          : null,
-    }),
+    body: JSON.stringify(body),
   });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return res.json() as Promise<RecipeDto>;
+}
+
+export async function patchRecipe(
+  userId: number,
+  recipeId: number,
+  payload: PatchRecipePayload
+): Promise<RecipeDto> {
+  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return res.json() as Promise<RecipeDto>;
+}
+
+export async function publishRecipe(userId: number, recipeId: number): Promise<RecipeDto> {
+  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/publish`;
+  const res = await fetch(url, { method: "POST" });
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return res.json() as Promise<RecipeDto>;
 }
@@ -94,4 +137,30 @@ export async function addRecipeStep(
   });
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return res.json() as Promise<RecipeStepDto>;
+}
+
+export async function patchRecipeStep(
+  userId: number,
+  recipeId: number,
+  stepId: number,
+  payload: PatchRecipeStepPayload
+): Promise<RecipeStepDto> {
+  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/steps/${stepId}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return res.json() as Promise<RecipeStepDto>;
+}
+
+export async function deleteRecipeStep(
+  userId: number,
+  recipeId: number,
+  stepId: number
+): Promise<void> {
+  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/steps/${stepId}`;
+  const res = await fetch(url, { method: "DELETE" });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
 }

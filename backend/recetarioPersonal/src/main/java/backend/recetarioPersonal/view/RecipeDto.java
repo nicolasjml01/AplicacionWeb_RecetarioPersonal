@@ -6,6 +6,7 @@ public record RecipeDto(
     Long recipeId,
     Long ownerUserId,
     String title,
+    String publicationState,
     List<RecipeCategoryDto> categories,
     List<RecipeStepDto> steps,
     List<RecipeMediaDto> recipeLevelMedia

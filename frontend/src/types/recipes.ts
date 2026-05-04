@@ -18,10 +18,13 @@ export interface RecipeStepDto {
   media: RecipeMediaDto[];
 }
 
+export type RecipePublicationState = "DRAFT" | "PUBLISHED";
+
 export interface RecipeDto {
   recipeId: number;
   ownerUserId: number;
   title: string;
+  publicationState: RecipePublicationState;
   categories: RecipeCategoryDto[];
   steps: RecipeStepDto[];
   recipeLevelMedia: RecipeMediaDto[];

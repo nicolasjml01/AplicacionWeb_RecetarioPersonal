@@ -7,9 +7,18 @@ type Props = {
   onToggle: () => void;
   onAddCategory: () => void;
   onAddRecipe: () => void;
+  onOpenDrafts: () => void;
 };
 
-export function FabMenu({ open, onOpen, onClose, onToggle, onAddCategory, onAddRecipe }: Props) {
+export function FabMenu({
+  open,
+  onOpen,
+  onClose,
+  onToggle,
+  onAddCategory,
+  onAddRecipe,
+  onOpenDrafts,
+}: Props) {
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = () => {
@@ -36,6 +45,9 @@ export function FabMenu({ open, onOpen, onClose, onToggle, onAddCategory, onAddR
           </button>
           <button type="button" onClick={onAddRecipe} role="menuitem">
             Añadir receta
+          </button>
+          <button type="button" onClick={onOpenDrafts} role="menuitem">
+            Borradores
           </button>
         </div>
       )}
