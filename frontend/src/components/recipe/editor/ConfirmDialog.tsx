@@ -22,7 +22,7 @@ export function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
+    <div className="modal-backdrop" role="presentation">
       <div className="create-recipe-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
         <h2 id="confirm-dialog-title" className="create-recipe-dialog__title">
           {title}

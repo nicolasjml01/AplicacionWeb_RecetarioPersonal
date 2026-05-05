@@ -4,6 +4,7 @@ import { getCurrentUserId } from "../auth/session";
 import {
   addRecipeStep,
   createRecipe,
+  deleteRecipe,
   deleteRecipeStep,
   getRecipe,
   patchRecipe,
@@ -15,12 +16,18 @@ import { getRecipeCategories } from "../api/recipeCategories";
 import type { RecipeCategoryDto, RecipeDto, RecipeMediaDto } from "../types/recipes";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { MediaStripEditor } from "../components/recipe/editor/MediaStripEditor";
-import { RecipePreviewModal } from "../components/recipe/editor/RecipePreviewModal";
 
 const DEFAULT_CATEGORY = "Sin categoría";
 const DRAFT_INIT_TITLE = "Receta nueva";
-
 const RESERVED_TITLES = new Set(["receta nueva", "borrador", "sin título", "nueva receta"]);
+
+type StepRow = {
+  key: string;
+  stepId?: number;
+  stepNumber: number;
+  content: string;
+  media: RecipeMediaDto[];
+};
 
 function isGenericDraftTitle(t: string): boolean {
   const x = t.trim().toLowerCase();
@@ -31,14 +38,6 @@ function isValidPublishTitle(t: string): boolean {
   const x = t.trim().toLowerCase();
   return x.length >= 2 && !RESERVED_TITLES.has(x);
 }
-
-type StepRow = {
-  key: string;
-  stepId?: number;
-  stepNumber: number;
-  content: string;
-  media: RecipeMediaDto[];
-};
 
 function sortCategories(items: RecipeCategoryDto[]): RecipeCategoryDto[] {
   const copy = [...items];
@@ -52,6 +51,29 @@ function sortCategories(items: RecipeCategoryDto[]): RecipeCategoryDto[] {
   return copy;
 }
 
+/** Resolves existing category by id, exact match by name or new name to create in the backend. */
+function buildCategoryPayload(
+  selectedCategoryId: number | null,
+  categoryQuery: string,
+  allCategories: RecipeCategoryDto[],
+): { categoryIds: number[] | null; newCategoryNames: string[] | null } {
+  const q = categoryQuery.trim();
+  if (selectedCategoryId != null) {
+    return { categoryIds: [selectedCategoryId], newCategoryNames: null };
+  }
+  if (!q) {
+    return { categoryIds: null, newCategoryNames: null };
+  }
+  if (q.toLowerCase() === DEFAULT_CATEGORY.toLowerCase()) {
+    return { categoryIds: null, newCategoryNames: null };
+  }
+  const exact = allCategories.find((c) => c.name.trim().toLowerCase() === q.toLowerCase());
+  if (exact) {
+    return { categoryIds: [exact.categoryId], newCategoryNames: null };
+  }
+  return { categoryIds: null, newCategoryNames: [q] };
+}
+
 function applyStepsFromRecipe(sortedSteps: RecipeDto["steps"]): StepRow[] {
   return sortedSteps.map((s) => ({
     key: String(s.stepId),
@@ -62,49 +84,91 @@ function applyStepsFromRecipe(sortedSteps: RecipeDto["steps"]): StepRow[] {
   }));
 }
 
+function makeLocalStep(stepNumber: number): StepRow {
+  return {
+    key: `local-${stepNumber}-${Date.now()}`,
+    stepNumber,
+    content: "",
+    media: [],
+  };
+}
+
 export function CreateRecipePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = getCurrentUserId();
+  const draftIdParam = searchParams.get("draftId");
+  const editIdParam = searchParams.get("editId");
+  const openedExistingDraft = draftIdParam != null && draftIdParam !== "";
 
   const globalFileRef = useRef<HTMLInputElement>(null);
   const stepFileRef = useRef<HTMLInputElement>(null);
+  const categoryWrapRef = useRef<HTMLDivElement | null>(null);
 
   const [categories, setCategories] = useState<RecipeCategoryDto[]>([]);
   const [loadError, setLoadError] = useState("");
   const [loadingCats, setLoadingCats] = useState(true);
-
   const [booting, setBooting] = useState(true);
-  const [recipeId, setRecipeId] = useState<number | null>(null);
 
+  const [recipeId, setRecipeId] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [globalMedia, setGlobalMedia] = useState<RecipeMediaDto[]>([]);
   const [uploadingGlobal, setUploadingGlobal] = useState(false);
-
   const [categoryQuery, setCategoryQuery] = useState("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
-  const categoryWrapRef = useRef<HTMLDivElement | null>(null);
+  const [steps, setSteps] = useState<StepRow[]>([makeLocalStep(1)]);
 
-  const [steps, setSteps] = useState<StepRow[]>([]);
   const [submitError, setSubmitError] = useState("");
-  const [previewError, setPreviewError] = useState("");
   const [publishing, setPublishing] = useState(false);
-
-  const [dirty, setDirty] = useState(false);
-  const [backDialogOpen, setBackDialogOpen] = useState(false);
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-
+  const [exitDialogOpen, setExitDialogOpen] = useState(false);
+  const [exitBusy, setExitBusy] = useState(false);
   const [stepUploadTarget, setStepUploadTarget] = useState<number | null>(null);
+  const [createdDraftThisSession, setCreatedDraftThisSession] = useState(false);
+  const [isPublishedEditMode, setIsPublishedEditMode] = useState(false);
+  const [initialStepIds, setInitialStepIds] = useState<number[]>([]);
+  const [baselineKey, setBaselineKey] = useState("");
 
-  const draftIdParam = searchParams.get("draftId");
+  const hasMeaningfulChanges = useMemo(() => {
+    const hasTitle = title.trim().length > 0 && !isGenericDraftTitle(title);
+    const hasStepText = steps.some((s) => s.content.trim().length > 0);
+    const hasMultipleSteps = steps.length > 1;
+    const q = categoryQuery.trim();
+    const hasCategory =
+      selectedCategoryId != null ||
+      (q.length > 0 && q.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase());
+    const hasMedia = globalMedia.length > 0 || steps.some((s) => s.media.length > 0);
+    return hasTitle || hasStepText || hasMultipleSteps || hasCategory || hasMedia;
+  }, [title, steps, selectedCategoryId, categoryQuery, globalMedia]);
 
-  const previewCategories = useMemo(() => {
-    if (selectedCategoryId == null) return [];
-    const c = categories.find((x) => x.categoryId === selectedCategoryId);
-    return c ? [c] : [];
-  }, [categories, selectedCategoryId]);
+  const currentStateKey = useMemo(
+    () =>
+      JSON.stringify({
+        title: title.trim(),
+        selectedCategoryId,
+        categoryQuery: categoryQuery.trim(),
+        steps: steps.map((s, idx) => ({
+          id: s.stepId ?? null,
+          n: idx + 1,
+          c: s.content.trim(),
+        })),
+      }),
+    [title, selectedCategoryId, categoryQuery, steps],
+  );
+
+  const hasUnsavedChanges = baselineKey !== "" && currentStateKey !== baselineKey;
+
+  const goHome = useCallback(() => {
+    navigate("/home");
+  }, [navigate]);
+
+  const goAfterExit = useCallback(() => {
+    if (isPublishedEditMode && recipeId != null) {
+      navigate(`/home/recipes/${recipeId}`);
+      return;
+    }
+    goHome();
+  }, [isPublishedEditMode, recipeId, navigate, goHome]);
 
   useEffect(() => {
     if (!userId) return;
@@ -119,9 +183,7 @@ export function CreateRecipePage() {
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (!categoryWrapRef.current?.contains(e.target as Node)) {
-        setCategoryDropdownOpen(false);
-      }
+      if (!categoryWrapRef.current?.contains(e.target as Node)) setCategoryDropdownOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -135,18 +197,33 @@ export function CreateRecipePage() {
     );
     setSelectedCategoryId(nonDefault?.categoryId ?? null);
     const sorted = [...r.steps].sort((a, b) => a.stepNumber - b.stepNumber);
-    setSteps(applyStepsFromRecipe(sorted));
+    setSteps(sorted.length > 0 ? applyStepsFromRecipe(sorted) : [makeLocalStep(1)]);
+    setInitialStepIds(sorted.map((s) => s.stepId));
+    setIsPublishedEditMode(r.publicationState === "PUBLISHED");
   }, []);
 
   const refreshRecipe = useCallback(async () => {
     if (!userId || recipeId == null) return;
     const r = await getRecipe(userId, recipeId);
     applyRecipe(r);
+    try {
+      const cats = await getRecipeCategories(userId);
+      setCategories(sortCategories(cats));
+    } catch {
+      // La receta ya está actualizada; el listado de categorías puede refrescarse al volver a home.
+    }
   }, [userId, recipeId, applyRecipe]);
 
-  const bootstrapDraft = useCallback(async () => {
+  const bootstrap = useCallback(async () => {
     if (!userId) return;
+    const parsedEdit = editIdParam != null && editIdParam !== "" ? Number(editIdParam) : NaN;
     const parsed = draftIdParam != null && draftIdParam !== "" ? Number(draftIdParam) : NaN;
+
+    if (editIdParam && !Number.isFinite(parsedEdit)) {
+      setLoadError("Identificador de receta no válido.");
+      setBooting(false);
+      return;
+    }
 
     if (draftIdParam && !Number.isFinite(parsed)) {
       setLoadError("Identificador de borrador no válido.");
@@ -154,8 +231,20 @@ export function CreateRecipePage() {
       return;
     }
 
+    if (Number.isFinite(parsedEdit)) {
+      try {
+        const r = await getRecipe(userId, parsedEdit);
+        setRecipeId(parsedEdit);
+        applyRecipe(r);
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : "No se pudo cargar la receta.");
+      } finally {
+        setBooting(false);
+      }
+      return;
+    }
+
     if (Number.isFinite(parsed)) {
-      setBooting(true);
       try {
         const r = await getRecipe(userId, parsed);
         if (r.publicationState !== "DRAFT") {
@@ -164,20 +253,6 @@ export function CreateRecipePage() {
         }
         setRecipeId(parsed);
         applyRecipe(r);
-        const sorted = [...r.steps].sort((a, b) => a.stepNumber - b.stepNumber);
-        if (sorted.length === 0) {
-          const created = await addRecipeStep(userId, parsed, { stepNumber: 1, content: "." });
-          setSteps([
-            {
-              key: String(created.stepId),
-              stepId: created.stepId,
-              stepNumber: created.stepNumber,
-              content: "",
-              media: [],
-            },
-          ]);
-        }
-        setDirty(false);
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : "No se pudo cargar el borrador.");
       } finally {
@@ -186,31 +261,168 @@ export function CreateRecipePage() {
       return;
     }
 
-    const lockKey = `recetario_draft_init_${userId}`;
-    if (sessionStorage.getItem(lockKey)) {
-      setBooting(false);
-      return;
-    }
-    sessionStorage.setItem(lockKey, "1");
-    setBooting(true);
-    try {
-      const created = await createRecipe(userId, {
-        title: DRAFT_INIT_TITLE,
-        categoryIds: null,
-        draft: true,
-      });
-      sessionStorage.removeItem(lockKey);
-      navigate(`/home/recipes/new?draftId=${created.recipeId}`, { replace: true });
-    } catch (e) {
-      sessionStorage.removeItem(lockKey);
-      setLoadError(e instanceof Error ? e.message : "No se pudo crear el borrador.");
-      setBooting(false);
-    }
-  }, [userId, draftIdParam, navigate, applyRecipe]);
+    setTitle("");
+    setSelectedCategoryId(null);
+    setGlobalMedia([]);
+    setSteps([makeLocalStep(1)]);
+    setInitialStepIds([]);
+    setIsPublishedEditMode(false);
+    setBooting(false);
+  }, [userId, draftIdParam, editIdParam, navigate, applyRecipe]);
 
   useEffect(() => {
-    void bootstrapDraft();
-  }, [bootstrapDraft]);
+    void bootstrap();
+  }, [bootstrap]);
+
+  useEffect(() => {
+    if (booting || baselineKey !== "") return;
+    setBaselineKey(currentStateKey);
+  }, [booting, baselineKey, currentStateKey]);
+
+  useEffect(() => {
+    const areas = document.querySelectorAll<HTMLTextAreaElement>(".create-recipe-textarea--grow");
+    for (const el of areas) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [steps]);
+
+  const ensureDraftId = useCallback(async (): Promise<number> => {
+    if (!userId) throw new Error("No hay usuario en sesión.");
+    if (recipeId != null) return recipeId;
+    const draftTitle =
+      title.trim().length > 0 && !isGenericDraftTitle(title) ? title.trim() : DRAFT_INIT_TITLE;
+    const cat = buildCategoryPayload(selectedCategoryId, categoryQuery, categories);
+    const created = await createRecipe(userId, {
+      title: draftTitle,
+      categoryIds: cat.categoryIds,
+      newCategoryNames: cat.newCategoryNames,
+      draft: true,
+    });
+    setCreatedDraftThisSession(true);
+    setRecipeId(created.recipeId);
+    try {
+      const cats = await getRecipeCategories(userId);
+      setCategories(sortCategories(cats));
+    } catch {
+      // ignorar
+    }
+    return created.recipeId;
+  }, [userId, recipeId, title, selectedCategoryId, categoryQuery, categories]);
+
+  const saveCurrentAsDraft = useCallback(async (): Promise<number | null> => {
+    if (!userId) return null;
+    if (!hasMeaningfulChanges && recipeId == null) return null;
+
+    const rid = await ensureDraftId();
+    const finalTitle =
+      title.trim().length > 0 && !isGenericDraftTitle(title) ? title.trim() : DRAFT_INIT_TITLE;
+
+    const cat = buildCategoryPayload(selectedCategoryId, categoryQuery, categories);
+    await patchRecipe(userId, rid, {
+      title: finalTitle,
+      categoryIds: cat.categoryIds === null ? null : cat.categoryIds.length > 0 ? cat.categoryIds : [],
+      newCategoryNames: cat.newCategoryNames,
+    });
+
+    const usableSteps = steps.length > 0 ? steps : [makeLocalStep(1)];
+    for (let i = 0; i < usableSteps.length; i++) {
+      const row = usableSteps[i]!;
+      const content = row.content.trim().length > 0 ? row.content.trim() : ".";
+      if (row.stepId == null) {
+        await addRecipeStep(userId, rid, { stepNumber: i + 1, content });
+      } else {
+        await patchRecipeStep(userId, rid, row.stepId, { stepNumber: i + 1, content });
+      }
+    }
+
+    await refreshRecipe();
+    setBaselineKey(
+      JSON.stringify({
+        title: finalTitle,
+        selectedCategoryId,
+        categoryQuery: categoryQuery.trim(),
+        steps: steps.map((s, idx) => ({ id: s.stepId ?? null, n: idx + 1, c: s.content.trim() })),
+      }),
+    );
+    return rid;
+  }, [
+    userId,
+    hasMeaningfulChanges,
+    recipeId,
+    ensureDraftId,
+    title,
+    selectedCategoryId,
+    categoryQuery,
+    categories,
+    steps,
+    refreshRecipe,
+  ]);
+
+  const savePublishedChanges = useCallback(async (): Promise<number> => {
+    if (!userId || recipeId == null) throw new Error("No se pudo guardar.");
+    const cleanTitle = title.trim();
+    if (!cleanTitle) throw new Error("Escribe un nombre para la receta.");
+    const hasStep = steps.some((s) => s.content.trim().length > 0);
+    if (!hasStep) throw new Error("Añade al menos un paso con texto.");
+
+    const cat = buildCategoryPayload(selectedCategoryId, categoryQuery, categories);
+    await patchRecipe(userId, recipeId, {
+      title: cleanTitle,
+      categoryIds: cat.categoryIds === null ? null : cat.categoryIds.length > 0 ? cat.categoryIds : [],
+      newCategoryNames: cat.newCategoryNames,
+    });
+
+    const normalized = steps.map((s, i) => ({ ...s, stepNumber: i + 1 }));
+    const currentIds = new Set(normalized.map((s) => s.stepId).filter((x): x is number => x != null));
+    for (const oldId of initialStepIds) {
+      if (!currentIds.has(oldId)) {
+        await deleteRecipeStep(userId, recipeId, oldId);
+      }
+    }
+
+    for (const row of normalized) {
+      const content = row.content.trim().length > 0 ? row.content.trim() : ".";
+      if (row.stepId == null) {
+        await addRecipeStep(userId, recipeId, { stepNumber: row.stepNumber, content });
+      } else {
+        await patchRecipeStep(userId, recipeId, row.stepId, {
+          stepNumber: row.stepNumber,
+          content,
+        });
+      }
+    }
+
+    await refreshRecipe();
+    return recipeId;
+  }, [
+    userId,
+    recipeId,
+    title,
+    selectedCategoryId,
+    categoryQuery,
+    categories,
+    initialStepIds,
+    steps,
+    refreshRecipe,
+  ]);
+
+  const discardAndExit = useCallback(async () => {
+    if (!userId) {
+      goAfterExit();
+      return;
+    }
+    const shouldDeleteBlankNewDraft =
+      recipeId != null && createdDraftThisSession && !openedExistingDraft && !hasMeaningfulChanges;
+    if (shouldDeleteBlankNewDraft) {
+      try {
+        await deleteRecipe(userId, recipeId);
+      } catch {
+        // Si ya no existe, simplemente salimos.
+      }
+    }
+    goAfterExit();
+  }, [userId, recipeId, createdDraftThisSession, openedExistingDraft, hasMeaningfulChanges, goAfterExit]);
 
   const selectableCategories = useMemo(
     () => categories.filter((c) => c.name.trim().toLowerCase() !== DEFAULT_CATEGORY.toLowerCase()),
@@ -223,64 +435,41 @@ export function CreateRecipePage() {
     return selectableCategories.filter((c) => c.name.toLowerCase().includes(q));
   }, [categoryQuery, selectableCategories]);
 
+  const trimmedCategoryQuery = categoryQuery.trim();
+  const categoryExactMatch =
+    trimmedCategoryQuery.length > 0
+      ? categories.find((c) => c.name.trim().toLowerCase() === trimmedCategoryQuery.toLowerCase())
+      : undefined;
+  const canOfferNewCategory =
+    trimmedCategoryQuery.length > 0 &&
+    !categoryExactMatch &&
+    trimmedCategoryQuery.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase();
+
   const selectedCategoryName =
     selectedCategoryId != null
       ? categories.find((c) => c.categoryId === selectedCategoryId)?.name ?? null
       : null;
 
-  const persistTitle = async (value: string) => {
-    if (!userId || recipeId == null) return;
-    const t = value.trim();
-    if (!t) return;
-    try {
-      await patchRecipe(userId, recipeId, { title: t });
-    } catch {
-      /* silent */
-    }
-  };
-
-  const persistCategory = async (categoryId: number | null) => {
-    if (!userId || recipeId == null) return;
-    try {
-      await patchRecipe(userId, recipeId, {
-        categoryIds: categoryId != null ? [categoryId] : [],
-      });
-    } catch {
-      /* silent */
-    }
-  };
-
-  const persistStepContent = async (row: StepRow, content: string) => {
-    if (!userId || recipeId == null || row.stepId == null) return;
-    const trimmed = content.trim();
-    const toSend = trimmed.length === 0 ? "." : trimmed;
-    try {
-      await patchRecipeStep(userId, recipeId, row.stepId, { content: toSend });
-    } catch {
-      /* silent */
-    }
-  };
-
   const updateStep = (key: string, content: string) => {
-    setDirty(true);
     setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, content } : s)));
   };
 
+  const autoGrowTextarea = (el: HTMLTextAreaElement) => {
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
   const addStepRow = async () => {
-    if (!userId || recipeId == null) return;
-    const nextNum = steps.length ? Math.max(...steps.map((s) => s.stepNumber)) + 1 : 1;
+    const nextNum = steps.length + 1;
+    if (isPublishedEditMode || !userId || recipeId == null) {
+      setSteps((prev) => [...prev, makeLocalStep(nextNum)]);
+      return;
+    }
     try {
       const created = await addRecipeStep(userId, recipeId, { stepNumber: nextNum, content: "." });
-      setDirty(true);
       setSteps((prev) => [
         ...prev,
-        {
-          key: String(created.stepId),
-          stepId: created.stepId,
-          stepNumber: created.stepNumber,
-          content: "",
-          media: [],
-        },
+        { key: String(created.stepId), stepId: created.stepId, stepNumber: created.stepNumber, content: "", media: [] },
       ]);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudo añadir el paso.");
@@ -289,14 +478,13 @@ export function CreateRecipePage() {
 
   const removeStepRow = async (row: StepRow) => {
     if (steps.length <= 1) return;
-    if (!userId || recipeId == null || row.stepId == null) {
-      setSteps((prev) => (prev.length <= 1 ? prev : prev.filter((s) => s.key !== row.key)));
+    if (isPublishedEditMode || !userId || recipeId == null || row.stepId == null) {
+      setSteps((prev) => prev.filter((s) => s.key !== row.key).map((s, i) => ({ ...s, stepNumber: i + 1 })));
       return;
     }
     try {
-      setDirty(true);
       await deleteRecipeStep(userId, recipeId, row.stepId);
-      setSteps((prev) => prev.filter((s) => s.key !== row.key));
+      setSteps((prev) => prev.filter((s) => s.key !== row.key).map((s, i) => ({ ...s, stepNumber: i + 1 })));
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudo eliminar el paso.");
     }
@@ -307,14 +495,8 @@ export function CreateRecipePage() {
     const list = [...globalMedia].sort((a, b) => a.displayOrder - b.displayOrder);
     const [m] = list.splice(from, 1);
     list.splice(to, 0, m);
-    setDirty(true);
     try {
-      await reorderRecipeMedia(
-        userId,
-        recipeId,
-        list.map((x) => x.mediaId),
-        undefined,
-      );
+      await reorderRecipeMedia(userId, recipeId, list.map((x) => x.mediaId), undefined);
       await refreshRecipe();
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudo reordenar.");
@@ -323,7 +505,6 @@ export function CreateRecipePage() {
 
   const handleGlobalRemove = async (mediaId: number) => {
     if (!userId || recipeId == null) return;
-    setDirty(true);
     try {
       await deleteRecipeMedia(userId, recipeId, mediaId);
       await refreshRecipe();
@@ -333,13 +514,13 @@ export function CreateRecipePage() {
   };
 
   const handleGlobalFiles = async (files: FileList | null) => {
-    if (!userId || recipeId == null || !files?.length) return;
+    if (!userId || !files?.length) return;
     setUploadingGlobal(true);
-    setDirty(true);
     setSubmitError("");
     try {
+      const rid = await ensureDraftId();
       for (let i = 0; i < files.length; i++) {
-        await uploadRecipeMedia(userId, recipeId, files[i]!);
+        await uploadRecipeMedia(userId, rid, files[i]!);
       }
       await refreshRecipe();
     } catch (e) {
@@ -357,23 +538,16 @@ export function CreateRecipePage() {
     const list = [...row.media].sort((a, b) => a.displayOrder - b.displayOrder);
     const [m] = list.splice(from, 1);
     list.splice(to, 0, m);
-    setDirty(true);
     try {
-      await reorderRecipeMedia(
-        userId,
-        recipeId,
-        list.map((x) => x.mediaId),
-        stepId,
-      );
+      await reorderRecipeMedia(userId, recipeId, list.map((x) => x.mediaId), stepId);
       await refreshRecipe();
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudo reordenar.");
     }
   };
 
-  const handleStepRemove = async (stepId: number, mediaId: number) => {
+  const handleStepRemove = async (mediaId: number) => {
     if (!userId || recipeId == null) return;
-    setDirty(true);
     try {
       await deleteRecipeMedia(userId, recipeId, mediaId);
       await refreshRecipe();
@@ -384,7 +558,6 @@ export function CreateRecipePage() {
 
   const handleStepFiles = async (stepId: number, files: FileList | null) => {
     if (!userId || recipeId == null || !files?.length) return;
-    setDirty(true);
     setSubmitError("");
     try {
       for (let i = 0; i < files.length; i++) {
@@ -399,56 +572,84 @@ export function CreateRecipePage() {
     }
   };
 
-  const openStepPicker = (stepId: number) => {
-    setStepUploadTarget(stepId);
-    requestAnimationFrame(() => stepFileRef.current?.click());
+  const openStepPicker = async (rowKey: string) => {
+    const row = steps.find((s) => s.key === rowKey);
+    if (!row || !userId) return;
+    try {
+      let rid = recipeId;
+      if (rid == null) {
+        rid = await ensureDraftId();
+      }
+
+      let sid = row.stepId;
+      if (sid == null) {
+        const stepNumber = steps.findIndex((s) => s.key === rowKey) + 1;
+        const content = row.content.trim().length > 0 ? row.content.trim() : ".";
+        const created = await addRecipeStep(userId, rid, { stepNumber, content });
+        sid = created.stepId;
+        setSteps((prev) =>
+          prev.map((s, idx) =>
+            s.key === rowKey ? { ...s, stepId: sid, stepNumber: idx + 1 } : { ...s, stepNumber: idx + 1 },
+          ),
+        );
+      }
+
+      setStepUploadTarget(sid);
+      requestAnimationFrame(() => stepFileRef.current?.click());
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : "No se pudo preparar el paso para adjuntar archivos.");
+    }
   };
 
-  const goHome = () => navigate("/home");
-
-  const handleBackClick = () => {
-    if (dirty) setBackDialogOpen(true);
-    else goHome();
+  const handleExitIntent = () => {
+    if (!hasUnsavedChanges) {
+      goAfterExit();
+      return;
+    }
+    setExitDialogOpen(true);
   };
 
   const validateBeforePreview = (): string | null => {
     if (!title.trim()) return "Escribe un nombre para la receta.";
-    if (!isValidPublishTitle(title)) return "El nombre debe ser más descriptivo (evita solo «Receta nueva» o similares).";
-    const hasStep = steps.some((s) => s.content.trim().length > 0);
-    if (!hasStep) return "Añade al menos un paso con texto.";
+    if (!isValidPublishTitle(title)) {
+      return "El nombre debe ser más descriptivo (evita solo «Receta nueva» o similares).";
+    }
+    const hasStepText = steps.some((s) => s.content.trim().length > 0);
+    const hasMedia = globalMedia.length > 0 || steps.some((s) => s.media.length > 0);
+    if (!hasStepText && !hasMedia) return "Añade al menos texto en un paso o alguna foto/vídeo.";
     return null;
   };
 
-  const openPreview = () => {
-    setPreviewError("");
+  const publishDirectly = async () => {
+    if (isPublishedEditMode) return;
     const err = validateBeforePreview();
     if (err) {
       setSubmitError(err);
       return;
     }
+    setPublishing(true);
     setSubmitError("");
-    setPreviewOpen(true);
+    try {
+      const rid = await saveCurrentAsDraft();
+      if (rid == null) throw new Error("No se pudo preparar la receta para publicar.");
+      await publishRecipe(userId!, rid);
+      navigate(`/home/recipes/${rid}`);
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : "No se pudo publicar.");
+    } finally {
+      setPublishing(false);
+    }
   };
 
-  const runPublish = async () => {
-    if (!userId || recipeId == null) return;
-    const err = validateBeforePreview();
-    if (err) {
-      setPreviewError(err);
-      return;
-    }
+  const runSavePublished = async () => {
+    if (!isPublishedEditMode) return;
     setPublishing(true);
-    setPreviewError("");
+    setSubmitError("");
     try {
-      await persistTitle(title);
-      for (const s of steps) {
-        if (s.stepId != null) await persistStepContent(s, s.content);
-      }
-      await publishRecipe(userId, recipeId);
-      setPreviewOpen(false);
-      navigate(`/home/recipes/${recipeId}`);
+      const rid = await savePublishedChanges();
+      navigate(`/home/recipes/${rid}`);
     } catch (e) {
-      setPreviewError(e instanceof Error ? e.message : "No se pudo publicar.");
+      setSubmitError(e instanceof Error ? e.message : "No se pudieron guardar los cambios.");
     } finally {
       setPublishing(false);
     }
@@ -459,10 +660,10 @@ export function CreateRecipePage() {
   return (
     <section className="create-recipe-page">
       <header className="category-recipes-header create-recipe-header">
-        <button type="button" className="category-recipes-back" onClick={handleBackClick} aria-label="Volver">
+        <button type="button" className="category-recipes-back" onClick={handleExitIntent} aria-label="Volver">
           ←
         </button>
-        <h1 className="category-recipes-title">Nueva receta</h1>
+        <h1 className="category-recipes-title">{isPublishedEditMode ? "Editar receta" : "Nueva receta"}</h1>
       </header>
 
       {loadError && <p className="home-error">{loadError}</p>}
@@ -491,7 +692,7 @@ export function CreateRecipePage() {
         }}
       />
 
-      {!booting && recipeId != null && (
+      {!booting && (
         <div className="create-recipe-form">
           <div className="create-recipe-card create-recipe-card--gallery">
             <span className="create-recipe-label">Galería de la receta</span>
@@ -516,25 +717,13 @@ export function CreateRecipePage() {
               id="recipe-title"
               className="create-recipe-input"
               value={isGenericDraftTitle(title) ? "" : title}
-              onChange={(e) => {
-                setDirty(true);
-                setTitle(e.target.value);
-              }}
+              onChange={(e) => setTitle(e.target.value)}
               onFocus={() => {
-                if (isGenericDraftTitle(title)) {
-                  setTitle("");
-                  setDirty(true);
-                }
+                if (isGenericDraftTitle(title)) setTitle("");
               }}
               onBlur={(e) => {
                 const v = e.target.value.trim();
-                if (!v) {
-                  setTitle(DRAFT_INIT_TITLE);
-                  void persistTitle(DRAFT_INIT_TITLE);
-                } else {
-                  setTitle(v);
-                  void persistTitle(v);
-                }
+                if (!v) setTitle("");
               }}
               placeholder="Obligatorio — ej. Tortilla de patatas"
               maxLength={255}
@@ -545,7 +734,8 @@ export function CreateRecipePage() {
           <div className="create-recipe-card">
             <span className="create-recipe-label">Categoría</span>
             <p className="create-recipe-hint">
-              Opcional. Si no eliges ninguna, se guardará en «{DEFAULT_CATEGORY}».
+              Opcional. Elige una categoría o escribe un nombre nuevo: se creará al guardar. Si lo dejas vacío, se
+              usará «{DEFAULT_CATEGORY}».
             </p>
 
             {selectedCategoryName ? (
@@ -556,10 +746,8 @@ export function CreateRecipePage() {
                     type="button"
                     className="create-recipe-chip__remove"
                     onClick={() => {
-                      setDirty(true);
                       setSelectedCategoryId(null);
                       setCategoryQuery("");
-                      void persistCategory(null);
                     }}
                     aria-label="Quitar categoría"
                   >
@@ -573,7 +761,6 @@ export function CreateRecipePage() {
                   className="create-recipe-input"
                   value={categoryQuery}
                   onChange={(e) => {
-                    setDirty(true);
                     setCategoryQuery(e.target.value);
                     setCategoryDropdownOpen(true);
                   }}
@@ -584,7 +771,16 @@ export function CreateRecipePage() {
                 />
                 {categoryDropdownOpen && !loadError && (
                   <div className="create-recipe-category-dropdown" role="listbox" aria-label="Categorías">
-                    {categoryResults.length === 0 ? (
+                    {canOfferNewCategory && (
+                      <button
+                        type="button"
+                        className="create-recipe-category-option create-recipe-category-option--new"
+                        onClick={() => setCategoryDropdownOpen(false)}
+                      >
+                        Usar «{trimmedCategoryQuery}» (nueva categoría)
+                      </button>
+                    )}
+                    {categoryResults.length === 0 && !canOfferNewCategory ? (
                       <div className="create-recipe-category-empty">Sin coincidencias</div>
                     ) : (
                       categoryResults.map((c) => (
@@ -593,11 +789,9 @@ export function CreateRecipePage() {
                           type="button"
                           className="create-recipe-category-option"
                           onClick={() => {
-                            setDirty(true);
                             setSelectedCategoryId(c.categoryId);
                             setCategoryQuery("");
                             setCategoryDropdownOpen(false);
-                            void persistCategory(c.categoryId);
                           }}
                         >
                           {c.name}
@@ -627,17 +821,17 @@ export function CreateRecipePage() {
                   <div className="create-recipe-step-head">
                     <span className="create-recipe-step-num">{index + 1}</span>
                     <div className="create-recipe-step-actions">
-                      {row.stepId != null && (
+                      {
                         <button
                           type="button"
                           className="create-recipe-step-attach"
-                          onClick={() => openStepPicker(row.stepId!)}
+                          onClick={() => void openStepPicker(row.key)}
                           aria-label="Añadir imagen o vídeo a este paso"
                           title="Biblioteca / archivos"
                         >
                           📷
                         </button>
-                      )}
+                      }
                       {steps.length > 1 && (
                         <button
                           type="button"
@@ -657,17 +851,17 @@ export function CreateRecipePage() {
                         hideHint
                         media={row.media}
                         addLabel="Añadir"
-                        onAdd={() => openStepPicker(row.stepId!)}
-                        onRemove={(id) => void handleStepRemove(row.stepId!, id)}
+                        onAdd={() => void openStepPicker(row.key)}
+                        onRemove={(id) => void handleStepRemove(id)}
                         onReorder={(from, to) => void handleStepReorder(row.stepId!, from, to)}
                       />
                     </div>
                   )}
-                  {row.stepId != null && row.media.length === 0 && (
+                  {row.media.length === 0 && (
                     <button
                       type="button"
                       className="create-recipe-step-attach-inline"
-                      onClick={() => openStepPicker(row.stepId!)}
+                      onClick={() => void openStepPicker(row.key)}
                     >
                       📷 Añadir imagen o vídeo a este paso
                     </button>
@@ -676,7 +870,7 @@ export function CreateRecipePage() {
                     className="create-recipe-textarea create-recipe-textarea--grow"
                     value={row.content}
                     onChange={(e) => updateStep(row.key, e.target.value)}
-                    onBlur={(e) => void persistStepContent(row, e.currentTarget.value)}
+                    onInput={(e) => autoGrowTextarea(e.currentTarget)}
                     placeholder="Describe este paso…"
                     rows={2}
                   />
@@ -688,59 +882,71 @@ export function CreateRecipePage() {
           {submitError && <p className="home-error create-recipe-error">{submitError}</p>}
 
           <div className="create-recipe-actions">
-            <button type="button" className="btn btn--secondary" onClick={() => setCancelDialogOpen(true)} disabled={publishing}>
+            <button
+              type="button"
+              className="btn btn--secondary"
+              onClick={handleExitIntent}
+              disabled={publishing || exitBusy}
+            >
               Cancelar
             </button>
-            <button type="button" className="btn btn--primary create-recipe-submit" onClick={openPreview} disabled={publishing || uploadingGlobal}>
-              Previsualizar
+            <button
+              type="button"
+              className="btn btn--primary create-recipe-submit"
+              onClick={() => {
+                if (isPublishedEditMode) {
+                  void runSavePublished();
+                } else {
+                  void publishDirectly();
+                }
+              }}
+              disabled={publishing || uploadingGlobal || exitBusy}
+            >
+              {isPublishedEditMode ? "Guardar cambios" : "Publicar"}
             </button>
           </div>
         </div>
       )}
 
       <ConfirmDialog
-        open={backDialogOpen}
-        title="¿Salir de la edición?"
-        message="Tienes cambios sin publicar. Puedes seguir editando o volver al inicio: el borrador se guarda en Borradores para continuar más tarde."
-        cancelLabel="Seguir editando"
-        confirmLabel="Salir y guardar borrador"
+        open={exitDialogOpen}
+        title={isPublishedEditMode ? "Hay cambios sin guardar" : "¿Quieres guardar los cambios en borrador?"}
+        message={
+          isPublishedEditMode
+            ? "Si sales ahora perderás los cambios de esta receta publicada. ¿Quieres descartarlos?"
+            : "Si eliges guardar, verás estos cambios al volver. Si eliges salir sin guardar, el borrador quedará como estaba antes."
+        }
+        cancelLabel="Salir sin guardar"
+        confirmLabel={isPublishedEditMode ? "Volver y guardar" : "Guardar cambios"}
         confirmVariant="primary"
-        onCancel={() => setBackDialogOpen(false)}
+        onCancel={() => {
+          void (async () => {
+            setExitBusy(true);
+            try {
+              setExitDialogOpen(false);
+              await discardAndExit();
+            } finally {
+              setExitBusy(false);
+            }
+          })();
+        }}
         onConfirm={() => {
-          setBackDialogOpen(false);
-          goHome();
+          void (async () => {
+            setExitBusy(true);
+            try {
+              setExitDialogOpen(false);
+              if (isPublishedEditMode) return;
+              await saveCurrentAsDraft();
+              goAfterExit();
+            } catch (e) {
+              setSubmitError(e instanceof Error ? e.message : "No se pudo guardar el borrador.");
+            } finally {
+              setExitBusy(false);
+            }
+          })();
         }}
       />
 
-      <ConfirmDialog
-        open={cancelDialogOpen}
-        title="¿Salir sin publicar?"
-        message="Los últimos cambios ya están guardados en el borrador. Podrás abrirlo desde el menú + → Borradores."
-        cancelLabel="Seguir editando"
-        confirmLabel="Salir"
-        confirmVariant="primary"
-        onCancel={() => setCancelDialogOpen(false)}
-        onConfirm={() => {
-          setCancelDialogOpen(false);
-          goHome();
-        }}
-      />
-
-      <RecipePreviewModal
-        open={previewOpen}
-        title={isGenericDraftTitle(title) ? "" : title}
-        categories={previewCategories}
-        steps={steps.map((s) => ({
-          stepNumber: s.stepNumber,
-          content: s.content,
-          media: s.media,
-        }))}
-        globalMedia={globalMedia}
-        publishing={publishing}
-        error={previewError}
-        onClose={() => setPreviewOpen(false)}
-        onPublish={() => void runPublish()}
-      />
     </section>
   );
 }

@@ -61,8 +61,7 @@ public class RecipeService {
         User owner = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
 
-        Set<RecipeCategory> categories = resolveCategories(userId, request.categoryIds());
-
+        Set<RecipeCategory> categories = resolveCategories(userId, request.categoryIds(), request.newCategoryNames());
         Recipe recipe = new Recipe();
         recipe.setOwner(owner);
         recipe.setTitle(request.title().trim());
@@ -77,7 +76,7 @@ public class RecipeService {
 
     @Transactional
     public RecipeDto patchRecipe(long userId, long recipeId, UpdateRecipeRequest request) {
-        if (request.title() == null && request.categoryIds() == null) {
+        if (request.title() == null && request.categoryIds() == null && request.newCategoryNames() == null) {
             throw new IllegalArgumentException("Debe indicar al menos un campo a actualizar.");
         }
         userRepository.findById(userId)
@@ -88,8 +87,8 @@ public class RecipeService {
         if (request.title() != null && !request.title().isBlank()) {
             recipe.setTitle(request.title().trim());
         }
-        if (request.categoryIds() != null) {
-            recipe.setCategories(resolveCategories(userId, request.categoryIds()));
+        if (request.categoryIds() != null || request.newCategoryNames() != null) {
+            recipe.setCategories(resolveCategories(userId, request.categoryIds(), request.newCategoryNames()));
         }
         recipeRepository.save(recipe);
 
@@ -140,25 +139,66 @@ public class RecipeService {
         recipeStepRepository.delete(step);
     }
 
-    private Set<RecipeCategory> resolveCategories(long userId, List<Long> categoryIds) {
-        if (categoryIds == null || categoryIds.isEmpty()) {
+    @Transactional
+    public void deleteRecipe(long userId, long recipeId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
+        Recipe recipe = recipeRepository.findByRecipeIdAndOwner_UserId(recipeId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Receta no encontrada: " + recipeId));
+        recipeRepository.delete(recipe);
+    }
+
+    private Set<RecipeCategory> resolveCategories(long userId, List<Long> categoryIds, List<String> newCategoryNames) {
+        Set<RecipeCategory> result = new HashSet<>();
+    
+        // Categories existing by ID
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            List<RecipeCategory> fetched = recipeCategoryRepository.findAllById(categoryIds);
+            if (fetched.size() != new HashSet<>(categoryIds).size()) {
+                throw new IllegalArgumentException("Algunas categorías no existen.");
+            }
+            boolean invalidOwner = fetched.stream().anyMatch(c -> c.getOwner().getUserId() != userId);
+            if (invalidOwner) {
+                throw new IllegalArgumentException("Algunas categorías no pertenecen a este usuario.");
+            }
+            result.addAll(fetched);
+        }
+    
+        // New categories by name
+        if (newCategoryNames != null) {
+            User ownerRef = userRepository.getReferenceById(userId);
+            for (String raw : newCategoryNames) {
+                String normalized = raw == null ? "" : raw.trim();
+                if (normalized.isBlank()) {
+                    continue;
+                }
+    
+                if (DEFAULT_CATEGORY_NAME.equalsIgnoreCase(normalized)) {
+                    throw new IllegalArgumentException("El nombre 'Sin categoría' está reservado.");
+                }
+    
+                RecipeCategory category = recipeCategoryRepository
+                        .findByOwner_UserIdAndNameIgnoreCase(userId, normalized)
+                        .orElseGet(() -> {
+                            RecipeCategory c = new RecipeCategory();
+                            c.setOwner(ownerRef);
+                            c.setName(normalized);
+                            return recipeCategoryRepository.save(c);
+                        });
+    
+                result.add(category);
+            }
+        }
+    
+        // If there are no categories, assign "Sin categoría"
+        if (result.isEmpty()) {
             RecipeCategory defaultCategory = recipeCategoryRepository
                     .findByOwner_UserIdAndNameIgnoreCase(userId, DEFAULT_CATEGORY_NAME)
                     .orElseGet(() -> createDefaultCategory(userId));
-            return Set.of(defaultCategory);
+            result.add(defaultCategory);
         }
-
-        List<RecipeCategory> fetched = recipeCategoryRepository.findAllById(categoryIds);
-        if (fetched.size() != new HashSet<>(categoryIds).size()) {
-            throw new IllegalArgumentException("Algunas categorías no existen.");
-        }
-
-        boolean invalidOwner = fetched.stream().anyMatch(c -> c.getOwner().getUserId() != userId);
-        if (invalidOwner) {
-            throw new IllegalArgumentException("Algunas categorías no pertenecen a este usuario.");
-        }
-
-        return new HashSet<>(fetched);
+    
+        return result;
     }
 
     private RecipeCategory createDefaultCategory(long userId) {
@@ -318,9 +358,14 @@ public class RecipeService {
             throw new IllegalArgumentException("El título de la receta no puede estar vacío.");
         }
         List<RecipeStep> stepEntities = recipeStepRepository.findByRecipe_RecipeIdOrderByStepNumberAsc(recipeId);
-        boolean hasStepContent = stepEntities.stream().anyMatch(s -> !s.getContent().trim().isBlank());
-        if (stepEntities.isEmpty() || !hasStepContent) {
-            throw new IllegalArgumentException("Añade al menos un paso con texto antes de publicar.");
+        boolean hasStepContent = stepEntities.stream()
+                .anyMatch(s -> {
+                    String c = s.getContent().trim();
+                    return !c.isBlank() && !c.equals(".");
+                });
+        boolean hasMedia = !recipeMediaRepository.findByRecipe_RecipeId(recipeId).isEmpty();
+        if (!hasStepContent && !hasMedia) {
+            throw new IllegalArgumentException("Añade al menos texto en un paso o alguna foto/vídeo antes de publicar.");
         }
         recipe.setPublicationState(RecipePublicationState.PUBLISHED);
         recipeRepository.save(recipe);

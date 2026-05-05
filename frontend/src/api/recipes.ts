@@ -24,7 +24,9 @@ export type CreateRecipePayload = {
   title: string;
   /** null or empty → backend assigns "Sin categoría". */
   categoryIds: number[] | null;
-  /** Si es true, la receta no aparece en home/categorías hasta publicar. */
+  /** New category names; the backend creates them and associates them with the recipe. */
+  newCategoryNames?: string[] | null;
+  /** If true, the recipe does not appear in home/categories until published. */
   draft?: boolean;
 };
 
@@ -36,6 +38,7 @@ export type CreateRecipeStepPayload = {
 export type PatchRecipePayload = {
   title?: string;
   categoryIds?: number[] | null;
+  newCategoryNames?: string[] | null;
 };
 
 export type PatchRecipeStepPayload = {
@@ -105,13 +108,33 @@ export async function patchRecipe(
   payload: PatchRecipePayload
 ): Promise<RecipeDto> {
   const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}`;
+  const body: Record<string, unknown> = {};
+  if (payload.title !== undefined) body.title = payload.title;
+  if (payload.categoryIds !== undefined) {
+    body.categoryIds =
+      payload.categoryIds != null && payload.categoryIds.length > 0
+        ? payload.categoryIds
+        : null;
+  }
+  if (payload.newCategoryNames !== undefined) {
+    body.newCategoryNames =
+      payload.newCategoryNames != null && payload.newCategoryNames.length > 0
+        ? payload.newCategoryNames
+        : null;
+  }
   const res = await fetch(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return res.json() as Promise<RecipeDto>;
+}
+
+export async function deleteRecipe(userId: number, recipeId: number): Promise<void> {
+  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}`;
+  const res = await fetch(url, { method: "DELETE" });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
 }
 
 export async function publishRecipe(userId: number, recipeId: number): Promise<RecipeDto> {

@@ -109,7 +109,7 @@ export function RecipePreviewModal({
             Volver a editar
           </button>
           <button type="button" className="btn btn--primary" onClick={onPublish} disabled={publishing}>
-            {publishing ? "Publicando…" : "Publicar receta"}
+            {publishing ? "Publicando…" : "Publicar"}
           </button>
         </div>
       </div>

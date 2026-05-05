@@ -99,4 +99,12 @@ public class RecipeController {
         recipeService.deleteStep(userId, recipeId, stepId);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/{recipeId}")
+    public ResponseEntity<Void> deleteRecipe(
+            @PathVariable long userId,
+            @PathVariable long recipeId) {
+        recipeService.deleteRecipe(userId, recipeId);
+        return ResponseEntity.noContent().build();
+    }
 }
