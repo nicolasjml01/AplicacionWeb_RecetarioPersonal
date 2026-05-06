@@ -7,19 +7,22 @@ import backend.recetarioPersonal.model.RecipePublicationState;
 import backend.recetarioPersonal.model.RecipeStep;
 import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.RecipeCategoryRepository;
+import backend.recetarioPersonal.repository.RecipeIngredientRepository;
 import backend.recetarioPersonal.repository.RecipeMediaRepository;
 import backend.recetarioPersonal.repository.RecipeRepository;
 import backend.recetarioPersonal.repository.RecipeStepRepository;
 import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.view.CreateRecipeRequest;
 import backend.recetarioPersonal.view.CreateRecipeStepRequest;
+import backend.recetarioPersonal.view.IngredientDto;
 import backend.recetarioPersonal.view.RecipeCategoryDto;
 import backend.recetarioPersonal.view.RecipeDto;
+import backend.recetarioPersonal.view.RecipeIngredientDto;
 import backend.recetarioPersonal.view.RecipeMediaDto;
 import backend.recetarioPersonal.view.RecipeStepDto;
+import backend.recetarioPersonal.view.UnitOfMeasureDto;
 import backend.recetarioPersonal.view.UpdateRecipeRequest;
 import backend.recetarioPersonal.view.UpdateRecipeStepRequest;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +40,7 @@ public class RecipeService {
     private static final String DEFAULT_CATEGORY_NAME = "Sin categoría";
     private final RecipeStepRepository recipeStepRepository;
     private final RecipeMediaRepository recipeMediaRepository;
+    private final RecipeIngredientRepository recipeIngredientRepository;
 
     private final RecipeRepository recipeRepository;
     private final RecipeCategoryRepository recipeCategoryRepository;
@@ -45,12 +49,14 @@ public class RecipeService {
     public RecipeService(
             RecipeStepRepository recipeStepRepository,
             RecipeMediaRepository recipeMediaRepository,
+            RecipeIngredientRepository recipeIngredientRepository,
             RecipeRepository recipeRepository,
             RecipeCategoryRepository recipeCategoryRepository,
             UserRepository userRepository
     ) {
         this.recipeStepRepository = recipeStepRepository;
         this.recipeMediaRepository = recipeMediaRepository;
+        this.recipeIngredientRepository = recipeIngredientRepository;
         this.recipeRepository = recipeRepository;
         this.recipeCategoryRepository = recipeCategoryRepository;
         this.userRepository = userRepository;
@@ -209,14 +215,10 @@ public class RecipeService {
         return recipeCategoryRepository.save(c);
     }
 
-    private RecipeDto toSummaryDto(Recipe recipe) {
-        return toSummaryDto(recipe, null);
-    }
-
     /**
      * Summary for lists: optional single global cover image (first by display_order) in {@code recipeLevelMedia}.
      */
-    private RecipeDto toSummaryDto(Recipe recipe, @Nullable RecipeMediaDto cover) {
+    private RecipeDto toSummaryDto(Recipe recipe, RecipeMediaDto cover) {
         List<RecipeCategoryDto> categories = recipe.getCategories().stream()
                 .map(c -> new RecipeCategoryDto(c.getCategoryId(), c.getName()))
                 .sorted(Comparator.comparing(RecipeCategoryDto::name, String.CASE_INSENSITIVE_ORDER))
@@ -225,13 +227,14 @@ public class RecipeService {
         List<RecipeMediaDto> recipeLevel = cover != null ? List.of(cover) : List.of();
 
         return new RecipeDto(
-                recipe.getRecipeId(),
-                recipe.getOwner().getUserId(),
-                recipe.getTitle(),
-                recipe.getPublicationState().name(),
-                categories,
-                List.of(),
-                recipeLevel
+            recipe.getRecipeId(),
+            recipe.getOwner().getUserId(),
+            recipe.getTitle(),
+            recipe.getPublicationState().name(),
+            categories,
+            List.of(),
+            List.of(),
+            recipeLevel
         );
     }
 
@@ -294,15 +297,43 @@ public class RecipeService {
                 .sorted(Comparator.comparingInt(RecipeMedia::getDisplayOrder))
                 .map(this::toMediaDto)
                 .toList();
+        List<RecipeIngredientDto> ingredients = recipeIngredientRepository
+                .findByRecipe_RecipeIdOrderByDisplayOrderAsc(recipeId)
+                .stream()
+                .map(ri -> {
+                    var ing = ri.getIngredient();
+                    IngredientDto ingDto = new IngredientDto(
+                            ing.getIngredientId(),
+                            ing.getName(),
+                            ing.getCategory() != null ? ing.getCategory().getCategoryId() : null,
+                            ing.getCategory() != null ? ing.getCategory().getName() : null
+                    );
+
+                    UnitOfMeasureDto unitDto = ri.getUnitOfMeasure() == null ? null : new UnitOfMeasureDto(
+                            ri.getUnitOfMeasure().getUnitId(),
+                            ri.getUnitOfMeasure().getName(),
+                            ri.getUnitOfMeasure().getSymbol()
+                    );
+
+                    return new RecipeIngredientDto(
+                            ri.getRecipeIngredientId(),
+                            ingDto,
+                            ri.getQuantity(),
+                            unitDto,
+                            ri.getDisplayOrder()
+                    );
+                })
+                .toList();
 
         return new RecipeDto(
-                recipe.getRecipeId(),
-                recipe.getOwner().getUserId(),
-                recipe.getTitle(),
-                recipe.getPublicationState().name(),
-                categories,
-                steps,
-                recipeLevel
+            recipe.getRecipeId(),
+            recipe.getOwner().getUserId(),
+            recipe.getTitle(),
+            recipe.getPublicationState().name(),
+            categories,
+            ingredients,
+            steps,
+            recipeLevel
         );
     }
 

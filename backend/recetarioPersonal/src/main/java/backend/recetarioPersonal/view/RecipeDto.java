@@ -8,6 +8,7 @@ public record RecipeDto(
     String title,
     String publicationState,
     List<RecipeCategoryDto> categories,
+    List<RecipeIngredientDto> ingredients,
     List<RecipeStepDto> steps,
     List<RecipeMediaDto> recipeLevelMedia
 ) {}

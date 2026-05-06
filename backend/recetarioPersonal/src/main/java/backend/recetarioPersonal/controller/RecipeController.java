@@ -1,31 +1,41 @@
 package backend.recetarioPersonal.controller;
 
+import backend.recetarioPersonal.service.RecipeIngredientService;
+import backend.recetarioPersonal.view.CreateRecipeIngredientRequest;
+import backend.recetarioPersonal.view.ImportRecipeIngredientsRequest;
 import backend.recetarioPersonal.service.RecipeService;
 import backend.recetarioPersonal.view.CreateRecipeStepRequest;
 import backend.recetarioPersonal.view.CreateRecipeRequest;
 import backend.recetarioPersonal.view.RecipeDto;
+import backend.recetarioPersonal.view.RecipeIngredientDto;
 import backend.recetarioPersonal.view.RecipeStepDto;
 import backend.recetarioPersonal.view.UpdateRecipeRequest;
+import backend.recetarioPersonal.view.UpdateRecipeIngredientRequest;
 import backend.recetarioPersonal.view.UpdateRecipeStepRequest;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import jakarta.validation.Valid;
-
 import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/users/{userId}/recipes")
 public class RecipeController {
 
     private final RecipeService recipeService;
+    private final RecipeIngredientService recipeIngredientService;
 
-    public RecipeController(RecipeService recipeService) {
+    public RecipeController(RecipeService recipeService, RecipeIngredientService recipeIngredientService) {
         this.recipeService = recipeService;
+        this.recipeIngredientService = recipeIngredientService;
     }
 
     @PostMapping
@@ -105,6 +115,53 @@ public class RecipeController {
             @PathVariable long userId,
             @PathVariable long recipeId) {
         recipeService.deleteRecipe(userId, recipeId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{recipeId}/ingredients")
+    public ResponseEntity<List<RecipeIngredientDto>> listIngredients(
+            @PathVariable long userId,
+            @PathVariable long recipeId) {
+        return ResponseEntity.ok(recipeIngredientService.listByRecipe(userId, recipeId));
+    }
+
+    @PostMapping("/{recipeId}/ingredients")
+    public ResponseEntity<RecipeIngredientDto> addIngredient(
+            @PathVariable long userId,
+            @PathVariable long recipeId,
+            @RequestBody @Valid CreateRecipeIngredientRequest request) {
+        RecipeIngredientDto created = recipeIngredientService.add(userId, recipeId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PatchMapping("/{recipeId}/ingredients/{recipeIngredientId}")
+    public ResponseEntity<RecipeIngredientDto> patchIngredient(
+            @PathVariable long userId,
+            @PathVariable long recipeId,
+            @PathVariable long recipeIngredientId,
+            @RequestBody @Valid UpdateRecipeIngredientRequest request) {
+        return ResponseEntity.ok(recipeIngredientService.patch(userId, recipeId, recipeIngredientId, request));
+    }
+
+    @DeleteMapping("/{recipeId}/ingredients/{recipeIngredientId}")
+    public ResponseEntity<Void> deleteIngredient(
+            @PathVariable long userId,
+            @PathVariable long recipeId,
+            @PathVariable long recipeIngredientId) {
+        recipeIngredientService.delete(userId, recipeId, recipeIngredientId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{recipeId}/ingredients/import-to-shopping-list")
+    public ResponseEntity<Void> importIngredientsToShoppingList(
+            @PathVariable long userId,
+            @PathVariable long recipeId,
+            @RequestBody(required = false) ImportRecipeIngredientsRequest request) {
+        recipeIngredientService.importToShoppingList(
+                userId,
+                recipeId,
+                request != null ? request.factor() : null
+        );
         return ResponseEntity.noContent().build();
     }
 }
