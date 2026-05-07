@@ -28,3 +28,28 @@ export async function createRecipeCategory(userId: number, name: string): Promis
 
   return res.json() as Promise<RecipeCategoryDto>;
 }
+
+export async function updateRecipeCategory(
+  userId: number,
+  categoryId: number,
+  name: string
+): Promise<RecipeCategoryDto> {
+  const res = await fetch(`${API_BASE}/api/users/${userId}/recipe-categories/${categoryId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+
+  if (!res.ok) {
+    let message = "No se pudo actualizar la categoría.";
+    try {
+      const body = (await res.json()) as { message?: string };
+      if (body.message) message = body.message;
+    } catch {
+      // Keep fallback message.
+    }
+    throw new Error(message);
+  }
+
+  return res.json() as Promise<RecipeCategoryDto>;
+}

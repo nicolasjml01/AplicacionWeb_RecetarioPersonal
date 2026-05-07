@@ -1,10 +1,5 @@
 package backend.recetarioPersonal.service;
 
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import backend.recetarioPersonal.model.Ingredient;
 import backend.recetarioPersonal.model.ShoppingListItem;
 import backend.recetarioPersonal.model.UnitOfMeasure;
@@ -16,6 +11,10 @@ import backend.recetarioPersonal.view.IngredientDto;
 import backend.recetarioPersonal.view.ShoppingListItemDto;
 import backend.recetarioPersonal.view.UnitOfMeasureDto;
 import backend.recetarioPersonal.view.UpdateShoppingListItemRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class ShoppingListService {
@@ -25,14 +24,13 @@ public class ShoppingListService {
     private final IngredientService ingredientService;
     private final UnitOfMeasureService unitOfMeasureService;
     private final RecentIngredientService recentIngredientService;
-    
 
     public ShoppingListService(
-        ShoppingListItemRepository itemRepository,
-        UserRepository userRepository,
-        IngredientService ingredientService,
-        UnitOfMeasureService unitOfMeasureService,
-        RecentIngredientService recentIngredientService
+            ShoppingListItemRepository itemRepository,
+            UserRepository userRepository,
+            IngredientService ingredientService,
+            UnitOfMeasureService unitOfMeasureService,
+            RecentIngredientService recentIngredientService
     ) {
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
@@ -42,26 +40,65 @@ public class ShoppingListService {
     }
 
     /**
-     * Adds an item to the user's shopping list. The ingredient is resolved by name (find-or-create).
+     * Adds an item to the user's shopping list.
+     * If an open item with same ingredient+unit exists, it sums quantity.
      */
     @Transactional
     public ShoppingListItemDto addItem(long userId, CreateShoppingListItemRequest request) {
         if (request.ingredientName() == null || request.ingredientName().isBlank()) {
             throw new IllegalArgumentException("ingredientName is required");
         }
+        return addOrMergeItem(
+                userId,
+                request.ingredientName(),
+                request.quantity(),
+                request.measurementUnit()
+        );
+    }
+
+    /**
+     * Shared behavior for imports and manual add:
+     * merge by same user + same ingredient + same unit + bought=false.
+     */
+    @Transactional
+    public ShoppingListItemDto addOrMergeItem(
+            long userId,
+            String ingredientName,
+            float quantity,
+            String measurementUnit
+    ) {
+        if (ingredientName == null || ingredientName.isBlank()) {
+            throw new IllegalArgumentException("ingredientName is required");
+        }
+        if (quantity < 0) {
+            throw new IllegalArgumentException("quantity must be >= 0");
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
-        var ingredient = ingredientService.findOrCreateByName(request.ingredientName(), userId);
-        // Find or create the unit of measure
+
+        Ingredient ingredient = ingredientService.findOrCreateByName(ingredientName, userId);
+
         UnitOfMeasure unit = null;
-        if (request.measurementUnit() != null && !request.measurementUnit().isBlank()) {
-            unit = unitOfMeasureService.findOrCreateByName(request.measurementUnit());
+        if (measurementUnit != null && !measurementUnit.isBlank()) {
+            unit = unitOfMeasureService.findOrCreateByName(measurementUnit.trim());
+        }
+
+        Long unitId = unit != null ? unit.getUnitId() : null;
+        ShoppingListItem merged = itemRepository
+                .findOpenByUserIngredientAndUnit(userId, ingredient.getIngredientId(), unitId)
+                .orElse(null);
+
+        if (merged != null) {
+            merged.setQuantity(merged.getQuantity() + quantity);
+            merged = itemRepository.save(merged);
+            return toDto(merged);
         }
 
         ShoppingListItem item = new ShoppingListItem();
         item.setUser(user);
         item.setIngredient(ingredient);
-        item.setQuantity(request.quantity());
+        item.setQuantity(quantity);
         item.setUnitOfMeasure(unit);
         item.setBought(false);
         item = itemRepository.save(item);
@@ -81,17 +118,21 @@ public class ShoppingListService {
     public ShoppingListItemDto updateItem(Long itemId, long userId, UpdateShoppingListItemRequest request) {
         ShoppingListItem item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Shopping list item not found: " + itemId));
+
         if (item.getUser().getUserId() != userId) {
             throw new IllegalArgumentException("Item does not belong to user");
         }
+
         if (Boolean.TRUE.equals(request.bought())) {
             recentIngredientService.touch(userId, item.getIngredient());
             itemRepository.delete(item);
             return null;
         }
+
         if (request.quantity() != null) {
             item.setQuantity(request.quantity());
         }
+
         if (request.measurementUnit() != null) {
             if (request.measurementUnit().isBlank()) {
                 item.setUnitOfMeasure(null);
@@ -99,6 +140,7 @@ public class ShoppingListService {
                 item.setUnitOfMeasure(unitOfMeasureService.findOrCreateByName(request.measurementUnit()));
             }
         }
+
         item = itemRepository.save(item);
         return toDto(item);
     }
@@ -106,22 +148,26 @@ public class ShoppingListService {
     public void deleteItem(Long itemId, long userId) {
         ShoppingListItem item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Shopping list item not found: " + itemId));
+
         if (item.getUser().getUserId() != userId) {
             throw new IllegalArgumentException("Item does not belong to user");
         }
+
         recentIngredientService.touch(userId, item.getIngredient());
         itemRepository.delete(item);
     }
 
     private ShoppingListItemDto toDto(ShoppingListItem item) {
-        var ingredientDto = ingredientToDto(item.getIngredient());
+        IngredientDto ingredientDto = ingredientToDto(item.getIngredient());
+
         UnitOfMeasureDto unitDto = item.getUnitOfMeasure() != null
                 ? new UnitOfMeasureDto(
-                        item.getUnitOfMeasure().getUnitId(),
-                        item.getUnitOfMeasure().getName(),
-                        item.getUnitOfMeasure().getSymbol()
-                )
+                item.getUnitOfMeasure().getUnitId(),
+                item.getUnitOfMeasure().getName(),
+                item.getUnitOfMeasure().getSymbol()
+        )
                 : null;
+
         return new ShoppingListItemDto(
                 item.getShoppingListItemId(),
                 item.getUser().getUserId(),
@@ -137,6 +183,4 @@ public class ShoppingListService {
         String catName = ing.getCategory() != null ? ing.getCategory().getName() : null;
         return new IngredientDto(ing.getIngredientId(), ing.getName(), catId, catName);
     }
-
-    
 }

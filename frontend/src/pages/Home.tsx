@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentUserId } from "../auth/session";
 import { getRecipes } from "../api/recipes";
-import { createRecipeCategory, getRecipeCategories } from "../api/recipeCategories";
+import { createRecipeCategory, getRecipeCategories, updateRecipeCategory } from "../api/recipeCategories";
 import type { RecipeCategoryDto, RecipeDto } from "../types/recipes";
 import { CategoryCard } from "../components/home/CategoryCard";
 import { FabMenu } from "../components/home/FabMenu";
@@ -24,6 +24,8 @@ export function Home() {
   const [fabOpen, setFabOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [creatingCategory, setCreatingCategory] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<RecipeCategoryDto | null>(null);
+  const [updatingCategory, setUpdatingCategory] = useState(false);
   const [error, setError] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
@@ -114,6 +116,20 @@ export function Home() {
     navigate(`/home/categories/${categoryId}`);
   };
 
+  const handleEditCategory = async (name: string) => {
+    if (!userId || !editingCategory) return;
+    setUpdatingCategory(true);
+    try {
+      const updated = await updateRecipeCategory(userId, editingCategory.categoryId, name);
+      setCategories((prev) =>
+        sortCategories(prev.map((c) => (c.categoryId === updated.categoryId ? updated : c)))
+      );
+      setEditingCategory(null);
+    } finally {
+      setUpdatingCategory(false);
+    }
+  };
+
   const handleOpenRecipe = (recipeId: number) => {
     setIsSearchOpen(false);
     navigate(`/home/recipes/${recipeId}`);
@@ -183,6 +199,7 @@ export function Home() {
             category={c}
             previewRecipes={recipesByCategoryId.get(c.categoryId) ?? []}
             onOpenCategory={handleOpenCategory}
+            onEditCategory={(category) => setEditingCategory(category)}
           />
         ))}
       </div>
@@ -192,6 +209,15 @@ export function Home() {
         loading={creatingCategory}
         onClose={() => setCategoryModalOpen(false)}
         onSubmit={handleCreateCategory}
+      />
+      <CreateCategoryModal
+        open={editingCategory != null}
+        loading={updatingCategory}
+        title="Editar categoría"
+        submitLabel="Guardar cambios"
+        initialName={editingCategory?.name ?? ""}
+        onClose={() => setEditingCategory(null)}
+        onSubmit={handleEditCategory}
       />
     </section>
   );

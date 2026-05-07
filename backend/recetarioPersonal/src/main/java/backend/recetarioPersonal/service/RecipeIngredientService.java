@@ -120,16 +120,21 @@ public class RecipeIngredientService {
     public void importToShoppingList(long userId, long recipeId, Float factor) {
         ensureUserAndRecipeOwner(userId, recipeId);
         float f = (factor == null || factor <= 0f) ? 1.0f : factor;
-
+    
         List<RecipeIngredient> rows = recipeIngredientRepository.findByRecipe_RecipeIdOrderByDisplayOrderAsc(recipeId);
-
+        if (rows.isEmpty()) {
+            throw new IllegalArgumentException("La receta no tiene ingredientes para importar.");
+        }
+    
         for (RecipeIngredient r : rows) {
             String unitName = r.getUnitOfMeasure() != null ? r.getUnitOfMeasure().getName() : null;
-            shoppingListService.addItem(userId, new CreateShoppingListItemRequest(
+    
+            shoppingListService.addOrMergeItem(
+                    userId,
                     r.getIngredient().getName(),
                     r.getQuantity() * f,
                     unitName
-            ));
+            );
         }
     }
 

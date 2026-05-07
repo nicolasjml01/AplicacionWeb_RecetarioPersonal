@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
 type Props = {
@@ -6,11 +6,28 @@ type Props = {
   loading: boolean;
   onClose: () => void;
   onSubmit: (name: string) => Promise<void>;
+  title?: string;
+  submitLabel?: string;
+  initialName?: string;
 };
 
-export function CreateCategoryModal({ open, loading, onClose, onSubmit }: Props) {
+export function CreateCategoryModal({
+  open,
+  loading,
+  onClose,
+  onSubmit,
+  title = "Nueva categoría",
+  submitLabel = "Guardar",
+  initialName = "",
+}: Props) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setName(initialName);
+    setError("");
+  }, [open, initialName]);
 
   if (!open) return null;
 
@@ -31,7 +48,7 @@ export function CreateCategoryModal({ open, loading, onClose, onSubmit }: Props)
   return (
     <div className="modal-backdrop">
       <div className="home-modal">
-        <h3>Nueva categoría</h3>
+        <h3>{title}</h3>
         <form onSubmit={handleSubmit}>
           <input
             value={name}
@@ -42,7 +59,7 @@ export function CreateCategoryModal({ open, loading, onClose, onSubmit }: Props)
           {error && <p className="home-error">{error}</p>}
           <div className="home-modal__actions">
             <button type="button" onClick={onClose}>Cancelar</button>
-            <button type="submit" disabled={loading}>Guardar</button>
+            <button type="submit" disabled={loading}>{submitLabel}</button>
           </div>
         </form>
       </div>

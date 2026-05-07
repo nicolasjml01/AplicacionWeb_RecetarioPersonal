@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
-import { getRecipes } from "../api/recipes";
+import { deleteRecipe, getRecipes, importRecipeIngredientsToShoppingList } from "../api/recipes";
 import type { RecipeDto } from "../types/recipes";
 import { RecipeMiniTile } from "../components/recipe/RecipeMiniTile";
+import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 
 /**
  * Lists draft recipes until the user publishes them (then they appear on Home).
@@ -14,6 +15,12 @@ export function DraftRecipesPage() {
   const [drafts, setDrafts] = useState<RecipeDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [openMenuRecipeId, setOpenMenuRecipeId] = useState<number | null>(null);
+  const [pendingDeleteRecipe, setPendingDeleteRecipe] = useState<RecipeDto | null>(null);
+  const [pendingImportRecipe, setPendingImportRecipe] = useState<RecipeDto | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [importingRecipeId, setImportingRecipeId] = useState<number | null>(null);
+  const [actionNotice, setActionNotice] = useState("");
 
   useEffect(() => {
     if (!userId) return;
@@ -26,10 +33,48 @@ export function DraftRecipesPage() {
 
   const handleBack = () => navigate("/home");
 
+  useEffect(() => {
+    if (!actionNotice) return;
+    const t = window.setTimeout(() => setActionNotice(""), 2200);
+    return () => window.clearTimeout(t);
+  }, [actionNotice]);
+
+  const handleImportToShopping = async (recipe: RecipeDto) => {
+    if (!userId) return;
+    setImportingRecipeId(recipe.recipeId);
+    setActionNotice("");
+    try {
+      await importRecipeIngredientsToShoppingList(userId, recipe.recipeId);
+      setActionNotice(`"${recipe.title}" añadida a la cesta.`);
+    } catch (e) {
+      setActionNotice(e instanceof Error ? e.message : "No se pudieron importar los ingredientes.");
+    } finally {
+      setImportingRecipeId(null);
+      setOpenMenuRecipeId(null);
+    }
+  };
+
+  const handleDeleteRecipe = async () => {
+    if (!userId || !pendingDeleteRecipe) return;
+    setDeleting(true);
+    setActionNotice("");
+    try {
+      await deleteRecipe(userId, pendingDeleteRecipe.recipeId);
+      setDrafts((prev) => prev.filter((r) => r.recipeId !== pendingDeleteRecipe.recipeId));
+      setActionNotice(`"${pendingDeleteRecipe.title}" eliminada.`);
+      setPendingDeleteRecipe(null);
+    } catch (e) {
+      setActionNotice(e instanceof Error ? e.message : "No se pudo eliminar la receta.");
+    } finally {
+      setDeleting(false);
+      setOpenMenuRecipeId(null);
+    }
+  };
+
   if (!userId) return <p className="home-error">No hay usuario en sesión.</p>;
 
   return (
-    <section className="category-recipes-page">
+    <section className="category-recipes-page" onClick={() => setOpenMenuRecipeId(null)}>
       <header className="category-recipes-header">
         <button type="button" className="category-recipes-back" onClick={handleBack} aria-label="Volver">
           ←
@@ -43,6 +88,7 @@ export function DraftRecipesPage() {
       </p>
 
       {error && <p className="home-error">{error}</p>}
+      {actionNotice && <p className="recipe-detail__notice">{actionNotice}</p>}
 
       <div className="home-grid" style={{ marginTop: "1rem" }}>
         {loading ? (
@@ -51,17 +97,97 @@ export function DraftRecipesPage() {
           <p className="home-category-card__empty">No tienes borradores. Crea una receta desde el botón +.</p>
         ) : (
           drafts.map((r) => (
-            <button
+            <article
               key={r.recipeId}
-              type="button"
-              className="category-recipe-card"
-              onClick={() => navigate(`/home/recipes/new?draftId=${r.recipeId}`)}
+              className="category-recipe-card category-recipe-card--with-menu"
+              onClick={(e) => e.stopPropagation()}
             >
+              <button
+                type="button"
+                className="category-recipe-card__open"
+                onClick={() => navigate(`/home/recipes/new?draftId=${r.recipeId}`)}
+              >
               <RecipeMiniTile recipe={r} layout="comfortable" />
-            </button>
+              </button>
+              <div className="category-recipe-card__menu-wrap">
+                <button
+                  type="button"
+                  className="recipe-detail__menu-trigger"
+                  onClick={() => setOpenMenuRecipeId((prev) => (prev === r.recipeId ? null : r.recipeId))}
+                  aria-label={`Acciones de ${r.title}`}
+                  aria-expanded={openMenuRecipeId === r.recipeId}
+                >
+                  ⋯
+                </button>
+                {openMenuRecipeId === r.recipeId && (
+                  <div className="recipe-detail__menu" role="menu" aria-label="Acciones">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="recipe-detail__menu-item recipe-detail__menu-item--primary"
+                      onClick={() => {
+                        setPendingImportRecipe(r);
+                        setOpenMenuRecipeId(null);
+                      }}
+                      disabled={importingRecipeId === r.recipeId}
+                    >
+                      {importingRecipeId === r.recipeId ? "Añadiendo..." : "Añadir a la cesta"}
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="recipe-detail__menu-item"
+                      onClick={() => navigate(`/home/recipes/new?editId=${r.recipeId}`)}
+                      disabled={deleting}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="recipe-detail__menu-item recipe-detail__menu-item--danger"
+                      onClick={() => setPendingDeleteRecipe(r)}
+                      disabled={deleting}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                )}
+              </div>
+            </article>
           ))
         )}
       </div>
+      <ConfirmDialog
+        open={pendingImportRecipe != null}
+        title="¿Añadir ingredientes a la cesta?"
+        message="Se importarán los ingredientes de esta receta a tu lista de la compra."
+        cancelLabel="Cancelar"
+        confirmLabel={
+          importingRecipeId === pendingImportRecipe?.recipeId ? "Añadiendo..." : "Sí, añadir"
+        }
+        onCancel={() => {
+          if (importingRecipeId == null) setPendingImportRecipe(null);
+        }}
+        onConfirm={() => {
+          if (pendingImportRecipe) {
+            void handleImportToShopping(pendingImportRecipe);
+            setPendingImportRecipe(null);
+          }
+        }}
+      />
+      <ConfirmDialog
+        open={pendingDeleteRecipe != null}
+        title="¿Eliminar esta receta?"
+        message="Esta acción borrará la receta y su contenido. Podrás crear otra después, pero no recuperar esta."
+        cancelLabel="Cancelar"
+        confirmLabel={deleting ? "Eliminando..." : "Sí, eliminar"}
+        confirmVariant="danger"
+        onCancel={() => {
+          if (!deleting) setPendingDeleteRecipe(null);
+        }}
+        onConfirm={() => void handleDeleteRecipe()}
+      />
     </section>
   );
 }

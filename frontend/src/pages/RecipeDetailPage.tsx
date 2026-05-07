@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
-import { deleteRecipe, getRecipe } from "../api/recipes";
+import { deleteRecipe, getRecipe, importRecipeIngredientsToShoppingList } from "../api/recipes";
 import type { RecipeDto } from "../types/recipes";
 import { RECIPE_DEFAULT_COVER_PATH } from "../constants/recipeAssets";
 import { resolveMediaUrl } from "../utils/mediaUrl";
@@ -120,8 +120,13 @@ export function RecipeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [importConfirmOpen, setImportConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [ingredientsExpanded, setIngredientsExpanded] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [actionNotice, setActionNotice] = useState("");
+  const actionsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!userId || !Number.isFinite(recipeId)) {
@@ -153,6 +158,22 @@ export function RecipeDetailPage() {
     };
   }, [userId, recipeId]);
 
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (!actionsRef.current?.contains(e.target as Node)) {
+        setActionsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  useEffect(() => {
+    if (!actionNotice) return;
+    const t = window.setTimeout(() => setActionNotice(""), 2200);
+    return () => window.clearTimeout(t);
+  }, [actionNotice]);
+
   const handleBack = () => {
     if (state?.fromCategoryId != null) {
       navigate(`/home/categories/${state.fromCategoryId}`);
@@ -168,6 +189,21 @@ export function RecipeDetailPage() {
   const handleEdit = () => {
     if (!recipe) return;
     navigate(`/home/recipes/new?editId=${recipe.recipeId}`);
+  };
+
+  const handleImportToShopping = async () => {
+    if (!userId || !recipe) return;
+    setImporting(true);
+    setActionNotice("");
+    try {
+      await importRecipeIngredientsToShoppingList(userId, recipe.recipeId);
+      setActionNotice("Ingredientes añadidos a la cesta.");
+    } catch (e) {
+      setActionNotice(e instanceof Error ? e.message : "No se pudieron añadir los ingredientes.");
+    } finally {
+      setImporting(false);
+      setActionsOpen(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -205,23 +241,59 @@ export function RecipeDetailPage() {
             {loading ? "…" : recipe?.title ?? "Receta"}
           </h1>
           {!loading && recipe && (
-            <div className="recipe-detail__header-actions">
-              <button type="button" className="btn btn--secondary" onClick={handleEdit} disabled={deleting}>
-                Editar
-              </button>
+            <div className="recipe-detail__header-actions" ref={actionsRef}>
               <button
                 type="button"
-                className="btn recipe-detail__delete-btn"
-                onClick={() => setDeleteOpen(true)}
-                disabled={deleting}
+                className="recipe-detail__menu-trigger"
+                onClick={() => setActionsOpen((v) => !v)}
+                aria-label="Acciones de receta"
+                aria-expanded={actionsOpen}
               >
-                Eliminar
+                ⋯
               </button>
+              {actionsOpen && (
+                <div className="recipe-detail__menu" role="menu" aria-label="Acciones">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="recipe-detail__menu-item recipe-detail__menu-item--primary"
+                    onClick={() => {
+                      setImportConfirmOpen(true);
+                      setActionsOpen(false);
+                    }}
+                    disabled={importing}
+                  >
+                    {importing ? "Añadiendo..." : "Añadir a la cesta"}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="recipe-detail__menu-item"
+                    onClick={handleEdit}
+                    disabled={deleting || importing}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="recipe-detail__menu-item recipe-detail__menu-item--danger"
+                    onClick={() => {
+                      setActionsOpen(false);
+                      setDeleteOpen(true);
+                    }}
+                    disabled={deleting || importing}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </header>
 
         {error && <p className="home-error">{error}</p>}
+        {actionNotice && <p className="recipe-detail__notice">{actionNotice}</p>}
 
         {!loading && !error && recipe && recipe.publicationState === "DRAFT" && (
           <div className="recipe-detail__draft-banner" role="status">
@@ -339,6 +411,20 @@ export function RecipeDetailPage() {
         )}
       </div>
 
+      <ConfirmDialog
+        open={importConfirmOpen}
+        title="¿Añadir ingredientes a la cesta?"
+        message="Se importarán los ingredientes de esta receta a tu lista de la compra."
+        cancelLabel="Cancelar"
+        confirmLabel={importing ? "Añadiendo..." : "Sí, añadir"}
+        onCancel={() => {
+          if (!importing) setImportConfirmOpen(false);
+        }}
+        onConfirm={() => {
+          void handleImportToShopping();
+          setImportConfirmOpen(false);
+        }}
+      />
       <ConfirmDialog
         open={deleteOpen}
         title="¿Eliminar esta receta?"

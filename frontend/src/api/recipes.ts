@@ -203,6 +203,21 @@ export async function deleteRecipeStep(
   if (!res.ok) throw new Error(await readErrorMessage(res));
 }
 
+export async function importRecipeIngredientsToShoppingList(
+  userId: number,
+  recipeId: number,
+  factor?: number
+): Promise<void> {
+  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/ingredients/import-to-shopping-list`;
+  const body = factor != null ? { factor } : {};
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+}
+
 export async function getRecipeIngredients(
   userId: number,
   recipeId: number
