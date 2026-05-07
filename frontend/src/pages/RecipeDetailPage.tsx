@@ -121,6 +121,7 @@ export function RecipeDetailPage() {
   const [error, setError] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [ingredientsExpanded, setIngredientsExpanded] = useState(false);
 
   useEffect(() => {
     if (!userId || !Number.isFinite(recipeId)) {
@@ -246,7 +247,7 @@ export function RecipeDetailPage() {
               </div>
             )}
 
-          <section className="recipe-detail__section" aria-label="Fotos y vídeos">
+            <section className="recipe-detail__section" aria-label="Fotos y vídeos">
             <h2 className="recipe-detail__section-title">Galería seleccionada</h2>
             {recipe.recipeLevelMedia.length === 0 &&
             recipe.steps.every((s) => s.media.length === 0) ? (
@@ -269,27 +270,72 @@ export function RecipeDetailPage() {
                 No hay galería global; hay archivos adjuntos en los pasos (ver abajo).
               </p>
             )}
-          </section>
-
-          {recipe.steps.length > 0 && (
-            <section className="recipe-detail__section" aria-label="Pasos">
-              <h2 className="recipe-detail__section-title">Pasos</h2>
-              <ol className="recipe-detail__steps recipe-detail__steps--cards">
-                {recipe.steps.map((s, index) => (
-                  <li key={s.stepId} className="recipe-detail__step-card">
-                    <p className="recipe-detail__step-index">Paso {index + 1}</p>
-                    <p className="recipe-detail__prose recipe-detail__prose--cooking">{s.content}</p>
-                    {s.media.length > 0 && (
-                      <div className="recipe-detail__step-media">
-                        <MediaCarousel media={[...s.media].sort((a, b) => a.displayOrder - b.displayOrder)} />
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ol>
             </section>
-          )}
-        </div>
+
+            {recipe.ingredients.length > 0 && (
+              <section className="recipe-detail__section" aria-label="Ingredientes">
+                <div className="recipe-detail__section-head">
+                  <h2 className="recipe-detail__section-title">Ingredientes</h2>
+                  {recipe.ingredients.length > 4 && (
+                    <button
+                      type="button"
+                      className="recipe-detail__ingredients-toggle"
+                      onClick={() => setIngredientsExpanded((v) => !v)}
+                      aria-expanded={ingredientsExpanded}
+                    >
+                      {ingredientsExpanded ? "Ocultar" : "Ver todo"}
+                    </button>
+                  )}
+                </div>
+                <div
+                  className={`recipe-detail__ingredients-grid${
+                    !ingredientsExpanded && recipe.ingredients.length > 4
+                      ? " recipe-detail__ingredients-grid--collapsed"
+                      : ""
+                  }`}
+                >
+                  {[...recipe.ingredients]
+                    .sort((a, b) => a.displayOrder - b.displayOrder)
+                    .map((ing) => {
+                      const unitLabel = ing.unitOfMeasure
+                        ? ing.unitOfMeasure.symbol ?? ing.unitOfMeasure.name
+                        : "sin unidad";
+                      return (
+                        <article key={ing.recipeIngredientId} className="recipe-detail__ingredient-card">
+                          <div className="recipe-detail__ingredient-image-wrap">
+                            <img src="/logoShoppingList.png" alt="" className="recipe-detail__ingredient-image" />
+                          </div>
+                          <p className="recipe-detail__ingredient-name">{ing.ingredient.name}</p>
+                          <div className="recipe-detail__ingredient-pills">
+                            <span>{ing.quantity}</span>
+                            <span>{unitLabel}</span>
+                          </div>
+                        </article>
+                      );
+                    })}
+                </div>
+              </section>
+            )}
+
+            {recipe.steps.length > 0 && (
+              <section className="recipe-detail__section" aria-label="Pasos">
+                <h2 className="recipe-detail__section-title">Pasos</h2>
+                <ol className="recipe-detail__steps recipe-detail__steps--cards">
+                  {recipe.steps.map((s, index) => (
+                    <li key={s.stepId} className="recipe-detail__step-card">
+                      <p className="recipe-detail__step-index">Paso {index + 1}</p>
+                      <p className="recipe-detail__prose recipe-detail__prose--cooking">{s.content}</p>
+                      {s.media.length > 0 && (
+                        <div className="recipe-detail__step-media">
+                          <MediaCarousel media={[...s.media].sort((a, b) => a.displayOrder - b.displayOrder)} />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+          </div>
         )}
       </div>
 

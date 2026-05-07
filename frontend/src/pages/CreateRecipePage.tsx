@@ -2,20 +2,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
 import {
+  addRecipeIngredient,
   addRecipeStep,
   createRecipe,
+  deleteRecipeIngredient,
   deleteRecipe,
   deleteRecipeStep,
   getRecipe,
+  patchRecipeIngredient,
   patchRecipe,
   patchRecipeStep,
   publishRecipe,
 } from "../api/recipes";
 import { deleteRecipeMedia, reorderRecipeMedia, uploadRecipeMedia } from "../api/recipeMedia";
 import { getRecipeCategories } from "../api/recipeCategories";
-import type { RecipeCategoryDto, RecipeDto, RecipeMediaDto } from "../types/recipes";
+import { getUnits, searchIngredients } from "../api/shopping";
+import type { IngredientDto, UnitOfMeasureDto } from "../types/shopping";
+import type { RecipeCategoryDto, RecipeDto, RecipeIngredientDto, RecipeMediaDto } from "../types/recipes";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { MediaStripEditor } from "../components/recipe/editor/MediaStripEditor";
+import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryDialog";
 
 const DEFAULT_CATEGORY = "Sin categoría";
 const DRAFT_INIT_TITLE = "Receta nueva";
@@ -27,6 +33,14 @@ type StepRow = {
   stepNumber: number;
   content: string;
   media: RecipeMediaDto[];
+};
+
+type IngredientRow = {
+  key: string;
+  recipeIngredientId?: number;
+  ingredientName: string;
+  quantity: string;
+  measurementUnit: string;
 };
 
 function isGenericDraftTitle(t: string): boolean {
@@ -84,6 +98,16 @@ function applyStepsFromRecipe(sortedSteps: RecipeDto["steps"]): StepRow[] {
   }));
 }
 
+function applyIngredientsFromRecipe(sortedIngredients: RecipeIngredientDto[]): IngredientRow[] {
+  return sortedIngredients.map((i) => ({
+    key: String(i.recipeIngredientId),
+    recipeIngredientId: i.recipeIngredientId,
+    ingredientName: i.ingredient.name,
+    quantity: Number.isFinite(i.quantity) ? String(i.quantity) : "",
+    measurementUnit: i.unitOfMeasure?.name ?? "",
+  }));
+}
+
 function makeLocalStep(stepNumber: number): StepRow {
   return {
     key: `local-${stepNumber}-${Date.now()}`,
@@ -92,6 +116,24 @@ function makeLocalStep(stepNumber: number): StepRow {
     media: [],
   };
 }
+
+function makeLocalIngredient(): IngredientRow {
+  return {
+    key: `local-ing-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    ingredientName: "",
+    quantity: "",
+    measurementUnit: "",
+  };
+}
+
+type IngredientModalState =
+  | { open: false }
+  | {
+      open: true;
+      mode: "add" | "edit";
+      rowKey?: string;
+      ingredientName: string;
+    };
 
 export function CreateRecipePage() {
   const navigate = useNavigate();
@@ -104,6 +146,7 @@ export function CreateRecipePage() {
   const globalFileRef = useRef<HTMLInputElement>(null);
   const stepFileRef = useRef<HTMLInputElement>(null);
   const categoryWrapRef = useRef<HTMLDivElement | null>(null);
+  const ingredientsWrapRef = useRef<HTMLDivElement | null>(null);
 
   const [categories, setCategories] = useState<RecipeCategoryDto[]>([]);
   const [loadError, setLoadError] = useState("");
@@ -117,6 +160,17 @@ export function CreateRecipePage() {
   const [categoryQuery, setCategoryQuery] = useState("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [ingredients, setIngredients] = useState<IngredientRow[]>([]);
+  const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
+  const [ingredientSearch, setIngredientSearch] = useState("");
+  const [ingredientResults, setIngredientResults] = useState<IngredientDto[]>([]);
+  const [ingredientSearchLoading, setIngredientSearchLoading] = useState(false);
+  const [ingredientDropdownOpen, setIngredientDropdownOpen] = useState(false);
+  const [ingredientModal, setIngredientModal] = useState<IngredientModalState>({ open: false });
+  const [ingredientModalQuantity, setIngredientModalQuantity] = useState("");
+  const [ingredientModalUnit, setIngredientModalUnit] = useState("");
+  const [ingredientModalSaving, setIngredientModalSaving] = useState(false);
+  const [ingredientModalError, setIngredientModalError] = useState("");
   const [steps, setSteps] = useState<StepRow[]>([makeLocalStep(1)]);
 
   const [submitError, setSubmitError] = useState("");
@@ -126,6 +180,7 @@ export function CreateRecipePage() {
   const [stepUploadTarget, setStepUploadTarget] = useState<number | null>(null);
   const [createdDraftThisSession, setCreatedDraftThisSession] = useState(false);
   const [isPublishedEditMode, setIsPublishedEditMode] = useState(false);
+  const [initialIngredientIds, setInitialIngredientIds] = useState<number[]>([]);
   const [initialStepIds, setInitialStepIds] = useState<number[]>([]);
   const [baselineKey, setBaselineKey] = useState("");
 
@@ -137,9 +192,12 @@ export function CreateRecipePage() {
     const hasCategory =
       selectedCategoryId != null ||
       (q.length > 0 && q.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase());
+    const hasIngredients = ingredients.some(
+      (i) => i.ingredientName.trim().length > 0 || i.quantity.trim().length > 0 || i.measurementUnit.trim().length > 0,
+    );
     const hasMedia = globalMedia.length > 0 || steps.some((s) => s.media.length > 0);
-    return hasTitle || hasStepText || hasMultipleSteps || hasCategory || hasMedia;
-  }, [title, steps, selectedCategoryId, categoryQuery, globalMedia]);
+    return hasTitle || hasStepText || hasMultipleSteps || hasCategory || hasIngredients || hasMedia;
+  }, [title, steps, selectedCategoryId, categoryQuery, ingredients, globalMedia]);
 
   const currentStateKey = useMemo(
     () =>
@@ -147,16 +205,24 @@ export function CreateRecipePage() {
         title: title.trim(),
         selectedCategoryId,
         categoryQuery: categoryQuery.trim(),
+        ingredients: ingredients.map((i) => ({
+          id: i.recipeIngredientId ?? null,
+          n: i.ingredientName.trim(),
+          q: i.quantity.trim(),
+          u: i.measurementUnit.trim(),
+        })),
         steps: steps.map((s, idx) => ({
           id: s.stepId ?? null,
           n: idx + 1,
           c: s.content.trim(),
         })),
       }),
-    [title, selectedCategoryId, categoryQuery, steps],
+    [title, selectedCategoryId, categoryQuery, ingredients, steps],
   );
 
   const hasUnsavedChanges = baselineKey !== "" && currentStateKey !== baselineKey;
+  const [pendingRouteExit, setPendingRouteExit] = useState(false);
+  const [pendingRoutePath, setPendingRoutePath] = useState<string | null>(null);
 
   const goHome = useCallback(() => {
     navigate("/home");
@@ -182,12 +248,44 @@ export function CreateRecipePage() {
   }, [userId]);
 
   useEffect(() => {
+    void getUnits()
+      .then((list) =>
+        setUnits([...list].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))),
+      )
+      .catch(() => {
+        setUnits([]);
+      });
+  }, []);
+
+  useEffect(() => {
     const onDown = (e: MouseEvent) => {
       if (!categoryWrapRef.current?.contains(e.target as Node)) setCategoryDropdownOpen(false);
+      if (!ingredientsWrapRef.current?.contains(e.target as Node)) setIngredientDropdownOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
+
+  useEffect(() => {
+    const q = ingredientSearch.trim();
+    if (!userId || q.length < 2) {
+      setIngredientResults([]);
+      setIngredientSearchLoading(false);
+      return;
+    }
+    const handle = window.setTimeout(async () => {
+      setIngredientSearchLoading(true);
+      try {
+        const res = await searchIngredients(userId, q);
+        setIngredientResults(res);
+      } catch {
+        setIngredientResults([]);
+      } finally {
+        setIngredientSearchLoading(false);
+      }
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [ingredientSearch, userId]);
 
   const applyRecipe = useCallback((r: RecipeDto) => {
     setTitle(r.title);
@@ -196,6 +294,11 @@ export function CreateRecipePage() {
       (c) => c.name.trim().toLowerCase() !== DEFAULT_CATEGORY.toLowerCase(),
     );
     setSelectedCategoryId(nonDefault?.categoryId ?? null);
+    const sortedIngredients = [...r.ingredients].sort((a, b) => a.displayOrder - b.displayOrder);
+    setIngredients(
+      sortedIngredients.length > 0 ? applyIngredientsFromRecipe(sortedIngredients) : [makeLocalIngredient()],
+    );
+    setInitialIngredientIds(sortedIngredients.map((i) => i.recipeIngredientId));
     const sorted = [...r.steps].sort((a, b) => a.stepNumber - b.stepNumber);
     setSteps(sorted.length > 0 ? applyStepsFromRecipe(sorted) : [makeLocalStep(1)]);
     setInitialStepIds(sorted.map((s) => s.stepId));
@@ -263,8 +366,13 @@ export function CreateRecipePage() {
 
     setTitle("");
     setSelectedCategoryId(null);
+    setIngredients([]);
+    setIngredientSearch("");
+    setIngredientResults([]);
+    setIngredientDropdownOpen(false);
     setGlobalMedia([]);
     setSteps([makeLocalStep(1)]);
+    setInitialIngredientIds([]);
     setInitialStepIds([]);
     setIsPublishedEditMode(false);
     setBooting(false);
@@ -278,6 +386,51 @@ export function CreateRecipePage() {
     if (booting || baselineKey !== "") return;
     setBaselineKey(currentStateKey);
   }, [booting, baselineKey, currentStateKey]);
+
+  useEffect(() => {
+    const onDocumentClick = (event: MouseEvent) => {
+      if (!hasUnsavedChanges) return;
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      const link = target.closest("a[href]") as HTMLAnchorElement | null;
+      if (!link) return;
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      if (link.target && link.target !== "_self") return;
+      const toUrl = new URL(link.href, window.location.origin);
+      if (toUrl.origin !== window.location.origin) return;
+
+      const destination = `${toUrl.pathname}${toUrl.search}${toUrl.hash}`;
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (destination === current) return;
+
+      event.preventDefault();
+      setPendingRoutePath(destination);
+      setPendingRouteExit(true);
+      setExitDialogOpen(true);
+    };
+
+    document.addEventListener("click", onDocumentClick, true);
+    return () => document.removeEventListener("click", onDocumentClick, true);
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   useEffect(() => {
     const areas = document.querySelectorAll<HTMLTextAreaElement>(".create-recipe-textarea--grow");
@@ -324,6 +477,7 @@ export function CreateRecipePage() {
       categoryIds: cat.categoryIds === null ? null : cat.categoryIds.length > 0 ? cat.categoryIds : [],
       newCategoryNames: cat.newCategoryNames,
     });
+    await syncIngredients(rid);
 
     const usableSteps = steps.length > 0 ? steps : [makeLocalStep(1)];
     for (let i = 0; i < usableSteps.length; i++) {
@@ -342,6 +496,12 @@ export function CreateRecipePage() {
         title: finalTitle,
         selectedCategoryId,
         categoryQuery: categoryQuery.trim(),
+        ingredients: ingredients.map((i) => ({
+          id: i.recipeIngredientId ?? null,
+          n: i.ingredientName.trim(),
+          q: i.quantity.trim(),
+          u: i.measurementUnit.trim(),
+        })),
         steps: steps.map((s, idx) => ({ id: s.stepId ?? null, n: idx + 1, c: s.content.trim() })),
       }),
     );
@@ -355,8 +515,11 @@ export function CreateRecipePage() {
     selectedCategoryId,
     categoryQuery,
     categories,
+    ingredients,
+    initialIngredientIds,
     steps,
     refreshRecipe,
+    syncIngredients,
   ]);
 
   const savePublishedChanges = useCallback(async (): Promise<number> => {
@@ -372,6 +535,7 @@ export function CreateRecipePage() {
       categoryIds: cat.categoryIds === null ? null : cat.categoryIds.length > 0 ? cat.categoryIds : [],
       newCategoryNames: cat.newCategoryNames,
     });
+    await syncIngredients(recipeId);
 
     const normalized = steps.map((s, i) => ({ ...s, stepNumber: i + 1 }));
     const currentIds = new Set(normalized.map((s) => s.stepId).filter((x): x is number => x != null));
@@ -402,9 +566,12 @@ export function CreateRecipePage() {
     selectedCategoryId,
     categoryQuery,
     categories,
+    ingredients,
+    initialIngredientIds,
     initialStepIds,
     steps,
     refreshRecipe,
+    syncIngredients,
   ]);
 
   const discardAndExit = useCallback(async () => {
@@ -423,6 +590,19 @@ export function CreateRecipePage() {
     }
     goAfterExit();
   }, [userId, recipeId, createdDraftThisSession, openedExistingDraft, hasMeaningfulChanges, goAfterExit]);
+
+  const discardWithoutNavigation = useCallback(async () => {
+    if (!userId) return;
+    const shouldDeleteBlankNewDraft =
+      recipeId != null && createdDraftThisSession && !openedExistingDraft && !hasMeaningfulChanges;
+    if (shouldDeleteBlankNewDraft) {
+      try {
+        await deleteRecipe(userId, recipeId);
+      } catch {
+        // Si ya no existe, simplemente continuamos.
+      }
+    }
+  }, [userId, recipeId, createdDraftThisSession, openedExistingDraft, hasMeaningfulChanges]);
 
   const selectableCategories = useMemo(
     () => categories.filter((c) => c.name.trim().toLowerCase() !== DEFAULT_CATEGORY.toLowerCase()),
@@ -452,6 +632,138 @@ export function CreateRecipePage() {
 
   const updateStep = (key: string, content: string) => {
     setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, content } : s)));
+  };
+
+  const removeIngredientRow = (key: string) => {
+    setIngredients((prev) => prev.filter((i) => i.key !== key));
+  };
+
+  const parseQuantity = (raw: string): number => {
+    const value = Number(raw.replace(",", "."));
+    return Number.isFinite(value) && value >= 0 ? value : 0;
+  };
+
+  async function syncIngredients(rid: number) {
+    if (!userId) return;
+
+    const normalized = ingredients
+      .map((i) => ({
+        ...i,
+        ingredientName: i.ingredientName.trim(),
+        measurementUnit: i.measurementUnit.trim(),
+        quantityRaw: i.quantity.trim(),
+      }))
+      .filter((i) => i.ingredientName.length > 0);
+
+    const currentIds = new Set(
+      normalized.map((i) => i.recipeIngredientId).filter((id): id is number => id != null),
+    );
+
+    for (const oldId of initialIngredientIds) {
+      if (!currentIds.has(oldId)) {
+        await deleteRecipeIngredient(userId, rid, oldId);
+      }
+    }
+
+    for (const row of normalized) {
+      const quantity = parseQuantity(row.quantityRaw);
+      if (row.recipeIngredientId == null) {
+        await addRecipeIngredient(userId, rid, {
+          ingredientName: row.ingredientName,
+          quantity,
+          measurementUnit: row.measurementUnit,
+        });
+      } else {
+        await patchRecipeIngredient(userId, rid, row.recipeIngredientId, {
+          ingredientName: row.ingredientName,
+          quantity,
+          measurementUnit: row.measurementUnit,
+        });
+      }
+    }
+  }
+
+  const openAddIngredientModal = (ingredientName: string) => {
+    setIngredientModal({ open: true, mode: "add", ingredientName });
+    setIngredientModalQuantity("");
+    setIngredientModalUnit("");
+    setIngredientModalSaving(false);
+    setIngredientDropdownOpen(false);
+    setIngredientSearch("");
+    setIngredientResults([]);
+  };
+
+  const openEditIngredientModal = (row: IngredientRow) => {
+    setIngredientModal({
+      open: true,
+      mode: "edit",
+      rowKey: row.key,
+      ingredientName: row.ingredientName,
+    });
+    setIngredientModalQuantity(row.quantity);
+    setIngredientModalUnit(row.measurementUnit);
+    setIngredientModalSaving(false);
+  };
+
+  const closeIngredientModal = () => {
+    setIngredientModal({ open: false });
+    setIngredientModalSaving(false);
+    setIngredientModalError("");
+  };
+
+  const requestCloseIngredientModal = () => {
+    if (!ingredientModal.open) return;
+    const original =
+      ingredientModal.mode === "edit" && ingredientModal.rowKey
+        ? ingredients.find((x) => x.key === ingredientModal.rowKey)
+        : undefined;
+    const originalQty = original?.quantity ?? "";
+    const originalUnit = original?.measurementUnit ?? "";
+    const changed =
+      ingredientModalQuantity.trim() !== originalQty.trim() ||
+      ingredientModalUnit.trim() !== originalUnit.trim();
+    if (changed) {
+      const ok = window.confirm("Tienes cambios sin guardar en este ingrediente. ¿Cerrar igualmente?");
+      if (!ok) return;
+    }
+    closeIngredientModal();
+  };
+
+  const saveIngredientFromModal = () => {
+    if (!ingredientModal.open) return;
+    setIngredientModalSaving(true);
+    setIngredientModalError("");
+    const quantityRaw = ingredientModalQuantity.trim();
+    const quantity = quantityRaw.length > 0 ? quantityRaw : "0";
+    const normalized: IngredientRow = {
+      key: ingredientModal.mode === "edit" && ingredientModal.rowKey ? ingredientModal.rowKey : makeLocalIngredient().key,
+      recipeIngredientId:
+        ingredientModal.mode === "edit" && ingredientModal.rowKey
+          ? ingredients.find((x) => x.key === ingredientModal.rowKey)?.recipeIngredientId
+          : undefined,
+      ingredientName: ingredientModal.ingredientName.trim(),
+      quantity,
+      measurementUnit: ingredientModalUnit.trim(),
+    };
+    if (!normalized.ingredientName) {
+      setIngredientModalSaving(false);
+      setIngredientModalError("El ingrediente no puede estar vacío.");
+      return;
+    }
+    if (ingredientModal.mode === "edit" && ingredientModal.rowKey) {
+      setIngredients((prev) => prev.map((x) => (x.key === ingredientModal.rowKey ? normalized : x)));
+    } else {
+      setIngredients((prev) => [...prev, normalized]);
+    }
+    closeIngredientModal();
+  };
+
+  const deleteIngredientFromModal = () => {
+    if (!ingredientModal.open || ingredientModal.mode !== "edit" || !ingredientModal.rowKey) return;
+    const ok = window.confirm("¿Seguro que quieres borrar este ingrediente?");
+    if (!ok) return;
+    removeIngredientRow(ingredientModal.rowKey);
+    closeIngredientModal();
   };
 
   const autoGrowTextarea = (el: HTMLTextAreaElement) => {
@@ -606,6 +918,7 @@ export function CreateRecipePage() {
       goAfterExit();
       return;
     }
+    setPendingRouteExit(false);
     setExitDialogOpen(true);
   };
 
@@ -804,6 +1117,81 @@ export function CreateRecipePage() {
             )}
           </div>
 
+          <div className="create-recipe-card create-recipe-card--ingredients">
+            <div className="create-recipe-ingredients-head">
+              <span className="create-recipe-label">Ingredientes</span>
+            </div>
+            <p className="create-recipe-hint">
+              Busca un ingrediente y ábrelo en la ventana de cantidad/unidad para añadirlo.
+            </p>
+
+            <div className="create-recipe-ingredient-search" ref={ingredientsWrapRef}>
+              <input
+                className="create-recipe-input"
+                value={ingredientSearch}
+                onChange={(e) => {
+                  setIngredientSearch(e.target.value);
+                  setIngredientDropdownOpen(true);
+                }}
+                onFocus={() => setIngredientDropdownOpen(true)}
+                placeholder="Buscar ingrediente..."
+                autoComplete="off"
+              />
+              {ingredientDropdownOpen && ingredientSearch.trim().length > 0 && (
+                <div className="create-recipe-ingredient-suggest" role="listbox" aria-label="Resultados ingredientes">
+                  {ingredientSearchLoading && (
+                    <div className="create-recipe-ingredient-suggest__item">Buscando...</div>
+                  )}
+                  {!ingredientSearchLoading &&
+                    ingredientResults.map((s) => (
+                      <button
+                        key={s.ingredientId}
+                        type="button"
+                        className="create-recipe-ingredient-suggest__item"
+                        onClick={() => openAddIngredientModal(s.name)}
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                  {!ingredientSearchLoading &&
+                    !ingredientResults.some(
+                      (s) => s.name.trim().toLowerCase() === ingredientSearch.trim().toLowerCase(),
+                    ) && (
+                      <button
+                        type="button"
+                        className="create-recipe-ingredient-suggest__item create-recipe-ingredient-suggest__item--new"
+                        onClick={() => openAddIngredientModal(ingredientSearch.trim())}
+                      >
+                        Añadir "{ingredientSearch.trim()}"
+                      </button>
+                    )}
+                </div>
+              )}
+            </div>
+
+            <div className="create-recipe-ingredient-grid">
+              {ingredients.map((row) => (
+                <button
+                  key={row.key}
+                  type="button"
+                  className="create-recipe-ingredient-card create-recipe-ingredient-card--summary"
+                  onClick={() => openEditIngredientModal(row)}
+                >
+                  <span className="create-recipe-ingredient-summary__imageWrap">
+                    <img src="/logoShoppingList.png" alt="" className="create-recipe-ingredient-summary__image" />
+                  </span>
+                  <span className="create-recipe-ingredient-summary__name">{row.ingredientName}</span>
+                  <span className="create-recipe-ingredient-summary__bottom">
+                    <span className="create-recipe-ingredient-summary__pill">{row.quantity || "0"}</span>
+                    <span className="create-recipe-ingredient-summary__pill">
+                      {row.measurementUnit || "sin unidad"}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="create-recipe-card create-recipe-card--steps">
             <div className="create-recipe-steps-head">
               <span className="create-recipe-label">Pasos</span>
@@ -908,6 +1296,30 @@ export function CreateRecipePage() {
         </div>
       )}
 
+      <IngredientEntryDialog
+        open={ingredientModal.open}
+        title="Ingrediente"
+        ingredientName={ingredientModal.open ? ingredientModal.ingredientName : ""}
+        quantityText={ingredientModalQuantity}
+        unitText={ingredientModalUnit}
+        units={units}
+        saving={ingredientModalSaving}
+        error={ingredientModalError}
+        quantityLabel="Cantidad"
+        unitLabel="Unidad de medida"
+        availableUnitsLabel="Unidades disponibles"
+        cancelLabel="Cancelar"
+        confirmLabel={ingredientModal.open && ingredientModal.mode === "edit" ? "Guardar" : "Añadir"}
+        showDelete={ingredientModal.open && ingredientModal.mode === "edit"}
+        deleteLabel="Borrar"
+        onQuantityChange={setIngredientModalQuantity}
+        onUnitChange={setIngredientModalUnit}
+        onRequestClose={requestCloseIngredientModal}
+        onCancel={closeIngredientModal}
+        onConfirm={saveIngredientFromModal}
+        onDelete={deleteIngredientFromModal}
+      />
+
       <ConfirmDialog
         open={exitDialogOpen}
         title={isPublishedEditMode ? "Hay cambios sin guardar" : "¿Quieres guardar los cambios en borrador?"}
@@ -924,7 +1336,14 @@ export function CreateRecipePage() {
             setExitBusy(true);
             try {
               setExitDialogOpen(false);
-              await discardAndExit();
+              if (pendingRouteExit && pendingRoutePath) {
+                await discardWithoutNavigation();
+                navigate(pendingRoutePath);
+                setPendingRouteExit(false);
+                setPendingRoutePath(null);
+              } else {
+                await discardAndExit();
+              }
             } finally {
               setExitBusy(false);
             }
@@ -935,11 +1354,27 @@ export function CreateRecipePage() {
             setExitBusy(true);
             try {
               setExitDialogOpen(false);
-              if (isPublishedEditMode) return;
+              if (isPublishedEditMode) {
+                if (pendingRouteExit) {
+                  setPendingRouteExit(false);
+                  setPendingRoutePath(null);
+                }
+                return;
+              }
               await saveCurrentAsDraft();
-              goAfterExit();
+              if (pendingRouteExit && pendingRoutePath) {
+                navigate(pendingRoutePath);
+                setPendingRouteExit(false);
+                setPendingRoutePath(null);
+              } else {
+                goAfterExit();
+              }
             } catch (e) {
               setSubmitError(e instanceof Error ? e.message : "No se pudo guardar el borrador.");
+              if (pendingRouteExit) {
+                setPendingRouteExit(false);
+                setPendingRoutePath(null);
+              }
             } finally {
               setExitBusy(false);
             }

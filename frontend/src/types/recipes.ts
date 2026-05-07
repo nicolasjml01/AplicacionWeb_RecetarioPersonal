@@ -18,6 +18,23 @@ export interface RecipeStepDto {
   media: RecipeMediaDto[];
 }
 
+export interface RecipeIngredientDto {
+  recipeIngredientId: number;
+  ingredient: {
+    ingredientId: number;
+    name: string;
+    categoryId: number | null;
+    categoryName: string | null;
+  };
+  quantity: number;
+  unitOfMeasure: {
+    unitId: number;
+    name: string;
+    symbol: string | null;
+  } | null;
+  displayOrder: number;
+}
+
 export type RecipePublicationState = "DRAFT" | "PUBLISHED";
 
 export interface RecipeDto {
@@ -26,6 +43,7 @@ export interface RecipeDto {
   title: string;
   publicationState: RecipePublicationState;
   categories: RecipeCategoryDto[];
+  ingredients: RecipeIngredientDto[];
   steps: RecipeStepDto[];
   recipeLevelMedia: RecipeMediaDto[];
 }

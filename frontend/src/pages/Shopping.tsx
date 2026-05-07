@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getCurrentUserId } from "../auth/session";
 import type {
   IngredientCategoryCatalogDto,
@@ -14,6 +14,7 @@ import {
   patchShoppingItem,
   searchIngredients,
 } from "../api/shopping";
+import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryDialog";
 
 type ModalMode = "add" | "edit";
 
@@ -172,12 +173,6 @@ export function Shopping() {
 
   const selectedIngredientName = modal.open ? modal.ingredientName : undefined;
   const editItemId = modal.open ? modal.itemId : undefined;
-
-  const filteredUnits = useMemo(() => {
-    const q = unitText.trim().toLowerCase();
-    if (!q) return units;
-    return units.filter((u) => u.name.toLowerCase().includes(q));
-  }, [unitText, units]);
 
   const showSearchDropdown =
     ingredientResults.length > 0 ||
@@ -480,102 +475,28 @@ export function Shopping() {
         </section>
       </div>
 
-      {/* Modal */}
-      {modal.open && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="shopping-modal">
-            <h2 className="modal__title">
-              {modal.mode === "add" ? "Add item" : "Edit item"}
-            </h2>
-
-            {modal.mode === "add" ? (
-              <div className="modal__subtitle">
-                Ingredient: <strong>{modal.ingredientName}</strong>
-              </div>
-            ) : (
-              <div className="modal__subtitle">
-                Ingredient: <strong>{modal.ingredientToEdit}</strong>
-              </div>
-            )}
-
-            <div className="modal__form">
-              <label className="modal__label">
-                Quantity
-                <input
-                  className="modal__input"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={quantityText}
-                  onChange={(e) => setQuantityText(e.target.value)}
-                  placeholder="e.g. 2"
-                />
-              </label>
-
-              <div className="modal__unit">
-                <label className="modal__label">
-                  Unit of measure (type or choose)
-                  <input
-                    className="modal__input"
-                    value={unitText}
-                    onChange={(e) => setUnitText(e.target.value)}
-                    placeholder="e.g. gramos, litros, unidades..."
-                  />
-                </label>
-
-                <div className="modal__unitList">
-                  <div className="modal__unitListTitle">Available units</div>
-                  <div className="modal__unitListScroll">
-                    {loadingUnits ? (
-                      <div className="shopping-hint">Loading units...</div>
-                    ) : filteredUnits.length === 0 ? (
-                      <div className="shopping-hint">
-                        No unit matches "{unitText}".
-                      </div>
-                    ) : (
-                      filteredUnits.map((u) => {
-                        const symbolPart = u.symbol ? ` (${u.symbol})` : "";
-                        return (
-                          <button
-                            key={u.unitId}
-                            type="button"
-                            className="modal__unitOption"
-                            onClick={() => setUnitText(u.name)}
-                          >
-                            {u.name}
-                            {symbolPart}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {modalError && <div className="shopping-error">{modalError}</div>}
-
-              <div className="modal__actions">
-                <button
-                  type="button"
-                  className="btn btn--secondary"
-                  onClick={closeModal}
-                  disabled={saving}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--primary"
-                  onClick={handleSaveModal}
-                  disabled={saving}
-                >
-                  {saving ? "Saving..." : "Save"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <IngredientEntryDialog
+        open={modal.open}
+        title={modal.open ? (modal.mode === "add" ? "Add item" : "Edit item") : "Add item"}
+        ingredientName={modal.open ? (modal.mode === "add" ? (modal.ingredientName ?? "") : (modal.ingredientToEdit ?? "")) : ""}
+        quantityText={quantityText}
+        unitText={unitText}
+        units={units}
+        loadingUnits={loadingUnits}
+        saving={saving}
+        error={modalError}
+        quantityLabel="Quantity"
+        unitLabel="Unit of measure"
+        availableUnitsLabel="Available units"
+        cancelLabel="Cancel"
+        confirmLabel="Save"
+        quantityPlaceholder="e.g. 2"
+        unitPlaceholder="e.g. gramos, litros, unidades..."
+        onQuantityChange={setQuantityText}
+        onUnitChange={setUnitText}
+        onCancel={closeModal}
+        onConfirm={() => void handleSaveModal()}
+      />
     </div>
   );
 }
