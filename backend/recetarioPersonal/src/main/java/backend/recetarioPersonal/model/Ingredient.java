@@ -17,6 +17,9 @@ public class Ingredient {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "normalized_name", nullable = false)
+    private String normalizedName;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = true, referencedColumnName = "category_id")
     private IngredientCategory category;
@@ -58,5 +61,13 @@ public class Ingredient {
 
     public void setOwner(User owner) {
         this.owner = owner;
+    }
+
+    public String getNormalizedName() {
+        return normalizedName;
+    }
+
+    public void setNormalizedName(String normalizedName) {
+        this.normalizedName = normalizedName;
     }
 }

@@ -8,7 +8,6 @@ import backend.recetarioPersonal.repository.RecipeIngredientRepository;
 import backend.recetarioPersonal.repository.RecipeRepository;
 import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.view.CreateRecipeIngredientRequest;
-import backend.recetarioPersonal.view.CreateShoppingListItemRequest;
 import backend.recetarioPersonal.view.IngredientDto;
 import backend.recetarioPersonal.view.RecipeIngredientDto;
 import backend.recetarioPersonal.view.UnitOfMeasureDto;

@@ -11,6 +11,7 @@ type Props = {
 
 export function CategoryCard({ category, previewRecipes, onOpenCategory, onEditCategory }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const isDefaultCategory = category.name.trim().toLowerCase() === "sin categoría";
 
   return (
     <article className="home-category-card home-category-card--with-menu">
@@ -26,32 +27,34 @@ export function CategoryCard({ category, previewRecipes, onOpenCategory, onEditC
           )}
         </div>
       </button>
-      <div className="home-category-card__menu-wrap">
-        <button
-          type="button"
-          className="recipe-detail__menu-trigger"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label={`Acciones de ${category.name}`}
-          aria-expanded={menuOpen}
-        >
-          ⋯
-        </button>
-        {menuOpen && (
-          <div className="recipe-detail__menu" role="menu" aria-label="Acciones">
-            <button
-              type="button"
-              role="menuitem"
-              className="recipe-detail__menu-item"
-              onClick={() => {
-                setMenuOpen(false);
-                onEditCategory(category);
-              }}
-            >
-              Editar categoría
-            </button>
-          </div>
-        )}
-      </div>
+      {!isDefaultCategory && (
+        <div className="home-category-card__menu-wrap">
+          <button
+            type="button"
+            className="recipe-detail__menu-trigger"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label={`Acciones de ${category.name}`}
+            aria-expanded={menuOpen}
+          >
+            ⋯
+          </button>
+          {menuOpen && (
+            <div className="recipe-detail__menu" role="menu" aria-label="Acciones">
+              <button
+                type="button"
+                role="menuitem"
+                className="recipe-detail__menu-item"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEditCategory(category);
+                }}
+              >
+                Editar categoría
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </article>
   );
 }

@@ -12,23 +12,25 @@ import java.util.Optional;
  * Ingredient persistence. Visibility: catalog rows ({@code owner} null) plus rows owned by the given user.
  */
 public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
+        @Query("""
+                select i from Ingredient i
+                left join fetch i.category
+                where i.normalizedName = :key
+                and (i.owner is null or i.owner.userId = :userId)
+                """)
+        Optional<Ingredient> findVisibleToUserByNormalizedKey(
+                @Param("key") String key,
+                @Param("userId") long userId
+        );
 
         @Query("""
                 select i from Ingredient i
                 left join fetch i.category
-                where lower(i.name) like lower(concat('%', :q, '%'))
+                where i.normalizedName like concat('%', :key, '%')
                 and (i.owner is null or i.owner.userId = :userId)
                 """)
-        List<Ingredient> searchVisibleToUser(@Param("q") String q, @Param("userId") long userId);
-
-        @Query("""
-                select i from Ingredient i
-                left join fetch i.category
-                where lower(i.name) = lower(:name)
-                and (i.owner is null or i.owner.userId = :userId)
-                """)
-        Optional<Ingredient> findVisibleToUserByExactNameIgnoreCase(
-                @Param("name") String name,
+        List<Ingredient> searchVisibleToUserByNormalizedKey(
+                @Param("key") String key,
                 @Param("userId") long userId
         );
         

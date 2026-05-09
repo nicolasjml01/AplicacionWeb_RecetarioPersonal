@@ -36,6 +36,7 @@ export function CategoryRecipesPage() {
   const [updatingCategory, setUpdatingCategory] = useState(false);
 
   const bootstrapDoneRef = useRef(false);
+  const isDefaultCategory = categoryName.trim().toLowerCase() === "sin categoría";
 
   useEffect(() => {
     bootstrapDoneRef.current = false;
@@ -137,7 +138,7 @@ export function CategoryRecipesPage() {
   };
 
   const handleRenameCategory = async (name: string) => {
-    if (!userId || !Number.isFinite(categoryId)) return;
+    if (!userId || !Number.isFinite(categoryId) || isDefaultCategory) return;
     setUpdatingCategory(true);
     try {
       const updated = await updateRecipeCategory(userId, categoryId, name);
@@ -167,16 +168,18 @@ export function CategoryRecipesPage() {
         <h1 className="category-recipes-title">
           {initialLoading && !categoryName ? "…" : categoryName}
         </h1>
-        <div className="category-recipes-header__actions">
-          <button
-            type="button"
-            className="btn btn--secondary"
-            onClick={() => setEditCategoryOpen(true)}
-            disabled={initialLoading}
-          >
-            Editar
-          </button>
-        </div>
+        {!isDefaultCategory && (
+          <div className="category-recipes-header__actions">
+            <button
+              type="button"
+              className="btn btn--secondary"
+              onClick={() => setEditCategoryOpen(true)}
+              disabled={initialLoading}
+            >
+              Editar
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="category-recipes-search-wrap">
@@ -294,15 +297,17 @@ export function CategoryRecipesPage() {
           }
         }}
       />
-      <CreateCategoryModal
-        open={editCategoryOpen}
-        loading={updatingCategory}
-        title="Editar categoría"
-        submitLabel="Guardar cambios"
-        initialName={categoryName}
-        onClose={() => setEditCategoryOpen(false)}
-        onSubmit={handleRenameCategory}
-      />
+      {!isDefaultCategory && (
+        <CreateCategoryModal
+          open={editCategoryOpen}
+          loading={updatingCategory}
+          title="Editar categoría"
+          submitLabel="Guardar cambios"
+          initialName={categoryName}
+          onClose={() => setEditCategoryOpen(false)}
+          onSubmit={handleRenameCategory}
+        />
+      )}
       <ConfirmDialog
         open={pendingDeleteRecipe != null}
         title="¿Eliminar esta receta?"

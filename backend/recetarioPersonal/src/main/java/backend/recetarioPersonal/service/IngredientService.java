@@ -6,6 +6,7 @@ import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.IngredientCategoryRepository;
 import backend.recetarioPersonal.repository.IngredientRepository;
 import backend.recetarioPersonal.repository.UserRepository;
+import backend.recetarioPersonal.service.util.IngredientNameNormalizer;
 import backend.recetarioPersonal.view.IngredientCategoryCatalogDto;
 import backend.recetarioPersonal.view.IngredientDto;
 import org.springframework.stereotype.Service;
@@ -47,7 +48,11 @@ public class IngredientService {
         if (query == null || query.isBlank()) {
             return List.of();
         }
-        return ingredientRepository.searchVisibleToUser(query.trim(), userId)
+        String key = IngredientNameNormalizer.normalize(query);
+        if (key.isEmpty()) {
+            return List.of();
+        }
+        return ingredientRepository.searchVisibleToUserByNormalizedKey(key, userId)
                 .stream()
                 .map(this::toDto)
                 .toList();
@@ -62,11 +67,14 @@ public class IngredientService {
             throw new IllegalArgumentException("Ingredient name cannot be blank");
         }
         String trimmed = name.trim();
+        String key = IngredientNameNormalizer.normalize(trimmed);
+        if (key.isEmpty()) {
+            throw new IllegalArgumentException("Ingredient name cannot be blank");
+        }
         userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        Optional<Ingredient> existing = ingredientRepository.findVisibleToUserByExactNameIgnoreCase(trimmed, userId);
-        
+        Optional<Ingredient> existing = ingredientRepository.findVisibleToUserByNormalizedKey(key, userId);
         if (existing.isPresent()) {
             return existing.get();
         }
@@ -74,6 +82,7 @@ public class IngredientService {
                 .orElseThrow(() -> new IllegalStateException("Category 'Propios' must exist. Apply Flyway migrations (V2 seed)."));
         Ingredient newIngredient = new Ingredient();
         newIngredient.setName(trimmed);
+        newIngredient.setNormalizedName(key);
         newIngredient.setCategory(own);
         User ownerRef = userRepository.getReferenceById(userId);
         newIngredient.setOwner(ownerRef);
