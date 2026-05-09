@@ -200,6 +200,9 @@ export function Home() {
             previewRecipes={recipesByCategoryId.get(c.categoryId) ?? []}
             onOpenCategory={handleOpenCategory}
             onEditCategory={(category) => setEditingCategory(category)}
+            onCreateRecipeInCategory={(categoryId) =>
+              navigate(`/home/recipes/new?categoryId=${categoryId}`)
+            }
           />
         ))}
       </div>

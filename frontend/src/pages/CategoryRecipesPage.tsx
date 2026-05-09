@@ -178,6 +178,16 @@ export function CategoryRecipesPage() {
             >
               Editar
             </button>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() =>
+                navigate(`/home/recipes/new?categoryId=${categoryId}`)
+              }
+              disabled={initialLoading}
+            >
+              Añadir receta
+            </button>
           </div>
         )}
       </header>

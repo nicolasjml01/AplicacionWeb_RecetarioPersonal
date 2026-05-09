@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RecipeDto, RecipeCategoryDto } from "../../types/recipes";
 import { RecipeMiniTile } from "../recipe/RecipeMiniTile";
 
@@ -7,11 +7,32 @@ type Props = {
   previewRecipes: RecipeDto[];
   onOpenCategory: (categoryId: number) => void;
   onEditCategory: (category: RecipeCategoryDto) => void;
+  onCreateRecipeInCategory: (categoryId: number) => void;
 };
 
-export function CategoryCard({ category, previewRecipes, onOpenCategory, onEditCategory }: Props) {
+export function CategoryCard({
+  category,
+  previewRecipes,
+  onOpenCategory,
+  onEditCategory,
+  onCreateRecipeInCategory,
+}: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuWrapRef = useRef<HTMLDivElement | null>(null);
   const isDefaultCategory = category.name.trim().toLowerCase() === "sin categoría";
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (menuWrapRef.current && !menuWrapRef.current.contains(target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [menuOpen]);
 
   return (
     <article className="home-category-card home-category-card--with-menu">
@@ -28,7 +49,7 @@ export function CategoryCard({ category, previewRecipes, onOpenCategory, onEditC
         </div>
       </button>
       {!isDefaultCategory && (
-        <div className="home-category-card__menu-wrap">
+        <div className="home-category-card__menu-wrap" ref={menuWrapRef}>
           <button
             type="button"
             className="recipe-detail__menu-trigger"
@@ -40,6 +61,17 @@ export function CategoryCard({ category, previewRecipes, onOpenCategory, onEditC
           </button>
           {menuOpen && (
             <div className="recipe-detail__menu" role="menu" aria-label="Acciones">
+              <button
+                type="button"
+                role="menuitem"
+                className="recipe-detail__menu-item recipe-detail__menu-item--primary"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onCreateRecipeInCategory(category.categoryId);
+                }}
+              >
+                Añadir receta
+              </button>
               <button
                 type="button"
                 role="menuitem"

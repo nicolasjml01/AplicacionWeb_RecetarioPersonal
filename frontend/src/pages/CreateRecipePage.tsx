@@ -141,6 +141,7 @@ export function CreateRecipePage() {
   const userId = getCurrentUserId();
   const draftIdParam = searchParams.get("draftId");
   const editIdParam = searchParams.get("editId");
+  const categoryIdParam = searchParams.get("categoryId");
   const openedExistingDraft = draftIdParam != null && draftIdParam !== "";
 
   const globalFileRef = useRef<HTMLInputElement>(null);
@@ -365,7 +366,9 @@ export function CreateRecipePage() {
     }
 
     setTitle("");
-    setSelectedCategoryId(null);
+    const parsedCategory =
+      categoryIdParam != null && categoryIdParam !== "" ? Number(categoryIdParam) : NaN;
+    setSelectedCategoryId(Number.isFinite(parsedCategory) ? parsedCategory : null);
     setIngredients([]);
     setIngredientSearch("");
     setIngredientResults([]);
@@ -376,7 +379,7 @@ export function CreateRecipePage() {
     setInitialStepIds([]);
     setIsPublishedEditMode(false);
     setBooting(false);
-  }, [userId, draftIdParam, editIdParam, navigate, applyRecipe]);
+  }, [userId, draftIdParam, editIdParam, categoryIdParam, navigate, applyRecipe]);
 
   useEffect(() => {
     void bootstrap();
