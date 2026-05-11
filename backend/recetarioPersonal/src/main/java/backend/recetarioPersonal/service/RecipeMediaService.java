@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -86,6 +87,44 @@ public class RecipeMediaService {
         return toDto(saved);
     }
 
+    /**
+     * Replaces the physical file of an existing media item, keeping its id, step, and display order.
+     * Used by the in-app image editor when the user re-edits an already uploaded photo.
+     */
+    @Transactional
+    public RecipeMediaDto replaceContent(long userId, long recipeId, long mediaId, MultipartFile file) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
+        RecipeMedia media = recipeMediaRepository.findByMediaIdAndRecipe_RecipeId(mediaId, recipeId)
+                .orElseThrow(() -> new IllegalArgumentException("Archivo multimedia no encontrado: " + mediaId));
+        if (media.getRecipe().getOwner().getUserId() != userId) {
+            throw new IllegalArgumentException("El archivo no pertenece a este usuario.");
+        }
+
+        String oldPath = media.getRelativePath();
+        final String newPath;
+        try {
+            newPath = mediaStorageService.store(userId, recipeId, file);
+        } catch (IOException e) {
+            throw new FileStorageException("No se pudo guardar el archivo subido.", e);
+        }
+
+        media.setRelativePath(newPath);
+        media.setContentType(file.getContentType() != null ? file.getContentType() : "application/octet-stream");
+        media.setOriginalFilename(file.getOriginalFilename());
+
+        RecipeMedia saved = recipeMediaRepository.save(media);
+
+        // Best effort: orphan blob is preferable to losing the saved update.
+        try {
+            mediaStorageService.deleteIfExists(oldPath);
+        } catch (FileStorageException ignored) {
+            // swallow; the new file is already linked
+        }
+
+        return toDto(saved);
+    }
+
     @Transactional
     public void deleteMedia(long userId, long recipeId, long mediaId) throws IOException {
         userRepository.findById(userId)
@@ -100,7 +139,7 @@ public class RecipeMediaService {
     }
 
     /**
-     * Reorders media in one scope: {@code stepId == null} = recipe-level gallery; otherwise that step's attachments.
+     * Reorder media in one scope: {@code stepId == null} = recipe-level gallery; otherwise that step's attachments.
      * Body must list every media id in that scope exactly once, in desired order (index 0 = cover / first in UI).
      */
     @Transactional
@@ -124,14 +163,27 @@ public class RecipeMediaService {
                     "La lista de ids no coincide con los archivos multimedia de este ámbito.");
         }
 
+        // Index by mediaId to access in O(1) in the two passes.
+        Map<Long, RecipeMedia> byId = inScope.stream()
+                .collect(Collectors.toMap(RecipeMedia::getMediaId, m -> m));
+
+        // Pass 1: park all rows of the scope in negative values
+        // (-1, -2, -3, ...). The unique index uk_recipe_media_global_display_order /
+        // uk_recipe_media_step_display_order is not violated at any moment
+        // because no other row of the scope can have a negative.
         for (int i = 0; i < ordered.size(); i++) {
-            Long mid = ordered.get(i);
-            RecipeMedia m = inScope.stream()
-                    .filter(x -> x.getMediaId().equals(mid))
-                    .findFirst()
-                    .orElseThrow();
-            m.setDisplayOrder(i);
-            recipeMediaRepository.save(m);
+            byId.get(ordered.get(i)).setDisplayOrder(-(i + 1));
+        }
+        // Force Hibernate to send the UPDATEs with the negatives NOW. Without this
+        // flush, Hibernate would merge the first pass and the second pass into a single UPDATE
+        // per row (with the final positive value) and we would go back to the bug.
+        recipeMediaRepository.flush();
+
+        // Pass 2: there are no more rows of the scope with a positive display_order,
+        // so we assign 0..N-1 without risk of collision. The final UPDATE will come
+        // in the implicit flush of the commit of the transaction.
+        for (int i = 0; i < ordered.size(); i++) {
+            byId.get(ordered.get(i)).setDisplayOrder(i);
         }
     }
 

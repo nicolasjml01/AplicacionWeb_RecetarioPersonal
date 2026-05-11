@@ -2356,6 +2356,13 @@ body {
   background: rgba(45, 90, 39, 0.06);
 }
 
+.create-recipe-add-step--bottom {
+  margin-top: 0.85rem;
+  width: 100%;
+  padding: 0.6rem 0.65rem;
+  border-style: dashed;
+}
+
 .create-recipe-step-list {
   list-style: none;
   margin: 0.75rem 0 0;
@@ -2562,6 +2569,406 @@ body {
   color: #fff;
 }
 
+/* ===== Upload staging queue ===== */
+.upload-staging-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 90;
+}
+
+.upload-staging-dialog {
+  background: var(--color-card);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.upload-staging__header {
+  padding: 1rem 1.1rem 0.6rem;
+}
+
+.upload-staging__title {
+  margin: 0 0 0.15rem;
+  font-size: 1.1rem;
+}
+
+.upload-staging__context {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+}
+
+.upload-staging__list {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.upload-staging__row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.upload-staging__row:last-child {
+  border-bottom: none;
+}
+
+.upload-staging__thumb-wrap {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #eee;
+}
+
+.upload-staging__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.upload-staging__edited {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  background: var(--color-primary);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.upload-staging__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.upload-staging__name {
+  margin: 0;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-staging__meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
+.upload-staging__actions {
+  display: flex;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+.upload-staging__btn {
+  margin-top: 0;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.upload-staging__btn--danger {
+  color: #b91c1c;
+  border-color: #f3c2c2;
+}
+
+.upload-staging__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1.1rem;
+  border-top: 1px solid var(--color-border);
+  background: #fafafa;
+}
+
+.upload-staging__summary {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+}
+
+.upload-staging__footer-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.upload-staging__footer-actions .btn {
+  margin-top: 0;
+}
+
+.upload-staging__empty {
+  margin: 0;
+  padding: 1.2rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+/* ===== Image editor ===== */
+.image-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  z-index: 100;
+}
+
+.image-editor-dialog {
+  background: var(--color-card);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 980px;
+  height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.3);
+}
+
+.image-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.image-editor__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.image-editor__header-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.image-editor__btn-sm {
+  margin-top: 0;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.84rem;
+}
+
+.image-editor__close {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+}
+
+.image-editor__close:hover {
+  background: var(--color-border);
+}
+
+.image-editor__body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.image-editor__canvas-wrap {
+  flex: 1;
+  position: relative;
+  background: #1a1a1a;
+  min-height: 0;
+}
+
+.image-editor__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ddd;
+  margin: 0;
+}
+
+.image-editor__controls {
+  width: 280px;
+  border-left: 1px solid var(--color-border);
+  padding: 0.85rem 0.9rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: #fafafa;
+}
+
+.image-editor__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.image-editor__section-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
+.image-editor__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.image-editor__chip {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.image-editor__chip--active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.image-editor__row-buttons {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.image-editor__btn {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.86rem;
+  cursor: pointer;
+  flex: 1 1 auto;
+}
+
+.image-editor__btn--active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.image-editor__caption {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
+.image-editor__slider-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 36px 22px;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+}
+
+.image-editor__slider-row > span:first-child {
+  color: var(--color-text-secondary);
+}
+
+.image-editor__slider-row input[type="range"] {
+  width: 100%;
+}
+
+.image-editor__slider-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+}
+
+.image-editor__slider-reset {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  padding: 0;
+}
+
+.image-editor__slider-reset:hover {
+  color: var(--color-primary);
+}
+
+.image-editor__footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.image-editor__footer .btn {
+  margin-top: 0;
+}
+
+.image-editor__error {
+  margin: 0;
+  margin-right: auto;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 720px) {
+  .image-editor-dialog {
+    height: 96vh;
+    max-width: none;
+    border-radius: 10px;
+  }
+  .image-editor__body {
+    flex-direction: column;
+  }
+  .image-editor__canvas-wrap {
+    flex: 1;
+    min-height: 50vh;
+  }
+  .image-editor__controls {
+    width: auto;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    max-height: 40vh;
+  }
+}
+
 .create-recipe-preview {
   width: 100%;
   max-width: 520px;
@@ -2720,6 +3127,28 @@ body {
 
 .media-strip__remove:hover {
   background: rgba(185, 28, 28, 0.95);
+}
+
+.media-strip__edit {
+  position: absolute;
+  top: 4px;
+  right: 34px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-strip__edit:hover {
+  background: rgba(45, 90, 39, 0.95);
 }
 
 .media-strip__cover-badge {

@@ -11,6 +11,8 @@ type Props = {
   onAdd: () => void;
   onRemove: (mediaId: number) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
+  // Optional: enables the pencil button on image thumbnails to re-edit them.
+  onEdit?: (mediaId: number) => void;
   hideHint?: boolean;
 };
 
@@ -25,6 +27,7 @@ export function MediaStripEditor({
   onAdd,
   onRemove,
   onReorder,
+  onEdit,
   hideHint = false,
 }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -68,6 +71,17 @@ export function MediaStripEditor({
                 <video className="media-strip__thumb" muted playsInline src={resolveMediaUrl(m.url)} />
               ) : (
                 <img className="media-strip__thumb" src={resolveMediaUrl(m.url)} alt="" />
+              )}
+              {!disabled && onEdit && !m.contentType.startsWith("video/") && (
+                <button
+                  type="button"
+                  className="media-strip__edit"
+                  onClick={() => onEdit(m.mediaId)}
+                  aria-label="Editar imagen"
+                  title="Editar imagen"
+                >
+                  ✎
+                </button>
               )}
               {!disabled && (
                 <button

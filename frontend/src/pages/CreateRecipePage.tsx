@@ -14,7 +14,12 @@ import {
   patchRecipeStep,
   publishRecipe,
 } from "../api/recipes";
-import { deleteRecipeMedia, reorderRecipeMedia, uploadRecipeMedia } from "../api/recipeMedia";
+import {
+  deleteRecipeMedia,
+  replaceRecipeMediaContent,
+  reorderRecipeMedia,
+  uploadRecipeMedia,
+} from "../api/recipeMedia";
 import { getRecipeCategories } from "../api/recipeCategories";
 import { getUnits, searchIngredients } from "../api/shopping";
 import type { IngredientDto, UnitOfMeasureDto } from "../types/shopping";
@@ -22,6 +27,15 @@ import type { RecipeCategoryDto, RecipeDto, RecipeIngredientDto, RecipeMediaDto 
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { MediaStripEditor } from "../components/recipe/editor/MediaStripEditor";
 import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryDialog";
+import { UploadStagingDialog } from "../components/recipe/editor/UploadStagingDialog";
+import { ImageEditorDialog } from "../components/recipe/editor/ImageEditorDialog";
+import { resolveMediaUrl } from "../utils/mediaUrl";
+import {
+  applyImageEdits,
+  hasEdits,
+  isEditableImage,
+  type ImageEdits,
+} from "../utils/imageEditing";
 
 const DEFAULT_CATEGORY = "Sin categoría";
 const DRAFT_INIT_TITLE = "Receta nueva";
@@ -179,6 +193,22 @@ export function CreateRecipePage() {
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [exitBusy, setExitBusy] = useState(false);
   const [stepUploadTarget, setStepUploadTarget] = useState<number | null>(null);
+  // Holds the picked files between OS dialog and actual upload, so the user
+  // can edit/remove them first. target = where the batch will land.
+  const [stagingState, setStagingState] = useState<{
+    open: boolean;
+    files: File[];
+    target: "global" | { stepId: number };
+  } | null>(null);
+  // Re-edit flow for already uploaded images: holds the fetched blob until the
+  // editor closes. saving flips on while we POST the replacement to the API.
+  const [editExistingState, setEditExistingState] = useState<{
+    mediaId: number;
+    file: Blob;
+    fileName: string;
+    saving: boolean;
+    error?: string;
+  } | null>(null);
   const [createdDraftThisSession, setCreatedDraftThisSession] = useState(false);
   const [isPublishedEditMode, setIsPublishedEditMode] = useState(false);
   const [initialIngredientIds, setInitialIngredientIds] = useState<number[]>([]);
@@ -317,6 +347,30 @@ export function CreateRecipePage() {
       // La receta ya está actualizada; el listado de categorías puede refrescarse al volver a home.
     }
   }, [userId, recipeId, applyRecipe]);
+
+  // Refresh "surgical" after uploading/deleting/reordering media: only updates the global gallery
+  // and the media of each step, without touching the title, category, ingredients or text
+  // of the steps (this avoids the phantom placeholder and prevents local edits from being lost).
+  // `overrideId` allows passing a newly created recipeId when the state hasn't been re-rendered yet
+  // (uploading the first image).
+  const refreshMedia = useCallback(
+    async (overrideId?: number) => {
+      const id = overrideId ?? recipeId;
+      if (!userId || id == null) return;
+      const r = await getRecipe(userId, id);
+      setGlobalMedia([...r.recipeLevelMedia].sort((a, b) => a.displayOrder - b.displayOrder));
+      const stepMediaById = new Map<number, RecipeMediaDto[]>();
+      for (const s of r.steps) {
+        stepMediaById.set(s.stepId, [...s.media].sort((a, b) => a.displayOrder - b.displayOrder));
+      }
+      setSteps((prev) =>
+        prev.map((s) =>
+          s.stepId != null ? { ...s, media: stepMediaById.get(s.stepId) ?? [] } : s,
+        ),
+      );
+    },
+    [userId, recipeId],
+  );
 
   const bootstrap = useCallback(async () => {
     if (!userId) return;
@@ -774,6 +828,35 @@ export function CreateRecipePage() {
     el.style.height = `${el.scrollHeight}px`;
   };
 
+  // Tras añadir un paso, dejamos el cursor en el textarea recién creado.
+  // Hace falta esperar al siguiente frame porque addStepRow puede ser async
+  // (espera al backend) y React aún no ha renderizado la fila nueva.
+  const focusLastStepTextarea = () => {
+    requestAnimationFrame(() => {
+      const list = document.querySelector(".create-recipe-step-list");
+      if (!list) return;
+      const textareas = list.querySelectorAll<HTMLTextAreaElement>("textarea");
+      const last = textareas[textareas.length - 1];
+      last?.focus();
+    });
+  };
+
+  const addStepRowAndFocus = async () => {
+    await addStepRow();
+    focusLastStepTextarea();
+  };
+
+  // Atajo Ctrl/Cmd + Enter en el último paso: añade un paso nuevo y mueve el
+  // foco a él. En cualquier otro paso no hacemos nada (el usuario puede usar
+  // Enter normal para saltos de línea dentro del paso).
+  const handleStepKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>, isLast: boolean) => {
+    if (!isLast) return;
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      void addStepRowAndFocus();
+    }
+  };
+
   const addStepRow = async () => {
     const nextNum = steps.length + 1;
     if (isPublishedEditMode || !userId || recipeId == null) {
@@ -812,7 +895,7 @@ export function CreateRecipePage() {
     list.splice(to, 0, m);
     try {
       await reorderRecipeMedia(userId, recipeId, list.map((x) => x.mediaId), undefined);
-      await refreshRecipe();
+      await refreshMedia();
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudo reordenar.");
     }
@@ -822,28 +905,18 @@ export function CreateRecipePage() {
     if (!userId || recipeId == null) return;
     try {
       await deleteRecipeMedia(userId, recipeId, mediaId);
-      await refreshRecipe();
+      await refreshMedia();
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudo eliminar el archivo.");
     }
   };
 
-  const handleGlobalFiles = async (files: FileList | null) => {
-    if (!userId || !files?.length) return;
-    setUploadingGlobal(true);
-    setSubmitError("");
-    try {
-      const rid = await ensureDraftId();
-      for (let i = 0; i < files.length; i++) {
-        await uploadRecipeMedia(userId, rid, files[i]!);
-      }
-      await refreshRecipe();
-    } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : "Error al subir archivos.");
-    } finally {
-      setUploadingGlobal(false);
-      if (globalFileRef.current) globalFileRef.current.value = "";
-    }
+  // Open the staging queue instead of uploading directly. Actual upload
+  // happens in handleStagingConfirm once the user confirms.
+  const handleGlobalFiles = (files: FileList | null) => {
+    if (!files?.length) return;
+    setStagingState({ open: true, files: Array.from(files), target: "global" });
+    if (globalFileRef.current) globalFileRef.current.value = "";
   };
 
   const handleStepReorder = async (stepId: number, from: number, to: number) => {
@@ -855,7 +928,7 @@ export function CreateRecipePage() {
     list.splice(to, 0, m);
     try {
       await reorderRecipeMedia(userId, recipeId, list.map((x) => x.mediaId), stepId);
-      await refreshRecipe();
+      await refreshMedia();
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudo reordenar.");
     }
@@ -865,25 +938,109 @@ export function CreateRecipePage() {
     if (!userId || recipeId == null) return;
     try {
       await deleteRecipeMedia(userId, recipeId, mediaId);
-      await refreshRecipe();
+      await refreshMedia();
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudo eliminar.");
     }
   };
 
-  const handleStepFiles = async (stepId: number, files: FileList | null) => {
-    if (!userId || recipeId == null || !files?.length) return;
-    setSubmitError("");
-    try {
-      for (let i = 0; i < files.length; i++) {
-        await uploadRecipeMedia(userId, recipeId, files[i]!, stepId);
-      }
-      await refreshRecipe();
-    } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : "Error al subir archivos del paso.");
-    } finally {
+  // Same as handleGlobalFiles but targeting a specific step.
+  const handleStepFiles = (stepId: number, files: FileList | null) => {
+    if (!files?.length) {
       if (stepFileRef.current) stepFileRef.current.value = "";
       setStepUploadTarget(null);
+      return;
+    }
+    setStagingState({ open: true, files: Array.from(files), target: { stepId } });
+    if (stepFileRef.current) stepFileRef.current.value = "";
+    setStepUploadTarget(null);
+  };
+
+  // Rasterize edited images, then upload each item in order.
+  // Videos and non-edited files are uploaded as-is.
+  const handleStagingConfirm = async (
+    items: Array<{ file: File; edits: ImageEdits | null }>,
+  ) => {
+    if (!userId || !stagingState || items.length === 0) {
+      setStagingState(null);
+      return;
+    }
+    const target = stagingState.target;
+    if (target === "global") setUploadingGlobal(true);
+    setSubmitError("");
+    try {
+      const rid = await ensureDraftId();
+      for (const item of items) {
+        let toUpload: File = item.file;
+        if (
+          item.edits &&
+          hasEdits(item.edits) &&
+          isEditableImage(item.file)
+        ) {
+          try {
+            const blob = await applyImageEdits(item.file, item.edits);
+            const baseName = item.file.name.replace(/\.[^.]+$/, "");
+            toUpload = new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });
+          } catch (err) {
+            // Fall back to the original file if rasterization fails.
+            console.warn("No se pudo aplicar la edición, se sube el original.", err);
+          }
+        }
+        if (target === "global") {
+          await uploadRecipeMedia(userId, rid, toUpload);
+        } else {
+          await uploadRecipeMedia(userId, rid, toUpload, target.stepId);
+        }
+      }
+      await refreshMedia(rid);
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : "Error al subir archivos.");
+    } finally {
+      if (target === "global") setUploadingGlobal(false);
+      setStagingState(null);
+    }
+  };
+
+  // Fetch the existing image as a blob and open the editor on it.
+  const handleEditExistingMedia = async (mediaId: number) => {
+    // Locate the media in either the global gallery or any step.
+    const fromGlobal = globalMedia.find((m) => m.mediaId === mediaId);
+    const fromStep = !fromGlobal
+      ? steps.flatMap((s) => s.media).find((m) => m.mediaId === mediaId)
+      : null;
+    const media = fromGlobal ?? fromStep;
+    if (!media) return;
+    if (media.contentType.startsWith("video/")) return;
+
+    try {
+      const res = await fetch(resolveMediaUrl(media.url));
+      if (!res.ok) throw new Error(`Error (${res.status}) al leer la imagen.`);
+      const blob = await res.blob();
+      setEditExistingState({
+        mediaId,
+        file: blob,
+        fileName: `imagen-${mediaId}.jpg`,
+        saving: false,
+      });
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : "No se pudo abrir la imagen.");
+    }
+  };
+
+  // Rasterize, POST the replacement and refresh. Keeps the editor open on error.
+  const handleEditExistingApply = async (edits: ImageEdits) => {
+    if (!userId || recipeId == null || !editExistingState) return;
+    setEditExistingState((s) => (s ? { ...s, saving: true, error: undefined } : s));
+    try {
+      const blob = await applyImageEdits(editExistingState.file, edits);
+      const file = new File([blob], editExistingState.fileName, { type: "image/jpeg" });
+      await replaceRecipeMediaContent(userId, recipeId, editExistingState.mediaId, file);
+      await refreshMedia(recipeId);
+      setEditExistingState(null);
+    } catch (e) {
+      setEditExistingState((s) =>
+        s ? { ...s, saving: false, error: e instanceof Error ? e.message : "Error al guardar." } : s,
+      );
     }
   };
 
@@ -1021,6 +1178,7 @@ export function CreateRecipePage() {
               onAdd={() => globalFileRef.current?.click()}
               onRemove={handleGlobalRemove}
               onReorder={handleGlobalReorder}
+              onEdit={(id) => void handleEditExistingMedia(id)}
             />
             {uploadingGlobal && <p className="create-recipe-hint">Subiendo archivos…</p>}
           </div>
@@ -1198,9 +1356,6 @@ export function CreateRecipePage() {
           <div className="create-recipe-card create-recipe-card--steps">
             <div className="create-recipe-steps-head">
               <span className="create-recipe-label">Pasos</span>
-              <button type="button" className="create-recipe-add-step" onClick={() => void addStepRow()}>
-                + Paso
-              </button>
             </div>
             <p className="create-recipe-hint">
               Texto que crece con el contenido. Usa el icono 📷 para adjuntar fotos o vídeos a cada paso.
@@ -1245,6 +1400,7 @@ export function CreateRecipePage() {
                         onAdd={() => void openStepPicker(row.key)}
                         onRemove={(id) => void handleStepRemove(id)}
                         onReorder={(from, to) => void handleStepReorder(row.stepId!, from, to)}
+                        onEdit={(id) => void handleEditExistingMedia(id)}
                       />
                     </div>
                   )}
@@ -1262,12 +1418,25 @@ export function CreateRecipePage() {
                     value={row.content}
                     onChange={(e) => updateStep(row.key, e.target.value)}
                     onInput={(e) => autoGrowTextarea(e.currentTarget)}
-                    placeholder="Describe este paso…"
+                    onKeyDown={(e) => handleStepKeyDown(e, index === steps.length - 1)}
+                    placeholder={
+                      index === steps.length - 1
+                        ? "Describe este paso… (Ctrl+Enter para añadir otro)"
+                        : "Describe este paso…"
+                    }
                     rows={2}
                   />
                 </li>
               ))}
             </ol>
+            <button
+              type="button"
+              className="create-recipe-add-step create-recipe-add-step--bottom"
+              onClick={() => void addStepRowAndFocus()}
+              title="También puedes pulsar Ctrl+Enter en el último paso"
+            >
+              + Añadir paso
+            </button>
           </div>
 
           {submitError && <p className="home-error create-recipe-error">{submitError}</p>}
@@ -1298,6 +1467,32 @@ export function CreateRecipePage() {
           </div>
         </div>
       )}
+
+      {editExistingState && (
+        <ImageEditorDialog
+          open
+          file={editExistingState.file}
+          fileName={editExistingState.fileName}
+          saving={editExistingState.saving}
+          errorMessage={editExistingState.error}
+          onCancel={() => setEditExistingState(null)}
+          onApply={(edits) => void handleEditExistingApply(edits)}
+        />
+      )}
+
+      <UploadStagingDialog
+        open={stagingState?.open === true}
+        files={stagingState?.files ?? []}
+        contextLabel={
+          stagingState?.target === "global"
+            ? "Galería de la receta"
+            : stagingState
+              ? `Paso ${steps.findIndex((s) => s.stepId === (stagingState.target as { stepId: number }).stepId) + 1 || ""}`.trim() || "Paso"
+              : undefined
+        }
+        onCancel={() => setStagingState(null)}
+        onConfirm={(items) => void handleStagingConfirm(items)}
+      />
 
       <IngredientEntryDialog
         open={ingredientModal.open}

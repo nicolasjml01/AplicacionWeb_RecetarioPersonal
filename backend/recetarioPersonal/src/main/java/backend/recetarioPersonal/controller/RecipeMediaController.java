@@ -48,6 +48,20 @@ public class RecipeMediaController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Replaces the file backing an existing media item. Keeps mediaId, step, and displayOrder.
+     */
+    @PostMapping(value = "/items/{mediaId}/content", consumes = "multipart/form-data")
+    public ResponseEntity<RecipeMediaDto> replaceContent(
+            @PathVariable long userId,
+            @PathVariable long recipeId,
+            @PathVariable long mediaId,
+            @RequestPart("file") MultipartFile file
+    ) {
+        RecipeMediaDto dto = recipeMediaService.replaceContent(userId, recipeId, mediaId, file);
+        return ResponseEntity.ok(dto);
+    }
+
     @PatchMapping(value = "/items/order", consumes = "application/json")
     public ResponseEntity<Void> reorderMedia(
             @PathVariable long userId,

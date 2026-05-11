@@ -37,6 +37,22 @@ export async function deleteRecipeMedia(
   if (!res.ok) throw new Error(await readErrorMessage(res));
 }
 
+// Replaces the file of an existing media item (used by the in-app editor on
+// re-edit). Keeps mediaId, step and displayOrder server-side.
+export async function replaceRecipeMediaContent(
+  userId: number,
+  recipeId: number,
+  mediaId: number,
+  file: File
+): Promise<RecipeMediaDto> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/media/items/${mediaId}/content`;
+  const res = await fetch(url, { method: "POST", body: fd });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return res.json() as Promise<RecipeMediaDto>;
+}
+
 export async function reorderRecipeMedia(
   userId: number,
   recipeId: number,
