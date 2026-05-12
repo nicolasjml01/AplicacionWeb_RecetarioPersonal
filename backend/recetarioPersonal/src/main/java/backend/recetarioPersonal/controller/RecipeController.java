@@ -160,7 +160,8 @@ public class RecipeController {
         recipeIngredientService.importToShoppingList(
                 userId,
                 recipeId,
-                request != null ? request.factor() : null
+                request != null ? request.factor() : null,
+                request != null ? request.recipeIngredientIds() : null
         );
         return ResponseEntity.noContent().build();
     }

@@ -15,7 +15,9 @@ import backend.recetarioPersonal.view.UpdateRecipeIngredientRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class RecipeIngredientService {
@@ -116,18 +118,34 @@ public class RecipeIngredientService {
     }
 
     @Transactional
-    public void importToShoppingList(long userId, long recipeId, Float factor) {
+    public void importToShoppingList(long userId, long recipeId, Float factor, List<Long> recipeIngredientIds) {
         ensureUserAndRecipeOwner(userId, recipeId);
         float f = (factor == null || factor <= 0f) ? 1.0f : factor;
-    
+
         List<RecipeIngredient> rows = recipeIngredientRepository.findByRecipe_RecipeIdOrderByDisplayOrderAsc(recipeId);
         if (rows.isEmpty()) {
             throw new IllegalArgumentException("La receta no tiene ingredientes para importar.");
         }
-    
-        for (RecipeIngredient r : rows) {
+
+        List<RecipeIngredient> toImport;
+        if (recipeIngredientIds == null) {
+            toImport = rows;
+        } else {
+            if (recipeIngredientIds.isEmpty()) {
+                throw new IllegalArgumentException("Selecciona al menos un ingrediente para añadir.");
+            }
+            Set<Long> wanted = new HashSet<>(recipeIngredientIds);
+            toImport = rows.stream()
+                    .filter(r -> wanted.contains(r.getRecipeIngredientId()))
+                    .toList();
+            if (toImport.isEmpty()) {
+                throw new IllegalArgumentException("Ningún ingrediente seleccionado pertenece a esta receta.");
+            }
+        }
+
+        for (RecipeIngredient r : toImport) {
             String unitName = r.getUnitOfMeasure() != null ? r.getUnitOfMeasure().getName() : null;
-    
+
             shoppingListService.addOrMergeItem(
                     userId,
                     r.getIngredient().getName(),

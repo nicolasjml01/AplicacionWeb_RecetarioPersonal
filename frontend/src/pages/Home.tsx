@@ -6,7 +6,8 @@ import type { RecipeCategoryDto, RecipeDto } from "../types/recipes";
 import { CategoryCard } from "../components/home/CategoryCard";
 import { FabMenu } from "../components/home/FabMenu";
 import { CreateCategoryModal } from "../components/home/CreateCategoryModal";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { appendRecipeReturnNav, type RecipeReturnNav } from "../utils/recipeReturnNav";
 
 type SearchResult =
   | { type: "category"; id: number; label: string }
@@ -16,6 +17,7 @@ const DEFAULT_CATEGORY = "Sin categoría";
 
 export function Home() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const userId = getCurrentUserId();
   const [categories, setCategories] = useState<RecipeCategoryDto[]>([]);
   const [recipes, setRecipes] = useState<RecipeDto[]>([]);
@@ -29,6 +31,14 @@ export function Home() {
   const [error, setError] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q != null && q.length > 0) {
+      setSearch(q);
+      setIsSearchOpen(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!userId) return;
@@ -132,7 +142,9 @@ export function Home() {
 
   const handleOpenRecipe = (recipeId: number) => {
     setIsSearchOpen(false);
-    navigate(`/home/recipes/${recipeId}`);
+    const trimmed = search.trim();
+    const ret: RecipeReturnNav = trimmed ? { kind: "home", q: trimmed } : { kind: "home" };
+    navigate(appendRecipeReturnNav(`/home/recipes/${recipeId}`, ret));
   };
 
   if (!userId) return <p className="home-error">No hay usuario en sesión.</p>;
@@ -201,7 +213,12 @@ export function Home() {
             onOpenCategory={handleOpenCategory}
             onEditCategory={(category) => setEditingCategory(category)}
             onCreateRecipeInCategory={(categoryId) =>
-              navigate(`/home/recipes/new?categoryId=${categoryId}`)
+              navigate(
+                appendRecipeReturnNav(`/home/recipes/new?categoryId=${categoryId}`, {
+                  kind: "category",
+                  categoryId,
+                }),
+              )
             }
           />
         ))}

@@ -2,6 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
 import {
+  appendRecipeReturnNav,
+  navigateAfterRecipeEditorExit,
+  parseRecipeReturnNav,
+} from "../utils/recipeReturnNav";
+import {
   addRecipeIngredient,
   addRecipeStep,
   createRecipe,
@@ -79,27 +84,54 @@ function sortCategories(items: RecipeCategoryDto[]): RecipeCategoryDto[] {
   return copy;
 }
 
-/** Resolves existing category by id, exact match by name or new name to create in the backend. */
+/** Combines selected category ids and pending new names; resolves names that already exist in the catalog. */
 function buildCategoryPayload(
-  selectedCategoryId: number | null,
-  categoryQuery: string,
+  selectedCategoryIds: number[],
+  pendingNewNames: string[],
   allCategories: RecipeCategoryDto[],
 ): { categoryIds: number[] | null; newCategoryNames: string[] | null } {
+  const idSet = new Set(selectedCategoryIds.filter((id) => Number.isFinite(id)));
+
+  const normalizedNew = [
+    ...new Set(
+      pendingNewNames
+        .map((n) => (n == null ? "" : n.trim()))
+        .filter((n) => n.length > 0 && n.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase()),
+    ),
+  ];
+
+  const stillNew: string[] = [];
+  for (const n of normalizedNew) {
+    const exact = allCategories.find((c) => c.name.trim().toLowerCase() === n.toLowerCase());
+    if (exact) idSet.add(exact.categoryId);
+    else stillNew.push(n);
+  }
+
+  const categoryIds = idSet.size > 0 ? [...idSet] : null;
+  const newCategoryNames = stillNew.length > 0 ? stillNew : null;
+  if (categoryIds == null && newCategoryNames == null) {
+    return { categoryIds: null, newCategoryNames: null };
+  }
+  return { categoryIds, newCategoryNames };
+}
+
+/** Includes the category search text if the user hasn't yet pressed «add». */
+function effectivePendingCategoryNames(
+  pending: string[],
+  categoryQuery: string,
+  selectedIds: number[],
+  allCategories: RecipeCategoryDto[],
+): string[] {
   const q = categoryQuery.trim();
-  if (selectedCategoryId != null) {
-    return { categoryIds: [selectedCategoryId], newCategoryNames: null };
-  }
-  if (!q) {
-    return { categoryIds: null, newCategoryNames: null };
-  }
-  if (q.toLowerCase() === DEFAULT_CATEGORY.toLowerCase()) {
-    return { categoryIds: null, newCategoryNames: null };
-  }
-  const exact = allCategories.find((c) => c.name.trim().toLowerCase() === q.toLowerCase());
-  if (exact) {
-    return { categoryIds: [exact.categoryId], newCategoryNames: null };
-  }
-  return { categoryIds: null, newCategoryNames: [q] };
+  if (!q || q.toLowerCase() === DEFAULT_CATEGORY.toLowerCase()) return [...pending];
+  const qLower = q.toLowerCase();
+  if (pending.some((n) => n.trim().toLowerCase() === qLower)) return [...pending];
+  const matchesSelected = selectedIds.some((id) => {
+    const name = allCategories.find((c) => c.categoryId === id)?.name.trim().toLowerCase();
+    return name === qLower;
+  });
+  if (matchesSelected) return [...pending];
+  return [...pending, q];
 }
 
 function applyStepsFromRecipe(sortedSteps: RecipeDto["steps"]): StepRow[] {
@@ -174,7 +206,8 @@ export function CreateRecipePage() {
   const [uploadingGlobal, setUploadingGlobal] = useState(false);
   const [categoryQuery, setCategoryQuery] = useState("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [pendingNewCategoryNames, setPendingNewCategoryNames] = useState<string[]>([]);
   const [ingredients, setIngredients] = useState<IngredientRow[]>([]);
   const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
   const [ingredientSearch, setIngredientSearch] = useState("");
@@ -221,20 +254,22 @@ export function CreateRecipePage() {
     const hasMultipleSteps = steps.length > 1;
     const q = categoryQuery.trim();
     const hasCategory =
-      selectedCategoryId != null ||
+      selectedCategoryIds.length > 0 ||
+      pendingNewCategoryNames.length > 0 ||
       (q.length > 0 && q.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase());
     const hasIngredients = ingredients.some(
       (i) => i.ingredientName.trim().length > 0 || i.quantity.trim().length > 0 || i.measurementUnit.trim().length > 0,
     );
     const hasMedia = globalMedia.length > 0 || steps.some((s) => s.media.length > 0);
     return hasTitle || hasStepText || hasMultipleSteps || hasCategory || hasIngredients || hasMedia;
-  }, [title, steps, selectedCategoryId, categoryQuery, ingredients, globalMedia]);
+  }, [title, steps, selectedCategoryIds, pendingNewCategoryNames, categoryQuery, ingredients, globalMedia]);
 
   const currentStateKey = useMemo(
     () =>
       JSON.stringify({
         title: title.trim(),
-        selectedCategoryId,
+        selectedCategoryIds: [...selectedCategoryIds].sort((a, b) => a - b),
+        pendingNewCategoryNames: [...pendingNewCategoryNames].sort((a, b) => a.localeCompare(b, "es")),
         categoryQuery: categoryQuery.trim(),
         ingredients: ingredients.map((i) => ({
           id: i.recipeIngredientId ?? null,
@@ -248,24 +283,21 @@ export function CreateRecipePage() {
           c: s.content.trim(),
         })),
       }),
-    [title, selectedCategoryId, categoryQuery, ingredients, steps],
+    [title, selectedCategoryIds, pendingNewCategoryNames, categoryQuery, ingredients, steps],
   );
 
   const hasUnsavedChanges = baselineKey !== "" && currentStateKey !== baselineKey;
   const [pendingRouteExit, setPendingRouteExit] = useState(false);
   const [pendingRoutePath, setPendingRoutePath] = useState<string | null>(null);
 
-  const goHome = useCallback(() => {
-    navigate("/home");
-  }, [navigate]);
-
   const goAfterExit = useCallback(() => {
+    const ret = parseRecipeReturnNav(searchParams);
     if (isPublishedEditMode && recipeId != null) {
-      navigate(`/home/recipes/${recipeId}`);
+      navigate(appendRecipeReturnNav(`/home/recipes/${recipeId}`, ret));
       return;
     }
-    goHome();
-  }, [isPublishedEditMode, recipeId, navigate, goHome]);
+    navigateAfterRecipeEditorExit(navigate, searchParams);
+  }, [isPublishedEditMode, recipeId, navigate, searchParams]);
 
   useEffect(() => {
     if (!userId) return;
@@ -321,10 +353,11 @@ export function CreateRecipePage() {
   const applyRecipe = useCallback((r: RecipeDto) => {
     setTitle(r.title);
     setGlobalMedia([...r.recipeLevelMedia].sort((a, b) => a.displayOrder - b.displayOrder));
-    const nonDefault = r.categories.find(
-      (c) => c.name.trim().toLowerCase() !== DEFAULT_CATEGORY.toLowerCase(),
-    );
-    setSelectedCategoryId(nonDefault?.categoryId ?? null);
+    const nonDefaultIds = r.categories
+      .filter((c) => c.name.trim().toLowerCase() !== DEFAULT_CATEGORY.toLowerCase())
+      .map((c) => c.categoryId);
+    setSelectedCategoryIds(nonDefaultIds);
+    setPendingNewCategoryNames([]);
     const sortedIngredients = [...r.ingredients].sort((a, b) => a.displayOrder - b.displayOrder);
     setIngredients(
       sortedIngredients.length > 0 ? applyIngredientsFromRecipe(sortedIngredients) : [makeLocalIngredient()],
@@ -406,7 +439,9 @@ export function CreateRecipePage() {
       try {
         const r = await getRecipe(userId, parsed);
         if (r.publicationState !== "DRAFT") {
-          navigate(`/home/recipes/${parsed}`, { replace: true });
+          navigate(appendRecipeReturnNav(`/home/recipes/${parsed}`, parseRecipeReturnNav(searchParams)), {
+            replace: true,
+          });
           return;
         }
         setRecipeId(parsed);
@@ -422,7 +457,8 @@ export function CreateRecipePage() {
     setTitle("");
     const parsedCategory =
       categoryIdParam != null && categoryIdParam !== "" ? Number(categoryIdParam) : NaN;
-    setSelectedCategoryId(Number.isFinite(parsedCategory) ? parsedCategory : null);
+    setSelectedCategoryIds(Number.isFinite(parsedCategory) ? [parsedCategory] : []);
+    setPendingNewCategoryNames([]);
     setIngredients([]);
     setIngredientSearch("");
     setIngredientResults([]);
@@ -433,7 +469,7 @@ export function CreateRecipePage() {
     setInitialStepIds([]);
     setIsPublishedEditMode(false);
     setBooting(false);
-  }, [userId, draftIdParam, editIdParam, categoryIdParam, navigate, applyRecipe]);
+  }, [userId, draftIdParam, editIdParam, categoryIdParam, navigate, applyRecipe, searchParams]);
 
   useEffect(() => {
     void bootstrap();
@@ -502,7 +538,11 @@ export function CreateRecipePage() {
     if (recipeId != null) return recipeId;
     const draftTitle =
       title.trim().length > 0 && !isGenericDraftTitle(title) ? title.trim() : DRAFT_INIT_TITLE;
-    const cat = buildCategoryPayload(selectedCategoryId, categoryQuery, categories);
+    const cat = buildCategoryPayload(
+      selectedCategoryIds,
+      effectivePendingCategoryNames(pendingNewCategoryNames, categoryQuery, selectedCategoryIds, categories),
+      categories,
+    );
     const created = await createRecipe(userId, {
       title: draftTitle,
       categoryIds: cat.categoryIds,
@@ -518,7 +558,7 @@ export function CreateRecipePage() {
       // ignorar
     }
     return created.recipeId;
-  }, [userId, recipeId, title, selectedCategoryId, categoryQuery, categories]);
+  }, [userId, recipeId, title, selectedCategoryIds, pendingNewCategoryNames, categoryQuery, categories]);
 
   const saveCurrentAsDraft = useCallback(async (): Promise<number | null> => {
     if (!userId) return null;
@@ -528,7 +568,11 @@ export function CreateRecipePage() {
     const finalTitle =
       title.trim().length > 0 && !isGenericDraftTitle(title) ? title.trim() : DRAFT_INIT_TITLE;
 
-    const cat = buildCategoryPayload(selectedCategoryId, categoryQuery, categories);
+    const cat = buildCategoryPayload(
+      selectedCategoryIds,
+      effectivePendingCategoryNames(pendingNewCategoryNames, categoryQuery, selectedCategoryIds, categories),
+      categories,
+    );
     await patchRecipe(userId, rid, {
       title: finalTitle,
       categoryIds: cat.categoryIds === null ? null : cat.categoryIds.length > 0 ? cat.categoryIds : [],
@@ -551,7 +595,8 @@ export function CreateRecipePage() {
     setBaselineKey(
       JSON.stringify({
         title: finalTitle,
-        selectedCategoryId,
+        selectedCategoryIds: [...selectedCategoryIds].sort((a, b) => a - b),
+        pendingNewCategoryNames: [...pendingNewCategoryNames].sort((a, b) => a.localeCompare(b, "es")),
         categoryQuery: categoryQuery.trim(),
         ingredients: ingredients.map((i) => ({
           id: i.recipeIngredientId ?? null,
@@ -569,7 +614,8 @@ export function CreateRecipePage() {
     recipeId,
     ensureDraftId,
     title,
-    selectedCategoryId,
+    selectedCategoryIds,
+    pendingNewCategoryNames,
     categoryQuery,
     categories,
     ingredients,
@@ -586,7 +632,11 @@ export function CreateRecipePage() {
     const hasStep = steps.some((s) => s.content.trim().length > 0);
     if (!hasStep) throw new Error("Añade al menos un paso con texto.");
 
-    const cat = buildCategoryPayload(selectedCategoryId, categoryQuery, categories);
+    const cat = buildCategoryPayload(
+      selectedCategoryIds,
+      effectivePendingCategoryNames(pendingNewCategoryNames, categoryQuery, selectedCategoryIds, categories),
+      categories,
+    );
     await patchRecipe(userId, recipeId, {
       title: cleanTitle,
       categoryIds: cat.categoryIds === null ? null : cat.categoryIds.length > 0 ? cat.categoryIds : [],
@@ -620,7 +670,8 @@ export function CreateRecipePage() {
     userId,
     recipeId,
     title,
-    selectedCategoryId,
+    selectedCategoryIds,
+    pendingNewCategoryNames,
     categoryQuery,
     categories,
     ingredients,
@@ -668,9 +719,12 @@ export function CreateRecipePage() {
 
   const categoryResults = useMemo(() => {
     const q = categoryQuery.trim().toLowerCase();
-    if (!q) return selectableCategories;
-    return selectableCategories.filter((c) => c.name.toLowerCase().includes(q));
-  }, [categoryQuery, selectableCategories]);
+    const base = !q
+      ? selectableCategories
+      : selectableCategories.filter((c) => c.name.toLowerCase().includes(q));
+    const sel = new Set(selectedCategoryIds);
+    return base.filter((c) => !sel.has(c.categoryId));
+  }, [categoryQuery, selectableCategories, selectedCategoryIds]);
 
   const trimmedCategoryQuery = categoryQuery.trim();
   const categoryExactMatch =
@@ -680,12 +734,13 @@ export function CreateRecipePage() {
   const canOfferNewCategory =
     trimmedCategoryQuery.length > 0 &&
     !categoryExactMatch &&
-    trimmedCategoryQuery.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase();
-
-  const selectedCategoryName =
-    selectedCategoryId != null
-      ? categories.find((c) => c.categoryId === selectedCategoryId)?.name ?? null
-      : null;
+    trimmedCategoryQuery.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase() &&
+    !pendingNewCategoryNames.some((n) => n.trim().toLowerCase() === trimmedCategoryQuery.toLowerCase()) &&
+    !selectedCategoryIds.some(
+      (id) =>
+        categories.find((c) => c.categoryId === id)?.name.trim().toLowerCase() ===
+        trimmedCategoryQuery.toLowerCase(),
+    );
 
   const updateStep = (key: string, content: string) => {
     setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, content } : s)));
@@ -1106,7 +1161,7 @@ export function CreateRecipePage() {
       const rid = await saveCurrentAsDraft();
       if (rid == null) throw new Error("No se pudo preparar la receta para publicar.");
       await publishRecipe(userId!, rid);
-      navigate(`/home/recipes/${rid}`);
+      navigate(appendRecipeReturnNav(`/home/recipes/${rid}`, parseRecipeReturnNav(searchParams)));
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudo publicar.");
     } finally {
@@ -1120,7 +1175,7 @@ export function CreateRecipePage() {
     setSubmitError("");
     try {
       const rid = await savePublishedChanges();
-      navigate(`/home/recipes/${rid}`);
+      navigate(appendRecipeReturnNav(`/home/recipes/${rid}`, parseRecipeReturnNav(searchParams)));
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudieron guardar los cambios.");
     } finally {
@@ -1206,76 +1261,104 @@ export function CreateRecipePage() {
           </div>
 
           <div className="create-recipe-card">
-            <span className="create-recipe-label">Categoría</span>
+            <span className="create-recipe-label">Categorías</span>
             <p className="create-recipe-hint">
-              Opcional. Elige una categoría o escribe un nombre nuevo: se creará al guardar. Si lo dejas vacío, se
-              usará «{DEFAULT_CATEGORY}».
+              Opcional. Puedes marcar varias categorías o escribir nombres nuevos (se crearán al guardar). Si lo dejas
+              vacío, se usará «{DEFAULT_CATEGORY}».
             </p>
 
-            {selectedCategoryName ? (
+            {(selectedCategoryIds.length > 0 || pendingNewCategoryNames.length > 0) && (
               <div className="create-recipe-chip-row">
-                <span className="create-recipe-chip">
-                  <span className="create-recipe-chip__label">{selectedCategoryName}</span>
-                  <button
-                    type="button"
-                    className="create-recipe-chip__remove"
-                    onClick={() => {
-                      setSelectedCategoryId(null);
-                      setCategoryQuery("");
-                    }}
-                    aria-label="Quitar categoría"
-                  >
-                    ×
-                  </button>
-                </span>
-              </div>
-            ) : (
-              <div className="create-recipe-category-wrap" ref={categoryWrapRef}>
-                <input
-                  className="create-recipe-input"
-                  value={categoryQuery}
-                  onChange={(e) => {
-                    setCategoryQuery(e.target.value);
-                    setCategoryDropdownOpen(true);
-                  }}
-                  onFocus={() => setCategoryDropdownOpen(true)}
-                  placeholder={loadingCats ? "Cargando categorías…" : "Buscar categoría…"}
-                  disabled={loadingCats || !!loadError}
-                  autoComplete="off"
-                />
-                {categoryDropdownOpen && !loadError && (
-                  <div className="create-recipe-category-dropdown" role="listbox" aria-label="Categorías">
-                    {canOfferNewCategory && (
+                {selectedCategoryIds.map((id) => {
+                  const label = categories.find((c) => c.categoryId === id)?.name ?? `#${id}`;
+                  return (
+                    <span key={`id-${id}`} className="create-recipe-chip">
+                      <span className="create-recipe-chip__label">{label}</span>
                       <button
                         type="button"
-                        className="create-recipe-category-option create-recipe-category-option--new"
-                        onClick={() => setCategoryDropdownOpen(false)}
+                        className="create-recipe-chip__remove"
+                        onClick={() => {
+                          setSelectedCategoryIds((prev) => prev.filter((x) => x !== id));
+                        }}
+                        aria-label={`Quitar ${label}`}
                       >
-                        Usar «{trimmedCategoryQuery}» (nueva categoría)
+                        ×
                       </button>
-                    )}
-                    {categoryResults.length === 0 && !canOfferNewCategory ? (
-                      <div className="create-recipe-category-empty">Sin coincidencias</div>
-                    ) : (
-                      categoryResults.map((c) => (
-                        <button
-                          key={c.categoryId}
-                          type="button"
-                          className="create-recipe-category-option"
-                          onClick={() => {
-                            setSelectedCategoryId(c.categoryId);
-                            setCategoryQuery("");
-                            setCategoryDropdownOpen(false);
-                          }}
-                        >
-                          {c.name}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
+                    </span>
+                  );
+                })}
+                {pendingNewCategoryNames.map((name) => (
+                  <span key={`new-${name}`} className="create-recipe-chip">
+                    <span className="create-recipe-chip__label">{name}</span>
+                    <button
+                      type="button"
+                      className="create-recipe-chip__remove"
+                      onClick={() => {
+                        setPendingNewCategoryNames((prev) => prev.filter((n) => n !== name));
+                      }}
+                      aria-label={`Quitar ${name}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
               </div>
             )}
+
+            <div className="create-recipe-category-wrap" ref={categoryWrapRef}>
+              <input
+                className="create-recipe-input"
+                value={categoryQuery}
+                onChange={(e) => {
+                  setCategoryQuery(e.target.value);
+                  setCategoryDropdownOpen(true);
+                }}
+                onFocus={() => setCategoryDropdownOpen(true)}
+                placeholder={loadingCats ? "Cargando categorías…" : "Buscar o añadir categoría…"}
+                disabled={loadingCats || !!loadError}
+                autoComplete="off"
+              />
+              {categoryDropdownOpen && !loadError && (
+                <div className="create-recipe-category-dropdown" role="listbox" aria-label="Categorías">
+                  {canOfferNewCategory && (
+                    <button
+                      type="button"
+                      className="create-recipe-category-option create-recipe-category-option--new"
+                      onClick={() => {
+                        const n = trimmedCategoryQuery;
+                        setPendingNewCategoryNames((prev) =>
+                          prev.some((x) => x.trim().toLowerCase() === n.toLowerCase()) ? prev : [...prev, n],
+                        );
+                        setCategoryQuery("");
+                        setCategoryDropdownOpen(false);
+                      }}
+                    >
+                      Usar «{trimmedCategoryQuery}» (nueva categoría)
+                    </button>
+                  )}
+                  {categoryResults.length === 0 && !canOfferNewCategory ? (
+                    <div className="create-recipe-category-empty">Sin coincidencias</div>
+                  ) : (
+                    categoryResults.map((c) => (
+                      <button
+                        key={c.categoryId}
+                        type="button"
+                        className="create-recipe-category-option"
+                        onClick={() => {
+                          setSelectedCategoryIds((prev) =>
+                            prev.includes(c.categoryId) ? prev : [...prev, c.categoryId],
+                          );
+                          setCategoryQuery("");
+                          setCategoryDropdownOpen(false);
+                        }}
+                      >
+                        {c.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="create-recipe-card create-recipe-card--ingredients">
