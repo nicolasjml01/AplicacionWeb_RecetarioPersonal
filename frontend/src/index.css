@@ -590,6 +590,60 @@ body {
   font-weight: 700;
 }
 
+.ingredient-dialog__create-extras {
+  margin-bottom: 0.75rem;
+  padding: 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.ingredient-dialog__field--full {
+  width: 100%;
+}
+
+.ingredient-dialog__image-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.ingredient-dialog__image-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+}
+
+.ingredient-dialog__file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ingredient-dialog__image-preview-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.ingredient-dialog__image-preview {
+  max-height: 140px;
+  max-width: 100%;
+  border-radius: 10px;
+  object-fit: contain;
+  border: 1px solid var(--color-border);
+}
+
+.ingredient-dialog__image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 .ingredient-dialog__row {
   display: grid;
   grid-template-columns: 1fr 1fr;

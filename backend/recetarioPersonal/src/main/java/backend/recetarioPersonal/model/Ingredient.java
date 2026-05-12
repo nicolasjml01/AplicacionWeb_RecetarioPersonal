@@ -28,6 +28,9 @@ public class Ingredient {
     @JoinColumn(name = "owner_user_id", referencedColumnName = "user_id")
     private User owner;
 
+    @Column(name = "image_relative_path", length = 512)
+    private String imageRelativePath;
+
     public Ingredient() {
     }
 
@@ -70,4 +73,14 @@ public class Ingredient {
     public void setNormalizedName(String normalizedName) {
         this.normalizedName = normalizedName;
     }
+
+    public String getImageRelativePath() {
+        return imageRelativePath;
+    }
+
+    public void setImageRelativePath(String imageRelativePath) {
+        this.imageRelativePath = imageRelativePath;
+    }
+
+    
 }

@@ -25,6 +25,7 @@ export interface RecipeIngredientDto {
     name: string;
     categoryId: number | null;
     categoryName: string | null;
+    imageUrl?: string | null;
   };
   quantity: number;
   unitOfMeasure: {

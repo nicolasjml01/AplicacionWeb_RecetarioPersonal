@@ -3,6 +3,7 @@ import type {
   IngredientCategoryCatalogDto,
   IngredientDto,
   ShoppingListItemDto,
+  UpdateOwnedIngredientCategoryRequest,
   UpdateShoppingListItemRequest,
   UnitOfMeasureDto,
 } from "../types/shopping";
@@ -89,4 +90,45 @@ export async function getIngredientsCatalog(
   );
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as IngredientCategoryCatalogDto[];
+}
+
+/** User-created ingredients only (any category), sorted by name. */
+export async function getOwnedIngredients(
+  userId: number,
+): Promise<IngredientDto[]> {
+  const res = await fetch(`${API_BASE}/api/users/${userId}/ingredients/owned`);
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return (await res.json()) as IngredientDto[];
+}
+
+export async function patchOwnedIngredientCategory(
+  userId: number,
+  ingredientId: number,
+  payload: UpdateOwnedIngredientCategoryRequest,
+): Promise<IngredientDto> {
+  const res = await fetch(
+    `${API_BASE}/api/users/${userId}/ingredients/${ingredientId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  );
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return (await res.json()) as IngredientDto;
+}
+
+export async function uploadOwnedIngredientImage(
+  userId: number,
+  ingredientId: number,
+  file: File,
+): Promise<IngredientDto> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch(
+    `${API_BASE}/api/users/${userId}/ingredients/${ingredientId}/image`,
+    { method: "POST", body: fd },
+  );
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return (await res.json()) as IngredientDto;
 }

@@ -49,10 +49,11 @@ public class ShoppingListService {
             throw new IllegalArgumentException("ingredientName is required");
         }
         return addOrMergeItem(
-                userId,
-                request.ingredientName(),
-                request.quantity(),
-                request.measurementUnit()
+            userId,
+            request.ingredientName(),
+            request.quantity(),
+            request.measurementUnit(),
+            request.ingredientCategoryId()
         );
     }
 
@@ -67,6 +68,17 @@ public class ShoppingListService {
             float quantity,
             String measurementUnit
     ) {
+        return addOrMergeItem(userId, ingredientName, quantity, measurementUnit, null);
+    }
+
+    @Transactional
+    public ShoppingListItemDto addOrMergeItem(
+            long userId,
+            String ingredientName,
+            float quantity,
+            String measurementUnit,
+            Long ingredientCategoryIdForCreate
+    ) {
         if (ingredientName == null || ingredientName.isBlank()) {
             throw new IllegalArgumentException("ingredientName is required");
         }
@@ -77,7 +89,7 @@ public class ShoppingListService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        Ingredient ingredient = ingredientService.findOrCreateByName(ingredientName, userId);
+        Ingredient ingredient = ingredientService.findOrCreateByName(ingredientName, userId, ingredientCategoryIdForCreate);
 
         UnitOfMeasure unit = null;
         if (measurementUnit != null && !measurementUnit.isBlank()) {
@@ -179,8 +191,6 @@ public class ShoppingListService {
     }
 
     private IngredientDto ingredientToDto(Ingredient ing) {
-        Long catId = ing.getCategory() != null ? ing.getCategory().getCategoryId() : null;
-        String catName = ing.getCategory() != null ? ing.getCategory().getName() : null;
-        return new IngredientDto(ing.getIngredientId(), ing.getName(), catId, catName);
+        return ingredientService.toDto(ing);
     }
 }

@@ -41,7 +41,7 @@ public class RecipeService {
     private final RecipeStepRepository recipeStepRepository;
     private final RecipeMediaRepository recipeMediaRepository;
     private final RecipeIngredientRepository recipeIngredientRepository;
-
+    private final IngredientService ingredientService;
     private final RecipeRepository recipeRepository;
     private final RecipeCategoryRepository recipeCategoryRepository;
     private final UserRepository userRepository;
@@ -52,7 +52,8 @@ public class RecipeService {
             RecipeIngredientRepository recipeIngredientRepository,
             RecipeRepository recipeRepository,
             RecipeCategoryRepository recipeCategoryRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            IngredientService ingredientService
     ) {
         this.recipeStepRepository = recipeStepRepository;
         this.recipeMediaRepository = recipeMediaRepository;
@@ -60,6 +61,7 @@ public class RecipeService {
         this.recipeRepository = recipeRepository;
         this.recipeCategoryRepository = recipeCategoryRepository;
         this.userRepository = userRepository;
+        this.ingredientService = ingredientService;
     }
 
     @Transactional
@@ -302,12 +304,7 @@ public class RecipeService {
                 .stream()
                 .map(ri -> {
                     var ing = ri.getIngredient();
-                    IngredientDto ingDto = new IngredientDto(
-                            ing.getIngredientId(),
-                            ing.getName(),
-                            ing.getCategory() != null ? ing.getCategory().getCategoryId() : null,
-                            ing.getCategory() != null ? ing.getCategory().getName() : null
-                    );
+                    IngredientDto ingDto = ingredientService.toDto(ing);
 
                     UnitOfMeasureDto unitDto = ri.getUnitOfMeasure() == null ? null : new UnitOfMeasureDto(
                             ri.getUnitOfMeasure().getUnitId(),

@@ -32,5 +32,5 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"));
         return http.build();
-}
+    }
 }

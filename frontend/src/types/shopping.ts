@@ -9,6 +9,8 @@ export interface IngredientDto {
   name: string;
   categoryId: number | null;
   categoryName: string | null;
+  /** Present when the user (or catalog) has a custom image; use as {@code img} src with API base if relative. */
+  imageUrl?: string | null;
 }
 
 export interface ShoppingListItemDto {
@@ -30,6 +32,13 @@ export interface CreateShoppingListItemRequest {
   ingredientName: string;
   quantity: number;
   measurementUnit: string;
+  /** Omit or null → backend assigns default category "Propios". */
+  ingredientCategoryId?: number | null;
+}
+
+/** {@code ingredientCategoryId}: send explicit id (including Propios) to avoid accidental reassignment from an empty JSON body. */
+export interface UpdateOwnedIngredientCategoryRequest {
+  ingredientCategoryId: number | null;
 }
 
 export interface UpdateShoppingListItemRequest {

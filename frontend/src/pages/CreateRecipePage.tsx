@@ -26,8 +26,8 @@ import {
   uploadRecipeMedia,
 } from "../api/recipeMedia";
 import { getRecipeCategories } from "../api/recipeCategories";
-import { getUnits, searchIngredients } from "../api/shopping";
-import type { IngredientDto, UnitOfMeasureDto } from "../types/shopping";
+import { getUnits, getIngredientsCatalog, searchIngredients, uploadOwnedIngredientImage } from "../api/shopping";
+import type { IngredientDto, IngredientCategoryCatalogDto, UnitOfMeasureDto } from "../types/shopping";
 import type { RecipeCategoryDto, RecipeDto, RecipeIngredientDto, RecipeMediaDto } from "../types/recipes";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { MediaStripEditor } from "../components/recipe/editor/MediaStripEditor";
@@ -41,6 +41,10 @@ import {
   isEditableImage,
   type ImageEdits,
 } from "../utils/imageEditing";
+import {
+  defaultIngredientCategoryId,
+  ingredientCategoriesForSelect,
+} from "../utils/ingredientCatalogUi";
 
 const DEFAULT_CATEGORY = "Sin categoría";
 const DRAFT_INIT_TITLE = "Receta nueva";
@@ -60,6 +64,9 @@ type IngredientRow = {
   ingredientName: string;
   quantity: string;
   measurementUnit: string;
+  /** Solo al crear un nombre nuevo desde el modal; se envía al guardar la receta. */
+  ingredientCategoryId?: number | null;
+  pendingIngredientImage?: File | null;
 };
 
 function isGenericDraftTitle(t: string): boolean {
@@ -179,6 +186,8 @@ type IngredientModalState =
       mode: "add" | "edit";
       rowKey?: string;
       ingredientName: string;
+      /** true = nombre nuevo (no elegido de la búsqueda); muestra categoría y foto. */
+      isNewCreation?: boolean;
     };
 
 export function CreateRecipePage() {
@@ -210,6 +219,8 @@ export function CreateRecipePage() {
   const [pendingNewCategoryNames, setPendingNewCategoryNames] = useState<string[]>([]);
   const [ingredients, setIngredients] = useState<IngredientRow[]>([]);
   const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
+  const [loadingUnits, setLoadingUnits] = useState(true);
+  const [ingredientCatalog, setIngredientCatalog] = useState<IngredientCategoryCatalogDto[]>([]);
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [ingredientResults, setIngredientResults] = useState<IngredientDto[]>([]);
   const [ingredientSearchLoading, setIngredientSearchLoading] = useState(false);
@@ -217,6 +228,8 @@ export function CreateRecipePage() {
   const [ingredientModal, setIngredientModal] = useState<IngredientModalState>({ open: false });
   const [ingredientModalQuantity, setIngredientModalQuantity] = useState("");
   const [ingredientModalUnit, setIngredientModalUnit] = useState("");
+  const [ingredientModalCategoryId, setIngredientModalCategoryId] = useState<number | null>(null);
+  const [ingredientModalImageFile, setIngredientModalImageFile] = useState<File | null>(null);
   const [ingredientModalSaving, setIngredientModalSaving] = useState(false);
   const [ingredientModalError, setIngredientModalError] = useState("");
   const [steps, setSteps] = useState<StepRow[]>([makeLocalStep(1)]);
@@ -290,6 +303,11 @@ export function CreateRecipePage() {
   const [pendingRouteExit, setPendingRouteExit] = useState(false);
   const [pendingRoutePath, setPendingRoutePath] = useState<string | null>(null);
 
+  const ingredientCategorySelectOptions = useMemo(
+    () => ingredientCategoriesForSelect(ingredientCatalog),
+    [ingredientCatalog],
+  );
+
   const goAfterExit = useCallback(() => {
     const ret = parseRecipeReturnNav(searchParams);
     if (isPublishedEditMode && recipeId != null) {
@@ -317,8 +335,16 @@ export function CreateRecipePage() {
       )
       .catch(() => {
         setUnits([]);
-      });
+      })
+      .finally(() => setLoadingUnits(false));
   }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    void getIngredientsCatalog(userId)
+      .then(setIngredientCatalog)
+      .catch(() => setIngredientCatalog([]));
+  }, [userId]);
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -780,23 +806,41 @@ export function CreateRecipePage() {
     for (const row of normalized) {
       const quantity = parseQuantity(row.quantityRaw);
       if (row.recipeIngredientId == null) {
-        await addRecipeIngredient(userId, rid, {
+        const created = await addRecipeIngredient(userId, rid, {
           ingredientName: row.ingredientName,
           quantity,
           measurementUnit: row.measurementUnit,
+          ...(row.ingredientCategoryId != null
+            ? { ingredientCategoryId: row.ingredientCategoryId }
+            : {}),
         });
+        if (row.pendingIngredientImage) {
+          await uploadOwnedIngredientImage(
+            userId,
+            created.ingredient.ingredientId,
+            row.pendingIngredientImage,
+          );
+        }
       } else {
         await patchRecipeIngredient(userId, rid, row.recipeIngredientId, {
           ingredientName: row.ingredientName,
           quantity,
           measurementUnit: row.measurementUnit,
+          ...(row.ingredientCategoryId != null
+            ? { ingredientCategoryId: row.ingredientCategoryId }
+            : {}),
         });
       }
     }
   }
 
-  const openAddIngredientModal = (ingredientName: string) => {
-    setIngredientModal({ open: true, mode: "add", ingredientName });
+  const openAddIngredientModal = (ingredientName: string, isNewCreation: boolean) => {
+    const opts = ingredientCategoriesForSelect(ingredientCatalog);
+    setIngredientModalCategoryId(
+      isNewCreation ? defaultIngredientCategoryId(opts) : null,
+    );
+    setIngredientModalImageFile(null);
+    setIngredientModal({ open: true, mode: "add", ingredientName, isNewCreation });
     setIngredientModalQuantity("");
     setIngredientModalUnit("");
     setIngredientModalSaving(false);
@@ -811,9 +855,12 @@ export function CreateRecipePage() {
       mode: "edit",
       rowKey: row.key,
       ingredientName: row.ingredientName,
+      isNewCreation: false,
     });
     setIngredientModalQuantity(row.quantity);
     setIngredientModalUnit(row.measurementUnit);
+    setIngredientModalCategoryId(null);
+    setIngredientModalImageFile(null);
     setIngredientModalSaving(false);
   };
 
@@ -821,6 +868,8 @@ export function CreateRecipePage() {
     setIngredientModal({ open: false });
     setIngredientModalSaving(false);
     setIngredientModalError("");
+    setIngredientModalCategoryId(null);
+    setIngredientModalImageFile(null);
   };
 
   const requestCloseIngredientModal = () => {
@@ -831,9 +880,18 @@ export function CreateRecipePage() {
         : undefined;
     const originalQty = original?.quantity ?? "";
     const originalUnit = original?.measurementUnit ?? "";
+    const defCat = defaultIngredientCategoryId(ingredientCategorySelectOptions);
+    const extrasDirty =
+      ingredientModal.mode === "add" &&
+      ingredientModal.isNewCreation &&
+      (ingredientModalImageFile != null ||
+        (defCat == null
+          ? ingredientModalCategoryId != null
+          : ingredientModalCategoryId !== defCat));
     const changed =
       ingredientModalQuantity.trim() !== originalQty.trim() ||
-      ingredientModalUnit.trim() !== originalUnit.trim();
+      ingredientModalUnit.trim() !== originalUnit.trim() ||
+      extrasDirty;
     if (changed) {
       const ok = window.confirm("Tienes cambios sin guardar en este ingrediente. ¿Cerrar igualmente?");
       if (!ok) return;
@@ -847,6 +905,11 @@ export function CreateRecipePage() {
     setIngredientModalError("");
     const quantityRaw = ingredientModalQuantity.trim();
     const quantity = quantityRaw.length > 0 ? quantityRaw : "0";
+    const prev =
+      ingredientModal.mode === "edit" && ingredientModal.rowKey
+        ? ingredients.find((x) => x.key === ingredientModal.rowKey)
+        : undefined;
+    const isNewFlow = ingredientModal.mode === "add" && ingredientModal.isNewCreation;
     const normalized: IngredientRow = {
       key: ingredientModal.mode === "edit" && ingredientModal.rowKey ? ingredientModal.rowKey : makeLocalIngredient().key,
       recipeIngredientId:
@@ -856,6 +919,10 @@ export function CreateRecipePage() {
       ingredientName: ingredientModal.ingredientName.trim(),
       quantity,
       measurementUnit: ingredientModalUnit.trim(),
+      ingredientCategoryId: isNewFlow ? ingredientModalCategoryId ?? undefined : prev?.ingredientCategoryId,
+      pendingIngredientImage: isNewFlow
+        ? ingredientModalImageFile ?? undefined
+        : prev?.pendingIngredientImage,
     };
     if (!normalized.ingredientName) {
       setIngredientModalSaving(false);
@@ -1392,7 +1459,7 @@ export function CreateRecipePage() {
                         key={s.ingredientId}
                         type="button"
                         className="create-recipe-ingredient-suggest__item"
-                        onClick={() => openAddIngredientModal(s.name)}
+                        onClick={() => openAddIngredientModal(s.name, false)}
                       >
                         {s.name}
                       </button>
@@ -1404,7 +1471,7 @@ export function CreateRecipePage() {
                       <button
                         type="button"
                         className="create-recipe-ingredient-suggest__item create-recipe-ingredient-suggest__item--new"
-                        onClick={() => openAddIngredientModal(ingredientSearch.trim())}
+                        onClick={() => openAddIngredientModal(ingredientSearch.trim(), true)}
                       >
                         Añadir "{ingredientSearch.trim()}"
                       </button>
@@ -1584,6 +1651,7 @@ export function CreateRecipePage() {
         quantityText={ingredientModalQuantity}
         unitText={ingredientModalUnit}
         units={units}
+        loadingUnits={loadingUnits}
         saving={ingredientModalSaving}
         error={ingredientModalError}
         quantityLabel="Cantidad"
@@ -1593,6 +1661,14 @@ export function CreateRecipePage() {
         confirmLabel={ingredientModal.open && ingredientModal.mode === "edit" ? "Guardar" : "Añadir"}
         showDelete={ingredientModal.open && ingredientModal.mode === "edit"}
         deleteLabel="Borrar"
+        showCreateExtras={
+          ingredientModal.open && ingredientModal.mode === "add" && Boolean(ingredientModal.isNewCreation)
+        }
+        ingredientCategoryOptions={ingredientCategorySelectOptions}
+        selectedIngredientCategoryId={ingredientModalCategoryId}
+        onSelectedIngredientCategoryIdChange={setIngredientModalCategoryId}
+        createImageFile={ingredientModalImageFile}
+        onCreateImageFileChange={setIngredientModalImageFile}
         onQuantityChange={setIngredientModalQuantity}
         onUnitChange={setIngredientModalUnit}
         onRequestClose={requestCloseIngredientModal}

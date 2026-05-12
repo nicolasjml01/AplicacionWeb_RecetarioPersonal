@@ -58,7 +58,10 @@ public class RecipeIngredientService {
     public RecipeIngredientDto add(long userId, long recipeId, CreateRecipeIngredientRequest request) {
         Recipe recipe = ensureUserAndRecipeOwner(userId, recipeId);
 
-        Ingredient ingredient = ingredientService.findOrCreateByName(request.ingredientName(), userId);
+        Ingredient ingredient = ingredientService.findOrCreateByName(
+            request.ingredientName(),
+            userId,
+            request.ingredientCategoryId());
 
         UnitOfMeasure unit = null;
         if (request.measurementUnit() != null && !request.measurementUnit().isBlank()) {
@@ -91,7 +94,10 @@ public class RecipeIngredientService {
                 .orElseThrow(() -> new IllegalArgumentException("Ingrediente de receta no encontrado: " + recipeIngredientId));
 
         if (request.ingredientName() != null && !request.ingredientName().isBlank()) {
-            row.setIngredient(ingredientService.findOrCreateByName(request.ingredientName(), userId));
+            row.setIngredient(ingredientService.findOrCreateByName(
+                request.ingredientName(),
+                userId,
+                request.ingredientCategoryId()));
         }
         if (request.quantity() != null) {
             row.setQuantity(request.quantity());
@@ -147,10 +153,11 @@ public class RecipeIngredientService {
             String unitName = r.getUnitOfMeasure() != null ? r.getUnitOfMeasure().getName() : null;
 
             shoppingListService.addOrMergeItem(
-                    userId,
-                    r.getIngredient().getName(),
-                    r.getQuantity() * f,
-                    unitName
+                userId,
+                r.getIngredient().getName(),
+                r.getQuantity() * f,
+                unitName,
+                null
             );
         }
     }
@@ -164,12 +171,7 @@ public class RecipeIngredientService {
 
     private RecipeIngredientDto toDto(RecipeIngredient row) {
         Ingredient i = row.getIngredient();
-        IngredientDto ingredientDto = new IngredientDto(
-                i.getIngredientId(),
-                i.getName(),
-                i.getCategory() != null ? i.getCategory().getCategoryId() : null,
-                i.getCategory() != null ? i.getCategory().getName() : null
-        );
+        IngredientDto ingredientDto = ingredientService.toDto(i);
 
         UnitOfMeasureDto unitDto = row.getUnitOfMeasure() == null ? null : new UnitOfMeasureDto(
                 row.getUnitOfMeasure().getUnitId(),

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentUserId } from "../auth/session";
 import type {
   IngredientCategoryCatalogDto,
@@ -13,10 +13,13 @@ import {
   getUnits,
   patchShoppingItem,
   searchIngredients,
+  uploadOwnedIngredientImage,
 } from "../api/shopping";
 import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryDialog";
-
-type ModalMode = "add" | "edit";
+import {
+  defaultIngredientCategoryId,
+  ingredientCategoriesForSelect,
+} from "../utils/ingredientCatalogUi";
 
 type ModalState =
   | {
@@ -24,12 +27,16 @@ type ModalState =
     }
   | {
       open: true;
-      mode: ModalMode;
-      // For add:
-      ingredientName?: string;
-      // For edit:
-      itemId?: number;
-      ingredientToEdit?: string;
+      mode: "add";
+      ingredientName: string;
+      /** True cuando el nombre no viene de un ingrediente ya existente en la búsqueda/catálogo. */
+      isNewIngredient: boolean;
+    }
+  | {
+      open: true;
+      mode: "edit";
+      itemId: number;
+      ingredientToEdit: string;
     };
 
 export function Shopping() {
@@ -68,6 +75,13 @@ export function Shopping() {
   const [modalError, setModalError] = useState<string>("");
 
   const [saving, setSaving] = useState(false);
+  const [newIngredientCategoryId, setNewIngredientCategoryId] = useState<number | null>(null);
+  const [newIngredientImageFile, setNewIngredientImageFile] = useState<File | null>(null);
+
+  const ingredientCategorySelectOptions = useMemo(
+    () => ingredientCategoriesForSelect(catalogCategories),
+    [catalogCategories],
+  );
 
   async function loadList() {
     if (userId == null) return;
@@ -171,19 +185,25 @@ export function Shopping() {
     return () => window.clearTimeout(handle);
   }, [search, userId]);
 
-  const selectedIngredientName = modal.open ? modal.ingredientName : undefined;
-  const editItemId = modal.open ? modal.itemId : undefined;
+  const selectedIngredientName =
+    modal.open && modal.mode === "add" ? modal.ingredientName : undefined;
+  const editItemId = modal.open && modal.mode === "edit" ? modal.itemId : undefined;
+  const isNewIngredientModal = modal.open && modal.mode === "add" && modal.isNewIngredient;
 
   const showSearchDropdown =
     ingredientResults.length > 0 ||
     (search.trim() !== "" && !searchLoading && !searchError);
 
-  function openAddModal(ingredientName: string) {
-    setModal({ open: true, mode: "add", ingredientName });
+  function openAddModal(ingredientName: string, isNewIngredient: boolean) {
+    setModal({ open: true, mode: "add", ingredientName, isNewIngredient });
     setQuantityText("");
     setUnitText("");
     setModalError("");
     setSaving(false);
+    setNewIngredientImageFile(null);
+    setNewIngredientCategoryId(
+      isNewIngredient ? defaultIngredientCategoryId(ingredientCategorySelectOptions) : null,
+    );
   }
 
   function openEditModal(item: ShoppingListItemDto) {
@@ -203,6 +223,8 @@ export function Shopping() {
     setModal({ open: false });
     setModalError("");
     setSaving(false);
+    setNewIngredientCategoryId(null);
+    setNewIngredientImageFile(null);
   }
 
   function toggleCategory(categoryId: number) {
@@ -236,11 +258,23 @@ export function Shopping() {
         const ingredientName = selectedIngredientName;
         if (!ingredientName) throw new Error("Missing ingredient name.");
 
-        await addShoppingItem(userId, {
+        const isNew = modal.isNewIngredient;
+        const created = await addShoppingItem(userId, {
           ingredientName,
           quantity: qty,
           measurementUnit,
+          ...(isNew && newIngredientCategoryId != null
+            ? { ingredientCategoryId: newIngredientCategoryId }
+            : {}),
         });
+
+        if (isNew && newIngredientImageFile) {
+          await uploadOwnedIngredientImage(
+            userId,
+            created.ingredient.ingredientId,
+            newIngredientImageFile,
+          );
+        }
 
         closeModal();
         await loadList();
@@ -322,7 +356,7 @@ export function Shopping() {
                                 key={ing.ingredientId}
                                 type="button"
                                 className="shopping-accordion__ingredient"
-                                onClick={() => openAddModal(ing.name)}
+                                onClick={() => openAddModal(ing.name, false)}
                               >
                                 {ing.name}
                               </button>
@@ -438,7 +472,7 @@ export function Shopping() {
                       type="button"
                       className="shopping-search__result"
                       onClick={() => {
-                        openAddModal(ing.name);
+                        openAddModal(ing.name, false);
                         setSearch("");
                         setIngredientResults([]);
                       }}
@@ -456,7 +490,7 @@ export function Shopping() {
                         type="button"
                         className="shopping-search__result"
                         onClick={() => {
-                          openAddModal(search.trim());
+                          openAddModal(search.trim(), true);
                           setSearch("");
                           setIngredientResults([]);
                         }}
@@ -478,7 +512,13 @@ export function Shopping() {
       <IngredientEntryDialog
         open={modal.open}
         title={modal.open ? (modal.mode === "add" ? "Add item" : "Edit item") : "Add item"}
-        ingredientName={modal.open ? (modal.mode === "add" ? (modal.ingredientName ?? "") : (modal.ingredientToEdit ?? "")) : ""}
+        ingredientName={
+          modal.open
+            ? modal.mode === "add"
+              ? modal.ingredientName
+              : modal.ingredientToEdit
+            : ""
+        }
         quantityText={quantityText}
         unitText={unitText}
         units={units}
@@ -492,6 +532,12 @@ export function Shopping() {
         confirmLabel="Save"
         quantityPlaceholder="e.g. 2"
         unitPlaceholder="e.g. gramos, litros, unidades..."
+        showCreateExtras={isNewIngredientModal}
+        ingredientCategoryOptions={ingredientCategorySelectOptions}
+        selectedIngredientCategoryId={newIngredientCategoryId}
+        onSelectedIngredientCategoryIdChange={setNewIngredientCategoryId}
+        createImageFile={newIngredientImageFile}
+        onCreateImageFileChange={setNewIngredientImageFile}
         onQuantityChange={setQuantityText}
         onUnitChange={setUnitText}
         onCancel={closeModal}

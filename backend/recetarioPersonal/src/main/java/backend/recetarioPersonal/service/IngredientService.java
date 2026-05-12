@@ -27,7 +27,7 @@ public class IngredientService {
     private final IngredientCategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final RecentIngredientService recentIngredientService;
-    
+
     public IngredientService(
             IngredientRepository ingredientRepository,
             IngredientCategoryRepository categoryRepository,
@@ -59,10 +59,53 @@ public class IngredientService {
     }
 
     /**
-     * Resolves by exact name within this user's visible set, or creates a user-owned ingredient in "Propios".
+     * Ingredients created by this user ({@code owner} non-null), sorted by name.
+     */
+    @Transactional(readOnly = true)
+    public List<IngredientDto> listCreatedByUser(long userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        return ingredientRepository.findOwnedByUserOrderByName(userId).stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    /**
+     * Changes the ingredient category for a row owned by {@code userId}.
+     * {@code ingredientCategoryId} {@code null} assigns the default category {@code "Propios"} (same as
+     * {@link #findOrCreateByName(String, long, Long)}); otherwise the id must exist in {@code ingredient_categories}.
+     */
+    @Transactional
+    public IngredientDto updateOwnedIngredientCategory(
+            long userId,
+            long ingredientId,
+            Long ingredientCategoryId
+    ) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        Ingredient ing = ingredientRepository.findByIngredientIdAndOwner_UserId(ingredientId, userId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Ingrediente no encontrado o no es tuyo (solo puedes editar ingredientes que hayas creado)."));
+        IngredientCategory category = resolveCategoryForNewUserIngredient(ingredientCategoryId);
+        ing.setCategory(category);
+        ingredientRepository.save(ing);
+        return toDto(ing);
+    }
+
+    /**
+     * Same as {@link #findOrCreateByName(String, long, Long)} with {@code ingredientCategoryId == null} (Propios).
      */
     @Transactional
     public Ingredient findOrCreateByName(String name, long userId) {
+        return findOrCreateByName(name, userId, null);
+    }
+
+    /**
+     * Resolves by exact name within this user's visible set, or creates a user-owned ingredient.
+     * {@code ingredientCategoryId} null → "Propios". Otherwise must reference {@code ingredient_categories}.
+     */
+    @Transactional
+    public Ingredient findOrCreateByName(String name, long userId, Long ingredientCategoryId) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Ingredient name cannot be blank");
         }
@@ -78,26 +121,46 @@ public class IngredientService {
         if (existing.isPresent()) {
             return existing.get();
         }
-        IngredientCategory own = categoryRepository.findByName("Propios")
-                .orElseThrow(() -> new IllegalStateException("Category 'Propios' must exist. Apply Flyway migrations (V2 seed)."));
+
+        IngredientCategory category = resolveCategoryForNewUserIngredient(ingredientCategoryId);
+
         Ingredient newIngredient = new Ingredient();
         newIngredient.setName(trimmed);
         newIngredient.setNormalizedName(key);
-        newIngredient.setCategory(own);
+        newIngredient.setCategory(category);
         User ownerRef = userRepository.getReferenceById(userId);
         newIngredient.setOwner(ownerRef);
         return ingredientRepository.save(newIngredient);
     }
 
-    private IngredientDto toDto(Ingredient ing) {
+    private IngredientCategory resolveCategoryForNewUserIngredient(Long ingredientCategoryId) {
+        if (ingredientCategoryId == null) {
+            return categoryRepository.findByName("Propios")
+                    .orElseThrow(() -> new IllegalStateException("Category 'Propios' must exist. Apply Flyway migrations (V2 seed)."));
+        }
+        return categoryRepository.findById(ingredientCategoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Categoría de ingrediente no encontrada: " + ingredientCategoryId));
+    }
+
+    public IngredientDto toDto(Ingredient ing) {
         Long categoryId = ing.getCategory() != null ? ing.getCategory().getCategoryId() : null;
         String categoryName = ing.getCategory() != null ? ing.getCategory().getName() : null;
+        String imageUrl = ingredientImageUrl(ing);
         return new IngredientDto(
                 ing.getIngredientId(),
                 ing.getName(),
                 categoryId,
-                categoryName
+                categoryName,
+                imageUrl
         );
+    }
+
+    private static String ingredientImageUrl(Ingredient ing) {
+        String path = ing.getImageRelativePath();
+        if (path == null || path.isBlank()) {
+            return null;
+        }
+        return RecipeMediaService.MEDIA_URL_PREFIX + path.replace('\\', '/');
     }
 
     /**
@@ -113,14 +176,14 @@ public class IngredientService {
                 .collect(Collectors.groupingBy(dto -> dto.categoryId() != null ? dto.categoryId() : -1L));
 
         List<IngredientDto> recentDtos = recentIngredientService.getRecentIngredients(userId)
-        .stream()
-        .map(this::toDto)
-        .toList();
-        
+                .stream()
+                .map(this::toDto)
+                .toList();
+
         IngredientCategoryCatalogDto recentCategory = new IngredientCategoryCatalogDto(
-            -999L,
-            "Recientes",
-            recentDtos
+                -999L,
+                "Recientes",
+                recentDtos
         );
 
         List<IngredientCategoryCatalogDto> result = new ArrayList<>();

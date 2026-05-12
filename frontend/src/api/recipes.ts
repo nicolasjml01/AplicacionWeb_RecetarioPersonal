@@ -39,6 +39,8 @@ export type CreateRecipeIngredientPayload = {
   ingredientName: string;
   quantity: number;
   measurementUnit: string;
+  /** Omit or null → backend assigns "Propios" when creating a new user ingredient. */
+  ingredientCategoryId?: number | null;
 };
 
 export type PatchRecipePayload = {
@@ -56,6 +58,7 @@ export type PatchRecipeIngredientPayload = {
   ingredientName?: string;
   quantity?: number;
   measurementUnit?: string;
+  ingredientCategoryId?: number | null;
 };
 
 export async function getRecipes(
@@ -256,6 +259,9 @@ export async function addRecipeIngredient(
       ingredientName: payload.ingredientName.trim(),
       quantity: payload.quantity,
       measurementUnit: payload.measurementUnit.trim(),
+      ...(payload.ingredientCategoryId != null
+        ? { ingredientCategoryId: payload.ingredientCategoryId }
+        : {}),
     }),
   });
   if (!res.ok) throw new Error(await readErrorMessage(res));
@@ -273,6 +279,9 @@ export async function patchRecipeIngredient(
   if (payload.ingredientName !== undefined) body.ingredientName = payload.ingredientName.trim();
   if (payload.quantity !== undefined) body.quantity = payload.quantity;
   if (payload.measurementUnit !== undefined) body.measurementUnit = payload.measurementUnit;
+  if (payload.ingredientCategoryId !== undefined) {
+    body.ingredientCategoryId = payload.ingredientCategoryId;
+  }
   const res = await fetch(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
