@@ -20,6 +20,7 @@ import {
   defaultIngredientCategoryId,
   ingredientCategoriesForSelect,
 } from "../utils/ingredientCatalogUi";
+import { resolveMediaUrl } from "../utils/mediaUrl";
 
 type ModalState =
   | {
@@ -29,7 +30,7 @@ type ModalState =
       open: true;
       mode: "add";
       ingredientName: string;
-      /** True cuando el nombre no viene de un ingrediente ya existente en la búsqueda/catálogo. */
+      /** True when the name was not chosen from search/catalog (brand-new ingredient). */
       isNewIngredient: boolean;
     }
   | {
@@ -92,7 +93,7 @@ export function Shopping() {
       setShoppingItems(data);
     } catch (e) {
       setListError(
-        e instanceof Error ? e.message : "Failed to load shopping list.",
+        e instanceof Error ? e.message : "No se pudo cargar la lista de la compra.",
       );
     } finally {
       setLoadingList(false);
@@ -106,7 +107,7 @@ export function Shopping() {
       const data = await getUnits();
       setUnits(data);
     } catch (e) {
-      setUnitsError(e instanceof Error ? e.message : "Failed to load units.");
+      setUnitsError(e instanceof Error ? e.message : "No se pudieron cargar las unidades.");
     } finally {
       setLoadingUnits(false);
     }
@@ -130,7 +131,7 @@ export function Shopping() {
       });
     } catch (e) {
       setCatalogError(
-        e instanceof Error ? e.message : "Failed to load ingredient catalog.",
+        e instanceof Error ? e.message : "No se pudo cargar el catálogo de ingredientes.",
       );
     } finally {
       setLoadingCatalog(false);
@@ -175,7 +176,7 @@ export function Shopping() {
         setIngredientResults(results);
       } catch (e) {
         setSearchError(
-          e instanceof Error ? e.message : "Failed to search ingredients.",
+          e instanceof Error ? e.message : "No se pudieron buscar ingredientes.",
         );
       } finally {
         setSearchLoading(false);
@@ -238,13 +239,13 @@ export function Shopping() {
     if (!modal.open) return;
 
     if (userId == null) {
-      setModalError("You must be logged in.");
+      setModalError("Debes iniciar sesión.");
       return;
     }
 
     const qty = Number(quantityText);
     if (!Number.isFinite(qty) || qty < 0) {
-      setModalError("Quantity must be a number greater than or equal to 0.");
+      setModalError("La cantidad debe ser un número mayor o igual que 0.");
       return;
     }
 
@@ -256,7 +257,7 @@ export function Shopping() {
     try {
       if (modal.mode === "add") {
         const ingredientName = selectedIngredientName;
-        if (!ingredientName) throw new Error("Missing ingredient name.");
+        if (!ingredientName) throw new Error("Falta el nombre del ingrediente.");
 
         const isNew = modal.isNewIngredient;
         const created = await addShoppingItem(userId, {
@@ -283,8 +284,8 @@ export function Shopping() {
         return;
       }
 
-      // edit
-      if (editItemId == null) throw new Error("Missing item id for edit.");
+      // Edit mode: update quantity/unit only.
+      if (editItemId == null) throw new Error("Falta el identificador del ítem a editar.");
 
       await patchShoppingItem(userId, editItemId, {
         quantity: qty,
@@ -294,7 +295,7 @@ export function Shopping() {
       closeModal();
       await loadList();
     } catch (e) {
-      setModalError(e instanceof Error ? e.message : "Failed to save item.");
+      setModalError(e instanceof Error ? e.message : "No se pudo guardar el ítem.");
     } finally {
       setSaving(false);
     }
@@ -308,22 +309,22 @@ export function Shopping() {
       await loadCatalog();
     } catch (e) {
       setListError(
-        e instanceof Error ? e.message : "Failed to mark as bought.",
+        e instanceof Error ? e.message : "No se pudo marcar como comprado.",
       );
     }
   }
 
   return (
     <div className="shopping-page">
-      <h1 className="shopping-title">Shopping list</h1>
+      <h1 className="shopping-title">Lista de la compra</h1>
       <div className="shopping-layout">
         {/* LEFT: categories catalog (fixed on desktop/tablet) */}
         <section className="shopping-layout__left">
           <div className="shopping-panel shopping-panel--catalog">
-            <div className="shopping-panel__title">Categories</div>
+            <div className="shopping-panel__title">Categorías</div>
             <section className="shopping-catalog">
               {loadingCatalog ? (
-                <div className="shopping-hint">Loading categories...</div>
+                <div className="shopping-hint">Cargando categorías…</div>
               ) : (
                 catalogCategories.map((cat) => {
                   const isOpen = expandedCategories[cat.categoryId] ?? false;
@@ -346,9 +347,9 @@ export function Shopping() {
                         <div className="shopping-accordion__body">
                           {cat.ingredients.length === 0 ? (
                             isOwn ? (
-                              <div className="shopping-hint">No ingredients yet.</div>
+                              <div className="shopping-hint">Aún no hay ingredientes.</div>
                             ) : (
-                              <div className="shopping-hint">Empty category.</div>
+                              <div className="shopping-hint">Categoría vacía.</div>
                             )
                           ) : (
                             cat.ingredients.map((ing) => (
@@ -376,12 +377,12 @@ export function Shopping() {
         {/* RIGHT: shopping list + search */}
         <section className="shopping-layout__right">
           <div className="shopping-panel shopping-panel--list">
-            <div className="shopping-panel__title">Your list</div>
+            <div className="shopping-panel__title">Tu lista</div>
             <section className="shopping-top-strip">
               {loadingList ? (
-                <div className="shopping-hint">Loading shopping list...</div>
+                <div className="shopping-hint">Cargando lista…</div>
               ) : shoppingItems.length === 0 ? (
-                <div className="shopping-hint">No items to buy right now.</div>
+                <div className="shopping-hint">No hay nada en la lista por ahora.</div>
               ) : (
                 shoppingItems.map((item) => {
                   const unitLabel =
@@ -389,16 +390,21 @@ export function Shopping() {
                       ? item.unitOfMeasure.symbol
                       : (item.unitOfMeasure?.name ?? "—");
 
+                  const thumbSrc =
+                    item.ingredient.imageUrl?.trim().length
+                      ? resolveMediaUrl(item.ingredient.imageUrl.trim())
+                      : "/logoShoppingList.png";
+
                   return (
                     <div className="shopping-top-card" key={item.shoppingListItemId}>
                       <button
                         type="button"
                         className="shopping-top-card__imageBtn"
                         onClick={() => handleMarkBought(item.shoppingListItemId)}
-                        aria-label={`Mark ${item.ingredient.name} as bought`}
+                        aria-label={`Marcar ${item.ingredient.name} como comprado`}
                       >
                         <img
-                          src="/logoShoppingList.png"
+                          src={thumbSrc}
                           alt=""
                           className="shopping-top-card__image"
                         />
@@ -435,7 +441,7 @@ export function Shopping() {
               <button
                 type="button"
                 className="shopping-search-overlay"
-                aria-label="Close search results"
+                aria-label="Cerrar resultados de búsqueda"
                 onClick={() => {
                   setIngredientResults([]);
                   setSearchError("");
@@ -446,7 +452,7 @@ export function Shopping() {
               <button
                 type="button"
                 className="shopping-plus"
-                aria-label="Focus search"
+                aria-label="Enfocar búsqueda"
                 onClick={() => searchInputRef.current?.focus()}
               >
                 +
@@ -457,14 +463,14 @@ export function Shopping() {
                 className="shopping-search__input"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search ingredients..."
+                placeholder="Buscar ingredientes…"
               />
 
               {showSearchDropdown && (
                 <div
                   className="shopping-search__dropdown"
                   role="listbox"
-                  aria-label="Ingredient results"
+                  aria-label="Resultados de ingredientes"
                 >
                   {ingredientResults.map((ing) => (
                     <button
@@ -495,14 +501,14 @@ export function Shopping() {
                           setIngredientResults([]);
                         }}
                       >
-                        Add "{search.trim()}"
+                        Añadir «{search.trim()}»
                       </button>
                     )}
                 </div>
               )}
             </div>
 
-            {searchLoading && <div className="shopping-hint">Searching...</div>}
+            {searchLoading && <div className="shopping-hint">Buscando…</div>}
             {searchError && <div className="shopping-error">{searchError}</div>}
             {unitsError && <div className="shopping-error">{unitsError}</div>}
           </section>
@@ -511,7 +517,9 @@ export function Shopping() {
 
       <IngredientEntryDialog
         open={modal.open}
-        title={modal.open ? (modal.mode === "add" ? "Add item" : "Edit item") : "Add item"}
+        title={
+          modal.open ? (modal.mode === "add" ? "Añadir a la lista" : "Editar ítem") : "Añadir a la lista"
+        }
         ingredientName={
           modal.open
             ? modal.mode === "add"
@@ -525,14 +533,22 @@ export function Shopping() {
         loadingUnits={loadingUnits}
         saving={saving}
         error={modalError}
-        quantityLabel="Quantity"
-        unitLabel="Unit of measure"
-        availableUnitsLabel="Available units"
-        cancelLabel="Cancel"
-        confirmLabel="Save"
-        quantityPlaceholder="e.g. 2"
-        unitPlaceholder="e.g. gramos, litros, unidades..."
+        quantityLabel="Cantidad"
+        unitLabel="Unidad de medida"
+        availableUnitsLabel="Unidades disponibles"
+        cancelLabel="Cancelar"
+        confirmLabel="Guardar"
+        quantityPlaceholder="p. ej. 2"
+        unitPlaceholder="p. ej. gramos, litros, unidades…"
         showCreateExtras={isNewIngredientModal}
+        createExtrasLabels={{
+          category: "Categoría en tu despensa",
+          imageHint:
+            "Opcional. Puedes recortar y ajustar como en las fotos de la receta.",
+          pickImage: "Elegir foto",
+          editImage: "Editar foto",
+          removeImage: "Quitar foto",
+        }}
         ingredientCategoryOptions={ingredientCategorySelectOptions}
         selectedIngredientCategoryId={newIngredientCategoryId}
         onSelectedIngredientCategoryIdChange={setNewIngredientCategoryId}
