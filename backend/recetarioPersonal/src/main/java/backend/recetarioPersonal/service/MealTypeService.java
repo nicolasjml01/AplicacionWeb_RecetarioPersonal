@@ -87,10 +87,13 @@ public class MealTypeService {
     @Transactional
     public MealTypeDto findOrCreateCustom(long userId, String rawName) {
         String normalized = normalize(rawName);
-        validateCustomNameForCreate(userId, normalized);
+        if (normalized.isBlank()) {
+            throw new IllegalArgumentException("El nombre del tipo de comida es obligatorio.");
+        }
 
-        return mealTypeRepository.findByOwner_UserIdAndNameIgnoreCase(userId, normalized)
+        return mealTypeRepository.findByOwnerIsNullAndNameIgnoreCase(normalized)
                 .map(this::toDto)
+                .or(() -> mealTypeRepository.findByOwner_UserIdAndNameIgnoreCase(userId, normalized).map(this::toDto))
                 .orElseGet(() -> create(userId, new CreateMealTypeRequest(normalized)));
     }
 
@@ -155,5 +158,41 @@ public class MealTypeService {
                 m.isSystem(),
                 m.getDefaultSortOrder()
         );
+    }
+
+    @Transactional
+    public MealType resolveForAssignment(long userId, Long mealTypeId, String mealTypeName) {
+        if (mealTypeId != null) {
+            MealType mealType = mealTypeRepository.findById(mealTypeId)
+                    .orElseThrow(() -> new IllegalArgumentException("Tipo de comida no encontrado: " + mealTypeId));
+    
+            if (!mealType.isSystem()) {
+                if (mealType.getOwner() == null || mealType.getOwner().getUserId() != userId) {
+                    throw new IllegalArgumentException("El tipo de comida no pertenece al usuario.");
+                }
+            }
+            return mealType;
+        }
+    
+        String normalized = normalize(mealTypeName);
+        if (normalized.isBlank()) {
+            throw new IllegalArgumentException("Debes indicar mealTypeId o mealTypeName.");
+        }
+    
+        return mealTypeRepository.findByOwnerIsNullAndNameIgnoreCase(normalized)
+                .or(() -> mealTypeRepository.findByOwner_UserIdAndNameIgnoreCase(userId, normalized))
+                .orElseGet(() -> {
+                    if (conflictsWithSystemName(normalized)) {
+                        throw new IllegalArgumentException("Ese nombre está reservado para un tipo del sistema.");
+                    }
+                    User owner = userRepository.findById(userId)
+                            .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
+                    MealType created = new MealType();
+                    created.setOwner(owner);
+                    created.setName(normalized);
+                    created.setSystem(false);
+                    created.setDefaultSortOrder(0);
+                    return mealTypeRepository.save(created);
+                });
     }
 }

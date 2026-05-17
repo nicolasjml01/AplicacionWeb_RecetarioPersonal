@@ -16,6 +16,8 @@ public interface MealTypeRepository extends JpaRepository<MealType, Long> {
 
     Optional<MealType> findByOwner_UserIdAndNameIgnoreCase(long ownerUserId, String name);
 
+    Optional<MealType> findByOwnerIsNullAndNameIgnoreCase(String name);
+    
     boolean existsByOwner_UserIdAndNameIgnoreCase(long ownerUserId, String name);
 
     @Query("""
