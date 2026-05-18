@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface CalendarEntryRepository extends JpaRepository<CalendarEntry, Long> {
@@ -23,4 +24,7 @@ public interface CalendarEntryRepository extends JpaRepository<CalendarEntry, Lo
             @Param("userId") long userId,
             @Param("planDate") LocalDate planDate,
             @Param("mealTypeId") long mealTypeId);
+
+    List<CalendarEntry> findByOwner_UserIdAndPlanDateOrderByRecipeSortOrderAsc(
+            long ownerUserId, LocalDate planDate);
 }

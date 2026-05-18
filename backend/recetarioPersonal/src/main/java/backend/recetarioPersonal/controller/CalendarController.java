@@ -3,6 +3,12 @@ package backend.recetarioPersonal.controller;
 import backend.recetarioPersonal.service.CalendarService;
 import backend.recetarioPersonal.view.AssignCalendarEntryRequest;
 import backend.recetarioPersonal.view.CalendarEntryDto;
+import backend.recetarioPersonal.view.DayPlanDto;
+import backend.recetarioPersonal.view.ReorderDayMealsRequest;
+import backend.recetarioPersonal.view.ReorderCalendarEntriesRequest;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import java.time.LocalDate;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -36,6 +43,31 @@ public class CalendarController {
             @PathVariable long userId,
             @PathVariable Long calendarEntryId) {
         calendarService.remove(userId, calendarEntryId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/days/{date}")
+    public ResponseEntity<DayPlanDto> getDayPlan(
+            @PathVariable long userId,
+            @PathVariable LocalDate date) {
+        return ResponseEntity.ok(calendarService.getDayPlan(userId, date));
+    }
+    
+    @PatchMapping("/days/{date}/meal-order")
+    public ResponseEntity<Void> reorderDayMeals(
+            @PathVariable long userId,
+            @PathVariable LocalDate date,
+            @RequestBody @Valid ReorderDayMealsRequest request) {
+        calendarService.reorderDayMeals(userId, date, request);
+        return ResponseEntity.noContent().build();
+    }
+    
+    @PatchMapping("/entries/reorder")
+    public ResponseEntity<Void> reorderEntries(
+            @PathVariable long userId,
+            @RequestParam LocalDate date,
+            @RequestBody @Valid ReorderCalendarEntriesRequest request) {
+        calendarService.reorderEntries(userId, date, request);
         return ResponseEntity.noContent().build();
     }
 }
