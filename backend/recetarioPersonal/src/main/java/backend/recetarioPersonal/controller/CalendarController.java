@@ -4,6 +4,7 @@ import backend.recetarioPersonal.service.CalendarService;
 import backend.recetarioPersonal.view.AssignCalendarEntryRequest;
 import backend.recetarioPersonal.view.CalendarEntryDto;
 import backend.recetarioPersonal.view.DayPlanDto;
+import backend.recetarioPersonal.view.CalendarRangeDto;
 import backend.recetarioPersonal.view.ReorderDayMealsRequest;
 import backend.recetarioPersonal.view.ReorderCalendarEntriesRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,6 +47,14 @@ public class CalendarController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping
+    public ResponseEntity<CalendarRangeDto> getRange(
+            @PathVariable long userId,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to) {
+        return ResponseEntity.ok(calendarService.getRange(userId, from, to));
+    }
+    
     @GetMapping("/days/{date}")
     public ResponseEntity<DayPlanDto> getDayPlan(
             @PathVariable long userId,

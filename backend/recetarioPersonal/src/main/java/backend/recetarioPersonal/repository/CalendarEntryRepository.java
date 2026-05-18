@@ -25,6 +25,6 @@ public interface CalendarEntryRepository extends JpaRepository<CalendarEntry, Lo
             @Param("planDate") LocalDate planDate,
             @Param("mealTypeId") long mealTypeId);
 
-    List<CalendarEntry> findByOwner_UserIdAndPlanDateOrderByRecipeSortOrderAsc(
-            long ownerUserId, LocalDate planDate);
+    List<CalendarEntry> findByOwner_UserIdAndPlanDateBetweenOrderByPlanDateAscRecipeSortOrderAsc(
+            long ownerUserId, LocalDate from, LocalDate to);
 }

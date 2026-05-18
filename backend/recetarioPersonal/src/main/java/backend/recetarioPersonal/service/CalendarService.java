@@ -21,7 +21,11 @@ import backend.recetarioPersonal.view.MealOrderItemRequest;
 import backend.recetarioPersonal.view.MealTypeDto;
 import backend.recetarioPersonal.view.ReorderCalendarEntriesRequest;
 import backend.recetarioPersonal.view.ReorderDayMealsRequest;
+import backend.recetarioPersonal.view.CalendarRangeDayDto;
+import backend.recetarioPersonal.view.CalendarRangeDto;
 
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +41,8 @@ import java.util.stream.Collectors;
 @Service
 public class CalendarService {
 
+    /** Max inclusive days allowed in one range request (6 weeks). */
+    private static final int MAX_RANGE_DAYS = 42;
     private final UserRepository userRepository;
     private final RecipeRepository recipeRepository;
     private final MealTypeService mealTypeService;
@@ -124,31 +130,23 @@ public class CalendarService {
     }
 
     private CalendarEntryDto toDto(CalendarEntry entry) {
+        Map<Long, String> covers = loadCoverUrlsByRecipeId(List.of(entry.getRecipe().getRecipeId()));
+        return toDto(entry, covers);
+    }
+
+    private CalendarEntryDto toDto(CalendarEntry entry, Map<Long, String> coverByRecipeId) {
         MealType mt = entry.getMealType();
+        long recipeId = entry.getRecipe().getRecipeId();
         return new CalendarEntryDto(
                 entry.getCalendarEntryId(),
                 entry.getOwner().getUserId(),
                 entry.getPlanDate(),
                 toMealTypeDto(mt),
-                entry.getRecipe().getRecipeId(),
+                recipeId,
                 entry.getRecipe().getTitle(),
-                resolveCoverImageUrl(entry.getRecipe().getRecipeId()),
+                coverByRecipeId.get(recipeId),
                 entry.getRecipeSortOrder());
     }
-
-    private String resolveCoverImageUrl(long recipeId) {
-        List<RecipeMedia> global = recipeMediaRepository
-                .findByRecipe_RecipeIdInAndStepIsNullOrderByRecipe_RecipeIdAscDisplayOrderAsc(List.of(recipeId));
-        if (!global.isEmpty()) {
-            return RecipeMediaService.MEDIA_URL_PREFIX + global.get(0).getRelativePath();
-        }
-        List<RecipeMedia> stepMedia = recipeMediaRepository
-                .findByRecipe_RecipeIdInAndStepIsNotNullOrderByRecipe_RecipeIdAscStep_StepNumberAscDisplayOrderAsc(List.of(recipeId));
-        if (!stepMedia.isEmpty()) {
-            return RecipeMediaService.MEDIA_URL_PREFIX + stepMedia.get(0).getRelativePath();
-        }
-        return null;
-    }    
 
     @Transactional(readOnly = true)
     public DayPlanDto getDayPlan(long userId, LocalDate date) {
@@ -156,42 +154,16 @@ public class CalendarService {
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
     
         List<CalendarEntry> entries = calendarEntryRepository
-                .findByOwner_UserIdAndPlanDateOrderByRecipeSortOrderAsc(userId, date);
-    
-        if (entries.isEmpty()) {
-            return new DayPlanDto(date, List.of());
-        }
+                .findByOwner_UserIdAndPlanDateBetweenOrderByPlanDateAscRecipeSortOrderAsc(
+                        userId, date, date);
     
         List<DayMealLayout> layoutRows = dayMealLayoutRepository
                 .findByOwner_UserIdAndPlanDateOrderByMealSortOrderAsc(userId, date);
-    
-        // Group entries by mealTypeId
-        Map<Long, List<CalendarEntry>> byMealType = entries.stream()
-                .collect(Collectors.groupingBy(e -> e.getMealType().getMealTypeId()));
-    
-        // Meal type order: day layout when present, otherwise default_sort_order per type
-        List<Long> orderedMealTypeIds = buildMealTypeOrder(layoutRows, byMealType.keySet(), byMealType);
-    
-        List<MealBlockDto> blocks = new ArrayList<>();
-        for (Long mealTypeId : orderedMealTypeIds) {
-            List<CalendarEntry> group = byMealType.get(mealTypeId);
-            if (group == null || group.isEmpty()) continue;
-    
-            group.sort(Comparator.comparingInt(CalendarEntry::getRecipeSortOrder));
-            MealType mt = group.get(0).getMealType();
-            int mealOrder = layoutRows.stream()
-                    .filter(l -> l.getMealType().getMealTypeId().equals(mealTypeId))
-                    .mapToInt(DayMealLayout::getMealSortOrder)
-                    .findFirst()
-                    .orElse(mt.getDefaultSortOrder());
-    
-            blocks.add(new MealBlockDto(
-                    toMealTypeDto(mt),
-                    mealOrder,
-                    group.stream().map(this::toDto).toList()
-            ));
-        }
-        blocks.sort(Comparator.comparingInt(MealBlockDto::mealSortOrder));
+
+        Map<Long, String> coverByRecipeId = loadCoverUrlsByRecipeId(
+                entries.stream().map(e -> e.getRecipe().getRecipeId()).distinct().toList());
+
+        List<MealBlockDto> blocks = buildMealBlocks(entries, layoutRows, coverByRecipeId);
         return new DayPlanDto(date, blocks);
     }
 
@@ -229,6 +201,121 @@ public class CalendarService {
                 .sorted(Comparator.comparingInt(id ->
                         byMealType.get(id).get(0).getMealType().getDefaultSortOrder()))
                 .toList();
+    }
+
+    /**
+     * Builds ordered meal blocks for one day. Shared by {@link #getDayPlan} and {@link #getRange}.
+     */
+    private List<MealBlockDto> buildMealBlocks(
+            List<CalendarEntry> entries,
+            List<DayMealLayout> layoutRows,
+            Map<Long, String> coverByRecipeId) {
+
+        if (entries.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, List<CalendarEntry>> byMealType = entries.stream()
+                .collect(Collectors.groupingBy(e -> e.getMealType().getMealTypeId()));
+
+        List<Long> orderedMealTypeIds = buildMealTypeOrder(layoutRows, byMealType.keySet(), byMealType);
+
+        List<MealBlockDto> blocks = new ArrayList<>();
+        for (Long mealTypeId : orderedMealTypeIds) {
+            List<CalendarEntry> group = byMealType.get(mealTypeId);
+            if (group == null || group.isEmpty()) {
+                continue;
+            }
+            group.sort(Comparator.comparingInt(CalendarEntry::getRecipeSortOrder));
+            MealType mt = group.get(0).getMealType();
+            int mealOrder = layoutRows.stream()
+                    .filter(l -> l.getMealType().getMealTypeId().equals(mealTypeId))
+                    .mapToInt(DayMealLayout::getMealSortOrder)
+                    .findFirst()
+                    .orElse(mt.getDefaultSortOrder());
+
+            blocks.add(new MealBlockDto(
+                    toMealTypeDto(mt),
+                    mealOrder,
+                    group.stream().map(e -> toDto(e, coverByRecipeId)).toList()));
+        }
+        blocks.sort(Comparator.comparingInt(MealBlockDto::mealSortOrder));
+        return blocks;
+    }
+
+    /**
+     * Batch-loads cover image URLs (recipe-level media first, then step media).
+     * Avoids one DB round-trip per entry when building week/month views.
+     */
+    private Map<Long, String> loadCoverUrlsByRecipeId(List<Long> recipeIds) {
+        if (recipeIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> out = new HashMap<>();
+
+        List<RecipeMedia> global = recipeMediaRepository
+                .findByRecipe_RecipeIdInAndStepIsNullOrderByRecipe_RecipeIdAscDisplayOrderAsc(recipeIds);
+        for (RecipeMedia m : global) {
+            out.putIfAbsent(m.getRecipe().getRecipeId(),
+                    RecipeMediaService.MEDIA_URL_PREFIX + m.getRelativePath());
+        }
+
+        List<Long> missing = recipeIds.stream().filter(id -> !out.containsKey(id)).toList();
+        if (!missing.isEmpty()) {
+            List<RecipeMedia> stepMedia = recipeMediaRepository
+                    .findByRecipe_RecipeIdInAndStepIsNotNullOrderByRecipe_RecipeIdAscStep_StepNumberAscDisplayOrderAsc(
+                            missing);
+            for (RecipeMedia m : stepMedia) {
+                out.putIfAbsent(m.getRecipe().getRecipeId(),
+                        RecipeMediaService.MEDIA_URL_PREFIX + m.getRelativePath());
+            }
+        }
+        return out;
+    }
+
+    @Transactional(readOnly = true)
+    public CalendarRangeDto getRange(long userId, LocalDate from, LocalDate to) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
+
+        if (from == null || to == null) {
+            throw new IllegalArgumentException("Los parámetros from y to son obligatorios.");
+        }
+        if (from.isAfter(to)) {
+            throw new IllegalArgumentException("La fecha from no puede ser posterior a to.");
+        }
+        long span = ChronoUnit.DAYS.between(from, to) + 1;
+        if (span > MAX_RANGE_DAYS) {
+            throw new IllegalArgumentException(
+                    "El rango no puede superar " + MAX_RANGE_DAYS + " días.");
+        }
+
+        List<CalendarEntry> entries = calendarEntryRepository
+                .findByOwner_UserIdAndPlanDateBetweenOrderByPlanDateAscRecipeSortOrderAsc(
+                        userId, from, to);
+
+        List<DayMealLayout> layoutRows = dayMealLayoutRepository
+                .findByOwner_UserIdAndPlanDateBetweenOrderByPlanDateAscMealSortOrderAsc(
+                        userId, from, to);
+
+        Map<LocalDate, List<CalendarEntry>> entriesByDate = entries.stream()
+                .collect(Collectors.groupingBy(CalendarEntry::getPlanDate));
+
+        Map<LocalDate, List<DayMealLayout>> layoutByDate = layoutRows.stream()
+                .collect(Collectors.groupingBy(DayMealLayout::getPlanDate));
+
+        Map<Long, String> coverByRecipeId = loadCoverUrlsByRecipeId(
+                entries.stream().map(e -> e.getRecipe().getRecipeId()).distinct().toList());
+
+        List<CalendarRangeDayDto> days = new ArrayList<>();
+        for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
+            List<CalendarEntry> dayEntries = entriesByDate.getOrDefault(d, List.of());
+            List<DayMealLayout> dayLayout = layoutByDate.getOrDefault(d, List.of());
+            List<MealBlockDto> blocks = buildMealBlocks(dayEntries, dayLayout, coverByRecipeId);
+            days.add(new CalendarRangeDayDto(d, dayEntries.size(), blocks));
+        }
+
+        return new CalendarRangeDto(from, to, days);
     }
 
     @Transactional

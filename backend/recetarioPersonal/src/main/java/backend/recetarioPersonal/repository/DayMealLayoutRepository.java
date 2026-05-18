@@ -25,4 +25,7 @@ public interface DayMealLayoutRepository extends JpaRepository<DayMealLayout, Lo
     int maxMealSortOrder(@Param("userId") long userId, @Param("planDate") LocalDate planDate);
 
     void deleteByOwner_UserIdAndPlanDate(long ownerUserId, LocalDate planDate);
+
+    List<DayMealLayout> findByOwner_UserIdAndPlanDateBetweenOrderByPlanDateAscMealSortOrderAsc(
+        long ownerUserId, LocalDate from, LocalDate to);
 }
