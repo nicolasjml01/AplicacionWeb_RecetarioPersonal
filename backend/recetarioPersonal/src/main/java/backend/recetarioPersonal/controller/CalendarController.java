@@ -7,6 +7,11 @@ import backend.recetarioPersonal.view.DayPlanDto;
 import backend.recetarioPersonal.view.CalendarRangeDto;
 import backend.recetarioPersonal.view.ReorderDayMealsRequest;
 import backend.recetarioPersonal.view.ReorderCalendarEntriesRequest;
+import backend.recetarioPersonal.service.CalendarShoppingImportService;
+import backend.recetarioPersonal.view.DayShoppingImportPreviewDto;
+import backend.recetarioPersonal.view.DayShoppingImportPreviewRequest;
+import backend.recetarioPersonal.view.ImportDayShoppingListResponse;
+import backend.recetarioPersonal.view.ImportDayToShoppingListRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import java.time.LocalDate;
@@ -26,9 +31,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class CalendarController {
 
     private final CalendarService calendarService;
+    private final CalendarShoppingImportService calendarShoppingImportService;
 
-    public CalendarController(CalendarService calendarService) {
+    public CalendarController(
+            CalendarService calendarService,
+            CalendarShoppingImportService calendarShoppingImportService) {
         this.calendarService = calendarService;
+        this.calendarShoppingImportService = calendarShoppingImportService;
     }
 
     @PostMapping("/entries")
@@ -54,7 +63,7 @@ public class CalendarController {
             @RequestParam LocalDate to) {
         return ResponseEntity.ok(calendarService.getRange(userId, from, to));
     }
-    
+
     @GetMapping("/days/{date}")
     public ResponseEntity<DayPlanDto> getDayPlan(
             @PathVariable long userId,
@@ -79,4 +88,23 @@ public class CalendarController {
         calendarService.reorderEntries(userId, date, request);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/days/{date}/shopping-import-preview")
+    public ResponseEntity<DayShoppingImportPreviewDto> shoppingImportPreview(
+            @PathVariable long userId,
+            @PathVariable LocalDate date,
+            @RequestBody @Valid DayShoppingImportPreviewRequest request) {
+        return ResponseEntity.ok(
+                calendarShoppingImportService.buildPreview(userId, date, request.calendarEntryIds()));
+    }
+
+    @PostMapping("/days/{date}/import-to-shopping-list")
+    public ResponseEntity<ImportDayShoppingListResponse> importDayToShoppingList(
+            @PathVariable long userId,
+            @PathVariable LocalDate date,
+            @RequestBody @Valid ImportDayToShoppingListRequest request) {
+        int itemsAdded = calendarShoppingImportService.importToShoppingList(userId, date, request);
+        return ResponseEntity.ok(new ImportDayShoppingListResponse(itemsAdded));
+    }
+
 }

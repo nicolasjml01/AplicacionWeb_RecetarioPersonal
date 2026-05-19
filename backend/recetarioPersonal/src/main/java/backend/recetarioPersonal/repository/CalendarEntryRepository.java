@@ -27,4 +27,17 @@ public interface CalendarEntryRepository extends JpaRepository<CalendarEntry, Lo
 
     List<CalendarEntry> findByOwner_UserIdAndPlanDateBetweenOrderByPlanDateAscRecipeSortOrderAsc(
             long ownerUserId, LocalDate from, LocalDate to);
+
+    @Query("""
+            SELECT e FROM CalendarEntry e
+            JOIN FETCH e.recipe
+            JOIN FETCH e.mealType
+            WHERE e.calendarEntryId IN :ids
+              AND e.owner.userId = :userId
+              AND e.planDate = :planDate
+            """)
+    List<CalendarEntry> findSelectedEntriesForDay(
+            @Param("ids") List<Long> calendarEntryIds,
+            @Param("userId") long userId,
+            @Param("planDate") LocalDate planDate);
 }
