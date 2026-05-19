@@ -45,6 +45,7 @@ public class RecipeService {
     private final RecipeRepository recipeRepository;
     private final RecipeCategoryRepository recipeCategoryRepository;
     private final UserRepository userRepository;
+    private final CalendarHousekeepingService calendarHousekeepingService;
 
     public RecipeService(
             RecipeStepRepository recipeStepRepository,
@@ -53,7 +54,8 @@ public class RecipeService {
             RecipeRepository recipeRepository,
             RecipeCategoryRepository recipeCategoryRepository,
             UserRepository userRepository,
-            IngredientService ingredientService
+            IngredientService ingredientService,
+            CalendarHousekeepingService calendarHousekeepingService
     ) {
         this.recipeStepRepository = recipeStepRepository;
         this.recipeMediaRepository = recipeMediaRepository;
@@ -62,6 +64,7 @@ public class RecipeService {
         this.recipeCategoryRepository = recipeCategoryRepository;
         this.userRepository = userRepository;
         this.ingredientService = ingredientService;
+        this.calendarHousekeepingService = calendarHousekeepingService;
     }
 
     @Transactional
@@ -154,6 +157,7 @@ public class RecipeService {
         Recipe recipe = recipeRepository.findByRecipeIdAndOwner_UserId(recipeId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Receta no encontrada: " + recipeId));
         recipeRepository.delete(recipe);
+        calendarHousekeepingService.pruneOrphanLayoutsForUser(userId);
     }
 
     private Set<RecipeCategory> resolveCategories(long userId, List<Long> categoryIds, List<String> newCategoryNames) {

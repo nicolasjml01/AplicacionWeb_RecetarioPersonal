@@ -2,6 +2,7 @@ package backend.recetarioPersonal.repository;
 
 import backend.recetarioPersonal.model.CalendarEntry;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -40,4 +41,17 @@ public interface CalendarEntryRepository extends JpaRepository<CalendarEntry, Lo
             @Param("ids") List<Long> calendarEntryIds,
             @Param("userId") long userId,
             @Param("planDate") LocalDate planDate);
+
+    boolean existsByOwner_UserIdAndPlanDateAndMealType_MealTypeId(
+            long ownerUserId, LocalDate planDate, long mealTypeId);
+
+    long countByOwner_UserIdAndMealType_MealTypeId(long ownerUserId, long mealTypeId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM CalendarEntry e
+            WHERE e.owner.userId = :userId AND e.mealType.mealTypeId = :mealTypeId
+            """)
+    int deleteByOwner_UserIdAndMealType_MealTypeId(
+            @Param("userId") long userId, @Param("mealTypeId") long mealTypeId);
 }

@@ -3,12 +3,10 @@ package backend.recetarioPersonal.service;
 import backend.recetarioPersonal.model.CalendarEntry;
 import backend.recetarioPersonal.model.Ingredient;
 import backend.recetarioPersonal.model.RecipeIngredient;
-import backend.recetarioPersonal.model.RecipeMedia;
 import backend.recetarioPersonal.model.UnitOfMeasure;
 import backend.recetarioPersonal.repository.CalendarEntryRepository;
 import backend.recetarioPersonal.repository.IngredientRepository;
 import backend.recetarioPersonal.repository.RecipeIngredientRepository;
-import backend.recetarioPersonal.repository.RecipeMediaRepository;
 import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.view.DayShoppingImportLineDto;
 import backend.recetarioPersonal.view.DayShoppingImportPreviewDto;
@@ -23,11 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class CalendarShoppingImportService {
@@ -35,26 +34,26 @@ public class CalendarShoppingImportService {
     private final UserRepository userRepository;
     private final CalendarEntryRepository calendarEntryRepository;
     private final RecipeIngredientRepository recipeIngredientRepository;
-    private final RecipeMediaRepository recipeMediaRepository;
     private final IngredientRepository ingredientRepository;
     private final IngredientService ingredientService;
     private final ShoppingListService shoppingListService;
+    private final RecipeCoverUrlService recipeCoverUrlService;
 
     public CalendarShoppingImportService(
             UserRepository userRepository,
             CalendarEntryRepository calendarEntryRepository,
             RecipeIngredientRepository recipeIngredientRepository,
-            RecipeMediaRepository recipeMediaRepository,
             IngredientRepository ingredientRepository,
             IngredientService ingredientService,
-            ShoppingListService shoppingListService) {
+            ShoppingListService shoppingListService,
+            RecipeCoverUrlService recipeCoverUrlService) {
         this.userRepository = userRepository;
         this.calendarEntryRepository = calendarEntryRepository;
         this.recipeIngredientRepository = recipeIngredientRepository;
-        this.recipeMediaRepository = recipeMediaRepository;
         this.ingredientRepository = ingredientRepository;
         this.ingredientService = ingredientService;
         this.shoppingListService = shoppingListService;
+        this.recipeCoverUrlService = recipeCoverUrlService;
     }
 
     @Transactional(readOnly = true)
@@ -76,7 +75,7 @@ public class CalendarShoppingImportService {
                     "Alguna entrada no pertenece a ese día o al usuario.");
         }
 
-        Map<Long, String> coverByRecipeId = loadCoverUrlsByRecipeId(
+        Map<Long, String> coverByRecipeId = recipeCoverUrlService.loadCoverUrlsByRecipeId(
                 entries.stream().map(e -> e.getRecipe().getRecipeId()).distinct().toList());
 
         List<String> warnings = new ArrayList<>();
@@ -124,15 +123,27 @@ public class CalendarShoppingImportService {
         ensureUserExists(userId);
         Objects.requireNonNull(date, "date");
 
+        if (request.calendarEntryIds() == null || request.calendarEntryIds().isEmpty()) {
+            throw new IllegalArgumentException("Debes indicar las comidas del día incluidas en la importación.");
+        }
         if (request.items() == null || request.items().isEmpty()) {
             throw new IllegalArgumentException(
                     "Debes indicar al menos un ingrediente para importar.");
         }
 
+        DayShoppingImportPreviewDto preview = buildPreview(userId, date, request.calendarEntryIds());
+        Set<String> allowedGroupKeys = preview.lines().stream()
+                .map(DayShoppingImportLineDto::groupKey)
+                .collect(Collectors.toSet());
+
         int added = 0;
         for (ImportDayShoppingItemRequest item : request.items()) {
             if (item.quantity() <= 0f) {
                 continue;
+            }
+            if (!allowedGroupKeys.contains(item.groupKey())) {
+                throw new IllegalArgumentException(
+                        "Algún ingrediente no pertenece al día seleccionado o no estaba en la vista previa.");
             }
             Ingredient ingredient = ingredientRepository.findById(item.ingredientId())
                     .orElseThrow(() -> new IllegalArgumentException(
@@ -159,32 +170,6 @@ public class CalendarShoppingImportService {
 
     private static String groupKey(long ingredientId, Long unitId) {
         return ingredientId + ":" + (unitId != null ? unitId : "null");
-    }
-
-    private Map<Long, String> loadCoverUrlsByRecipeId(List<Long> recipeIds) {
-        if (recipeIds.isEmpty()) {
-            return Map.of();
-        }
-        Map<Long, String> out = new HashMap<>();
-
-        List<RecipeMedia> global = recipeMediaRepository
-                .findByRecipe_RecipeIdInAndStepIsNullOrderByRecipe_RecipeIdAscDisplayOrderAsc(recipeIds);
-        for (RecipeMedia m : global) {
-            out.putIfAbsent(m.getRecipe().getRecipeId(),
-                    RecipeMediaService.MEDIA_URL_PREFIX + m.getRelativePath());
-        }
-
-        List<Long> missing = recipeIds.stream().filter(id -> !out.containsKey(id)).toList();
-        if (!missing.isEmpty()) {
-            List<RecipeMedia> stepMedia = recipeMediaRepository
-                    .findByRecipe_RecipeIdInAndStepIsNotNullOrderByRecipe_RecipeIdAscStep_StepNumberAscDisplayOrderAsc(
-                            missing);
-            for (RecipeMedia m : stepMedia) {
-                out.putIfAbsent(m.getRecipe().getRecipeId(),
-                        RecipeMediaService.MEDIA_URL_PREFIX + m.getRelativePath());
-            }
-        }
-        return out;
     }
 
     private static UnitOfMeasureDto toUnitDto(UnitOfMeasure unit) {

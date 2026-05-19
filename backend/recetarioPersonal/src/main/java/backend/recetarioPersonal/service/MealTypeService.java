@@ -5,6 +5,7 @@ import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.MealTypeRepository;
 import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.view.CreateMealTypeRequest;
+import backend.recetarioPersonal.view.DeleteMealTypeResponse;
 import backend.recetarioPersonal.view.MealTypeDto;
 import backend.recetarioPersonal.view.UpdateMealTypeRequest;
 import org.springframework.stereotype.Service;
@@ -18,10 +19,12 @@ public class MealTypeService {
 
     private final MealTypeRepository mealTypeRepository;
     private final UserRepository userRepository;
+    private final CalendarHousekeepingService calendarHousekeepingService;
 
-    public MealTypeService(MealTypeRepository mealTypeRepository, UserRepository userRepository) {
+    public MealTypeService(MealTypeRepository mealTypeRepository, UserRepository userRepository, CalendarHousekeepingService calendarHousekeepingService) {
         this.mealTypeRepository = mealTypeRepository;
         this.userRepository = userRepository;
+        this.calendarHousekeepingService = calendarHousekeepingService;
     }
 
     @Transactional(readOnly = true)
@@ -79,22 +82,20 @@ public class MealTypeService {
     }
 
     @Transactional
-    public void delete(long userId, Long mealTypeId) {
+    public DeleteMealTypeResponse delete(long userId, Long mealTypeId) {
         MealType mealType = findOwnedCustomOrThrow(userId, mealTypeId);
-        mealTypeRepository.delete(mealType);
-    }
+        CalendarHousekeepingService.MealTypeDeletionResult result =
+                calendarHousekeepingService.deleteCustomMealTypeCascade(userId, mealType);
 
-    @Transactional
-    public MealTypeDto findOrCreateCustom(long userId, String rawName) {
-        String normalized = normalize(rawName);
-        if (normalized.isBlank()) {
-            throw new IllegalArgumentException("El nombre del tipo de comida es obligatorio.");
-        }
+        String message = String.format(
+                "Se eliminó el tipo \"%s\" y %d planificación(es) asociada(s).",
+                result.mealTypeName(),
+                result.calendarEntriesRemoved());
 
-        return mealTypeRepository.findByOwnerIsNullAndNameIgnoreCase(normalized)
-                .map(this::toDto)
-                .or(() -> mealTypeRepository.findByOwner_UserIdAndNameIgnoreCase(userId, normalized).map(this::toDto))
-                .orElseGet(() -> create(userId, new CreateMealTypeRequest(normalized)));
+        return new DeleteMealTypeResponse(
+                message,
+                result.calendarEntriesRemoved(),
+                result.layoutRowsRemoved());
     }
 
     private MealType findOwnedCustomOrThrow(long userId, Long mealTypeId) {

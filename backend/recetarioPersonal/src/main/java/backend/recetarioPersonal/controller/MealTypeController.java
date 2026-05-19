@@ -2,6 +2,7 @@ package backend.recetarioPersonal.controller;
 
 import backend.recetarioPersonal.service.MealTypeService;
 import backend.recetarioPersonal.view.CreateMealTypeRequest;
+import backend.recetarioPersonal.view.DeleteMealTypeResponse;
 import backend.recetarioPersonal.view.MealTypeDto;
 import backend.recetarioPersonal.view.UpdateMealTypeRequest;
 import jakarta.validation.Valid;
@@ -49,10 +50,9 @@ public class MealTypeController {
     }
 
     @DeleteMapping("/{mealTypeId}")
-    public ResponseEntity<Void> delete(
+    public ResponseEntity<DeleteMealTypeResponse> delete(
             @PathVariable long userId,
             @PathVariable Long mealTypeId) {
-        mealTypeService.delete(userId, mealTypeId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(mealTypeService.delete(userId, mealTypeId));
     }
 }

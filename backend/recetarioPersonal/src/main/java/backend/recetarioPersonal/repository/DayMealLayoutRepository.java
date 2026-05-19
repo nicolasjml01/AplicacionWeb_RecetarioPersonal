@@ -2,6 +2,7 @@ package backend.recetarioPersonal.repository;
 
 import backend.recetarioPersonal.model.DayMealLayout;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -27,5 +28,40 @@ public interface DayMealLayoutRepository extends JpaRepository<DayMealLayout, Lo
     void deleteByOwner_UserIdAndPlanDate(long ownerUserId, LocalDate planDate);
 
     List<DayMealLayout> findByOwner_UserIdAndPlanDateBetweenOrderByPlanDateAscMealSortOrderAsc(
-        long ownerUserId, LocalDate from, LocalDate to);
+            long ownerUserId, LocalDate from, LocalDate to);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM DayMealLayout l
+            WHERE l.owner.userId = :userId
+              AND l.planDate = :planDate
+              AND l.mealType.mealTypeId = :mealTypeId
+            """)
+    int deleteByOwner_UserIdAndPlanDateAndMealType_MealTypeId(
+            @Param("userId") long userId,
+            @Param("planDate") LocalDate planDate,
+            @Param("mealTypeId") long mealTypeId);
+
+    long countByOwner_UserIdAndMealType_MealTypeId(long ownerUserId, long mealTypeId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM DayMealLayout l
+            WHERE l.owner.userId = :userId AND l.mealType.mealTypeId = :mealTypeId
+            """)
+    int deleteByOwner_UserIdAndMealType_MealTypeId(
+            @Param("userId") long userId, @Param("mealTypeId") long mealTypeId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM day_meal_layout l
+            WHERE l.owner_user_id = :userId
+              AND NOT EXISTS (
+                SELECT 1 FROM calendar_entries e
+                WHERE e.owner_user_id = l.owner_user_id
+                  AND e.plan_date = l.plan_date
+                  AND e.meal_type_id = l.meal_type_id
+              )
+            """, nativeQuery = true)
+    int deleteOrphanLayoutsForUser(@Param("userId") long userId);
 }

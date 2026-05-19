@@ -4,12 +4,10 @@ import backend.recetarioPersonal.model.CalendarEntry;
 import backend.recetarioPersonal.model.DayMealLayout;
 import backend.recetarioPersonal.model.MealType;
 import backend.recetarioPersonal.model.Recipe;
-import backend.recetarioPersonal.model.RecipeMedia;
 import backend.recetarioPersonal.model.RecipePublicationState;
 import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.CalendarEntryRepository;
 import backend.recetarioPersonal.repository.DayMealLayoutRepository;
-import backend.recetarioPersonal.repository.RecipeMediaRepository;
 import backend.recetarioPersonal.repository.RecipeRepository;
 import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.view.AssignCalendarEntryRequest;
@@ -25,7 +23,6 @@ import backend.recetarioPersonal.view.CalendarRangeDayDto;
 import backend.recetarioPersonal.view.CalendarRangeDto;
 
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,23 +44,25 @@ public class CalendarService {
     private final RecipeRepository recipeRepository;
     private final MealTypeService mealTypeService;
     private final CalendarEntryRepository calendarEntryRepository;
-    private final RecipeMediaRepository recipeMediaRepository;
     private final DayMealLayoutRepository dayMealLayoutRepository;
+    private final CalendarHousekeepingService calendarHousekeepingService;
+    private final RecipeCoverUrlService recipeCoverUrlService;
 
     public CalendarService(
             UserRepository userRepository,
             RecipeRepository recipeRepository,
             MealTypeService mealTypeService,
             CalendarEntryRepository calendarEntryRepository,
-            RecipeMediaRepository recipeMediaRepository,
-            DayMealLayoutRepository dayMealLayoutRepository) 
-    {
+            DayMealLayoutRepository dayMealLayoutRepository,
+            CalendarHousekeepingService calendarHousekeepingService,
+            RecipeCoverUrlService recipeCoverUrlService) {
         this.userRepository = userRepository;
         this.recipeRepository = recipeRepository;
         this.mealTypeService = mealTypeService;
         this.calendarEntryRepository = calendarEntryRepository;
-        this.recipeMediaRepository = recipeMediaRepository;
         this.dayMealLayoutRepository = dayMealLayoutRepository;
+        this.calendarHousekeepingService = calendarHousekeepingService;
+        this.recipeCoverUrlService = recipeCoverUrlService;
     }
 
     @Transactional
@@ -126,11 +125,15 @@ public class CalendarService {
         CalendarEntry entry = calendarEntryRepository
                 .findByCalendarEntryIdAndOwner_UserId(calendarEntryId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Entrada de calendario no encontrada: " + calendarEntryId));
+        LocalDate planDate = entry.getPlanDate();
+        long mealTypeId = entry.getMealType().getMealTypeId();
         calendarEntryRepository.delete(entry);
+        calendarHousekeepingService.pruneMealLayoutIfEmpty(userId, planDate, mealTypeId);
     }
 
     private CalendarEntryDto toDto(CalendarEntry entry) {
-        Map<Long, String> covers = loadCoverUrlsByRecipeId(List.of(entry.getRecipe().getRecipeId()));
+        Map<Long, String> covers = recipeCoverUrlService.loadCoverUrlsByRecipeId(
+                List.of(entry.getRecipe().getRecipeId()));
         return toDto(entry, covers);
     }
 
@@ -160,7 +163,7 @@ public class CalendarService {
         List<DayMealLayout> layoutRows = dayMealLayoutRepository
                 .findByOwner_UserIdAndPlanDateOrderByMealSortOrderAsc(userId, date);
 
-        Map<Long, String> coverByRecipeId = loadCoverUrlsByRecipeId(
+        Map<Long, String> coverByRecipeId = recipeCoverUrlService.loadCoverUrlsByRecipeId(
                 entries.stream().map(e -> e.getRecipe().getRecipeId()).distinct().toList());
 
         List<MealBlockDto> blocks = buildMealBlocks(entries, layoutRows, coverByRecipeId);
@@ -243,36 +246,6 @@ public class CalendarService {
         return blocks;
     }
 
-    /**
-     * Batch-loads cover image URLs (recipe-level media first, then step media).
-     * Avoids one DB round-trip per entry when building week/month views.
-     */
-    private Map<Long, String> loadCoverUrlsByRecipeId(List<Long> recipeIds) {
-        if (recipeIds.isEmpty()) {
-            return Map.of();
-        }
-        Map<Long, String> out = new HashMap<>();
-
-        List<RecipeMedia> global = recipeMediaRepository
-                .findByRecipe_RecipeIdInAndStepIsNullOrderByRecipe_RecipeIdAscDisplayOrderAsc(recipeIds);
-        for (RecipeMedia m : global) {
-            out.putIfAbsent(m.getRecipe().getRecipeId(),
-                    RecipeMediaService.MEDIA_URL_PREFIX + m.getRelativePath());
-        }
-
-        List<Long> missing = recipeIds.stream().filter(id -> !out.containsKey(id)).toList();
-        if (!missing.isEmpty()) {
-            List<RecipeMedia> stepMedia = recipeMediaRepository
-                    .findByRecipe_RecipeIdInAndStepIsNotNullOrderByRecipe_RecipeIdAscStep_StepNumberAscDisplayOrderAsc(
-                            missing);
-            for (RecipeMedia m : stepMedia) {
-                out.putIfAbsent(m.getRecipe().getRecipeId(),
-                        RecipeMediaService.MEDIA_URL_PREFIX + m.getRelativePath());
-            }
-        }
-        return out;
-    }
-
     @Transactional(readOnly = true)
     public CalendarRangeDto getRange(long userId, LocalDate from, LocalDate to) {
         userRepository.findById(userId)
@@ -304,7 +277,7 @@ public class CalendarService {
         Map<LocalDate, List<DayMealLayout>> layoutByDate = layoutRows.stream()
                 .collect(Collectors.groupingBy(DayMealLayout::getPlanDate));
 
-        Map<Long, String> coverByRecipeId = loadCoverUrlsByRecipeId(
+        Map<Long, String> coverByRecipeId = recipeCoverUrlService.loadCoverUrlsByRecipeId(
                 entries.stream().map(e -> e.getRecipe().getRecipeId()).distinct().toList());
 
         List<CalendarRangeDayDto> days = new ArrayList<>();
@@ -325,6 +298,14 @@ public class CalendarService {
 
         User owner = userRepository.getReferenceById(userId);
 
+        long distinctMealTypes = request.items().stream()
+                .map(MealOrderItemRequest::mealTypeId)
+                .distinct()
+                .count();
+        if (distinctMealTypes != request.items().size()) {
+            throw new IllegalArgumentException("No puedes repetir el mismo tipo de comida en el orden.");
+        }
+
         dayMealLayoutRepository.deleteByOwner_UserIdAndPlanDate(userId, date);
 
         for (MealOrderItemRequest item : request.items()) {
@@ -340,7 +321,14 @@ public class CalendarService {
 
     @Transactional
     public void reorderEntries(long userId, LocalDate date, ReorderCalendarEntriesRequest request) {
+        if (request.items() == null || request.items().isEmpty()) {
+            throw new IllegalArgumentException("Debes indicar al menos una entrada para reordenar.");
+        }
+        Set<Long> seenEntryIds = new HashSet<>();
         for (CalendarEntryOrderItemRequest item : request.items()) {
+            if (!seenEntryIds.add(item.calendarEntryId())) {
+                throw new IllegalArgumentException("Hay entradas duplicadas en la petición.");
+            }
             CalendarEntry entry = calendarEntryRepository
                     .findByCalendarEntryIdAndOwner_UserId(item.calendarEntryId(), userId)
                     .orElseThrow(() -> new IllegalArgumentException(
