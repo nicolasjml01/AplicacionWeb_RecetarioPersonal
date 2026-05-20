@@ -140,3 +140,44 @@ function loadImage(source: File | Blob): Promise<HTMLImageElement> {
     img.src = url;
   });
 }
+
+function loadImageFromUrl(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("No se pudo cargar la imagen."));
+    img.src = url;
+  });
+}
+
+/** Small raster of the crop + filters — same pipeline as applyImageEdits (step 2–4). */
+export async function renderCroppedPreviewBlob(
+  transformedImageUrl: string,
+  crop: ImageEdits["crop"],
+  filters: Pick<ImageEdits, "brightness" | "contrast" | "saturation">,
+  maxLongEdge = 220,
+): Promise<Blob> {
+  const img = await loadImageFromUrl(transformedImageUrl);
+  const src = crop ?? {
+    x: 0,
+    y: 0,
+    width: img.naturalWidth,
+    height: img.naturalHeight,
+  };
+
+  let scale = 1;
+  const longEdge = Math.max(src.width, src.height);
+  if (longEdge > maxLongEdge) scale = maxLongEdge / longEdge;
+  const outW = Math.max(1, Math.round(src.width * scale));
+  const outH = Math.max(1, Math.round(src.height * scale));
+
+  const out = document.createElement("canvas");
+  out.width = outW;
+  out.height = outH;
+  const ctx = out.getContext("2d");
+  if (!ctx) throw new Error("No se pudo crear el lienzo de vista previa.");
+  ctx.filter = `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturation}%)`;
+  ctx.drawImage(img, src.x, src.y, src.width, src.height, 0, 0, outW, outH);
+
+  return canvasToBlob(out, "image/jpeg", 0.88);
+}

@@ -206,13 +206,18 @@ export async function deleteRecipeStep(
   if (!res.ok) throw new Error(await readErrorMessage(res));
 }
 
+export type ImportRecipeIngredientItemPayload = {
+  recipeIngredientId: number;
+  quantity: number;
+  unitName?: string | null;
+};
+
 export type ImportRecipeIngredientsPayload = {
   factor?: number;
-  /**
-   * If sent and not empty, only those rows are imported.
-   * If omitted or not sent, the server imports all (compatibility).
-   */
+  /** Legacy: ids only (recipe quantities × factor). */
   recipeIngredientIds?: number[];
+  /** Preferred: explicit quantity per ingredient. */
+  items?: ImportRecipeIngredientItemPayload[];
 };
 
 export async function importRecipeIngredientsToShoppingList(
@@ -222,11 +227,15 @@ export async function importRecipeIngredientsToShoppingList(
 ): Promise<void> {
   const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/ingredients/import-to-shopping-list`;
   const body: Record<string, unknown> = {};
-  if (payload?.factor != null && Number.isFinite(payload.factor) && payload.factor > 0) {
-    body.factor = payload.factor;
-  }
-  if (payload?.recipeIngredientIds != null && payload.recipeIngredientIds.length > 0) {
-    body.recipeIngredientIds = payload.recipeIngredientIds;
+  if (payload?.items != null && payload.items.length > 0) {
+    body.items = payload.items;
+  } else {
+    if (payload?.factor != null && Number.isFinite(payload.factor) && payload.factor > 0) {
+      body.factor = payload.factor;
+    }
+    if (payload?.recipeIngredientIds != null && payload.recipeIngredientIds.length > 0) {
+      body.recipeIngredientIds = payload.recipeIngredientIds;
+    }
   }
   const res = await fetch(url, {
     method: "POST",

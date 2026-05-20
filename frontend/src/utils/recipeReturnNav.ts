@@ -1,14 +1,17 @@
 import type { NavigateFunction } from "react-router-dom";
 
-/** Query params: ret=home|cat|drafts, cid= (cat), q= (home search). */
+/** Query params: ret=home|cat|drafts|cal, cid= (cat), q= (home search), calview/caldate (calendar). */
 export type RecipeReturnNav =
   | { kind: "home"; q?: string }
   | { kind: "category"; categoryId: number }
-  | { kind: "drafts" };
+  | { kind: "drafts" }
+  | { kind: "calendar"; view: "day" | "week" | "month"; date: string };
 
 const KEY_RET = "ret";
 const KEY_CID = "cid";
 const KEY_Q = "q";
+const KEY_CAL_VIEW = "calview";
+const KEY_CAL_DATE = "caldate";
 
 export function parseRecipeReturnNav(params: URLSearchParams): RecipeReturnNav | null {
   const ret = params.get(KEY_RET);
@@ -22,6 +25,13 @@ export function parseRecipeReturnNav(params: URLSearchParams): RecipeReturnNav |
     return { kind: "category", categoryId: cid };
   }
   if (ret === "drafts") return { kind: "drafts" };
+  if (ret === "cal") {
+    const view = params.get(KEY_CAL_VIEW);
+    const date = params.get(KEY_CAL_DATE);
+    if (view !== "day" && view !== "week" && view !== "month") return null;
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    return { kind: "calendar", view, date };
+  }
   return null;
 }
 
@@ -33,6 +43,10 @@ export function recipeReturnNavToSearchParams(nav: RecipeReturnNav): URLSearchPa
   } else if (nav.kind === "category") {
     p.set(KEY_RET, "cat");
     p.set(KEY_CID, String(nav.categoryId));
+  } else if (nav.kind === "calendar") {
+    p.set(KEY_RET, "cal");
+    p.set(KEY_CAL_VIEW, nav.view);
+    p.set(KEY_CAL_DATE, nav.date);
   } else {
     p.set(KEY_RET, "drafts");
   }
@@ -81,6 +95,13 @@ export function navigateAfterRecipeEditorExit(
     }
     return;
   }
+  if (nav?.kind === "calendar") {
+    const p = new URLSearchParams();
+    p.set("view", nav.view);
+    p.set("date", nav.date);
+    navigate({ pathname: "/calendar", search: `?${p.toString()}` });
+    return;
+  }
   navigate("/home");
 }
 
@@ -104,6 +125,13 @@ export function navigateBackFromRecipeDetail(
     } else {
       navigate("/home");
     }
+    return;
+  }
+  if (nav?.kind === "calendar") {
+    const p = new URLSearchParams();
+    p.set("view", nav.view);
+    p.set("date", nav.date);
+    navigate({ pathname: "/calendar", search: `?${p.toString()}` });
     return;
   }
   if (legacyFromCategoryId != null) {

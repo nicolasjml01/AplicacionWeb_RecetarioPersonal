@@ -3,6 +3,7 @@ import type { UnitOfMeasureDto } from "../../types/shopping";
 import { ImageEditorDialog } from "../recipe/editor/ImageEditorDialog";
 import { applyImageEdits, isEditableImage, type ImageEdits } from "../../utils/imageEditing";
 import type { IngredientCategoryOption } from "../../utils/ingredientCatalogUi";
+import { IngredientUploadLayoutPreview } from "../media/UploadLayoutPreview";
 
 type IngredientEntryDialogProps = {
   open: boolean;
@@ -42,6 +43,7 @@ type IngredientEntryDialogProps = {
   createExtrasLabels?: {
     category?: string;
     imageHint?: string;
+    previewFit?: string;
     pickImage?: string;
     editImage?: string;
     removeImage?: string;
@@ -115,7 +117,7 @@ export function IngredientEntryDialog({
     category: createExtrasLabels.category ?? "Categoría en tu despensa",
     imageHint:
       createExtrasLabels.imageHint ??
-      "Opcional. Puedes recortar y ajustar como en las fotos de la receta.",
+      "Opcional. La vista previa muestra cómo se verá en recetas y en la cesta.",
     pickImage: createExtrasLabels.pickImage ?? "Elegir foto",
     editImage: createExtrasLabels.editImage ?? "Editar foto",
     removeImage: createExtrasLabels.removeImage ?? "Quitar foto",
@@ -220,7 +222,7 @@ export function IngredientEntryDialog({
                 />
                 {previewUrl && (
                   <div className="ingredient-dialog__image-preview-wrap">
-                    <img src={previewUrl} alt="" className="ingredient-dialog__image-preview" />
+                    <IngredientUploadLayoutPreview previewSrc={previewUrl} />
                   </div>
                 )}
                 <div className="ingredient-dialog__image-actions">
@@ -323,6 +325,7 @@ export function IngredientEntryDialog({
           open
           file={imageEditorFile}
           fileName={imageEditorFile.name}
+          previewContext="ingredient"
           saving={imageEditorSaving}
           errorMessage={imageEditorError}
           onCancel={() => {

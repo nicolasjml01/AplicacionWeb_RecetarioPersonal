@@ -32,6 +32,7 @@ import type { RecipeCategoryDto, RecipeDto, RecipeIngredientDto, RecipeMediaDto 
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { MediaStripEditor } from "../components/recipe/editor/MediaStripEditor";
 import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryDialog";
+import { IngredientRowThumb } from "../components/ingredient/IngredientRowThumb";
 import { UploadStagingDialog } from "../components/recipe/editor/UploadStagingDialog";
 import { ImageEditorDialog } from "../components/recipe/editor/ImageEditorDialog";
 import { resolveMediaUrl } from "../utils/mediaUrl";
@@ -64,6 +65,8 @@ type IngredientRow = {
   ingredientName: string;
   quantity: string;
   measurementUnit: string;
+  /** URL del catálogo o de la receta cargada (misma que en detalle de receta). */
+  ingredientImageUrl?: string | null;
   /** Solo al crear un nombre nuevo desde el modal; se envía al guardar la receta. */
   ingredientCategoryId?: number | null;
   pendingIngredientImage?: File | null;
@@ -156,6 +159,7 @@ function applyIngredientsFromRecipe(sortedIngredients: RecipeIngredientDto[]): I
     key: String(i.recipeIngredientId),
     recipeIngredientId: i.recipeIngredientId,
     ingredientName: i.ingredient.name,
+    ingredientImageUrl: i.ingredient.imageUrl ?? null,
     quantity: Number.isFinite(i.quantity) ? String(i.quantity) : "",
     measurementUnit: i.unitOfMeasure?.name ?? "",
   }));
@@ -230,6 +234,7 @@ export function CreateRecipePage() {
   const [ingredientModalUnit, setIngredientModalUnit] = useState("");
   const [ingredientModalCategoryId, setIngredientModalCategoryId] = useState<number | null>(null);
   const [ingredientModalImageFile, setIngredientModalImageFile] = useState<File | null>(null);
+  const [ingredientModalImageUrl, setIngredientModalImageUrl] = useState<string | null>(null);
   const [ingredientModalSaving, setIngredientModalSaving] = useState(false);
   const [ingredientModalError, setIngredientModalError] = useState("");
   const [steps, setSteps] = useState<StepRow[]>([makeLocalStep(1)]);
@@ -834,12 +839,17 @@ export function CreateRecipePage() {
     }
   }
 
-  const openAddIngredientModal = (ingredientName: string, isNewCreation: boolean) => {
+  const openAddIngredientModal = (
+    ingredientName: string,
+    isNewCreation: boolean,
+    imageUrl?: string | null,
+  ) => {
     const opts = ingredientCategoriesForSelect(ingredientCatalog);
     setIngredientModalCategoryId(
       isNewCreation ? defaultIngredientCategoryId(opts) : null,
     );
     setIngredientModalImageFile(null);
+    setIngredientModalImageUrl(isNewCreation ? null : (imageUrl ?? null));
     setIngredientModal({ open: true, mode: "add", ingredientName, isNewCreation });
     setIngredientModalQuantity("");
     setIngredientModalUnit("");
@@ -861,6 +871,7 @@ export function CreateRecipePage() {
     setIngredientModalUnit(row.measurementUnit);
     setIngredientModalCategoryId(null);
     setIngredientModalImageFile(null);
+    setIngredientModalImageUrl(row.ingredientImageUrl ?? null);
     setIngredientModalSaving(false);
   };
 
@@ -870,6 +881,7 @@ export function CreateRecipePage() {
     setIngredientModalError("");
     setIngredientModalCategoryId(null);
     setIngredientModalImageFile(null);
+    setIngredientModalImageUrl(null);
   };
 
   const requestCloseIngredientModal = () => {
@@ -919,6 +931,9 @@ export function CreateRecipePage() {
       ingredientName: ingredientModal.ingredientName.trim(),
       quantity,
       measurementUnit: ingredientModalUnit.trim(),
+      ingredientImageUrl: isNewFlow
+        ? null
+        : ingredientModalImageUrl ?? prev?.ingredientImageUrl ?? null,
       ingredientCategoryId: isNewFlow ? ingredientModalCategoryId ?? undefined : prev?.ingredientCategoryId,
       pendingIngredientImage: isNewFlow
         ? ingredientModalImageFile ?? undefined
@@ -1459,7 +1474,7 @@ export function CreateRecipePage() {
                         key={s.ingredientId}
                         type="button"
                         className="create-recipe-ingredient-suggest__item"
-                        onClick={() => openAddIngredientModal(s.name, false)}
+                        onClick={() => openAddIngredientModal(s.name, false, s.imageUrl)}
                       >
                         {s.name}
                       </button>
@@ -1489,7 +1504,11 @@ export function CreateRecipePage() {
                   onClick={() => openEditIngredientModal(row)}
                 >
                   <span className="create-recipe-ingredient-summary__imageWrap">
-                    <img src="/logoShoppingList.png" alt="" className="create-recipe-ingredient-summary__image" />
+                    <IngredientRowThumb
+                      imageUrl={row.ingredientImageUrl}
+                      pendingImageFile={row.pendingIngredientImage}
+                      size="card"
+                    />
                   </span>
                   <span className="create-recipe-ingredient-summary__name">{row.ingredientName}</span>
                   <span className="create-recipe-ingredient-summary__bottom">
@@ -1623,6 +1642,8 @@ export function CreateRecipePage() {
           open
           file={editExistingState.file}
           fileName={editExistingState.fileName}
+          previewContext="recipe"
+          recipeTitle={isGenericDraftTitle(title) ? "Tu receta" : title.trim() || "Tu receta"}
           saving={editExistingState.saving}
           errorMessage={editExistingState.error}
           onCancel={() => setEditExistingState(null)}
@@ -1640,6 +1661,8 @@ export function CreateRecipePage() {
               ? `Paso ${steps.findIndex((s) => s.stepId === (stagingState.target as { stepId: number }).stepId) + 1 || ""}`.trim() || "Paso"
               : undefined
         }
+        recipeTitle={isGenericDraftTitle(title) ? "Tu receta" : title.trim() || "Tu receta"}
+        isCoverCandidate={stagingState?.target === "global" && globalMedia.length === 0}
         onCancel={() => setStagingState(null)}
         onConfirm={(items) => void handleStagingConfirm(items)}
       />

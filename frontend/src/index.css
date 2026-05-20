@@ -626,8 +626,96 @@ body {
 }
 
 .ingredient-dialog__image-preview-wrap {
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+/* Shared upload previews (ingredients, recipe gallery, cover tile) */
+.upload-layout-preview {
   display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.upload-layout-preview__label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.upload-layout-preview__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.35;
+}
+
+.upload-layout-preview__recipe-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   justify-content: center;
+  align-items: flex-start;
+}
+
+.upload-layout-preview__frame {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.upload-layout-preview__frame-label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.upload-layout-preview__media-strip {
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: #f4f0ea;
+  overflow: hidden;
+}
+
+.upload-layout-preview__media-strip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.upload-layout-preview__frame--tile {
+  width: min(100%, 168px);
+}
+
+.upload-layout-preview--recipe {
+  padding: 0 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0.65rem;
+}
+
+.ingredient-dialog__preview-label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.ingredient-dialog__preview-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.35;
 }
 
 .ingredient-dialog__image-preview {
@@ -767,13 +855,19 @@ body {
   cursor: pointer;
 }
 
+.shopping-top-card__imageBtn .ingredient-thumb {
+  pointer-events: none;
+}
+
 .shopping-top-card__image {
   width: 100%;
   height: 74px;
   object-fit: contain;
+  object-position: center;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: #fff;
+  display: block;
 }
 
 .shopping-top-card__name {
@@ -1224,6 +1318,45 @@ body {
 
 .recipe-mini-tile--compact .recipe-mini-tile__media {
   height: 48px;
+}
+
+.recipe-mini-tile--week .recipe-mini-tile__media {
+  aspect-ratio: 4 / 3;
+}
+
+.recipe-mini-tile--week .recipe-mini-tile__title {
+  font-size: 0.72rem;
+  padding: 0.3rem 0.35rem 0.35rem;
+  -webkit-line-clamp: 2;
+}
+
+.recipe-mini-tile--month .recipe-mini-tile__media {
+  aspect-ratio: 4 / 3;
+  height: 100%;
+  min-height: 0;
+}
+
+.recipe-mini-tile--month .recipe-mini-tile__title {
+  display: none;
+}
+
+.recipe-mini-tile--month .recipe-mini-tile__default-cover {
+  max-width: 1.25rem;
+  max-height: 1.25rem;
+}
+
+.recipe-mini-tile__more {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  z-index: 1;
+  padding: 0.12rem 0.38rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.58);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .recipe-mini-tile__img {
@@ -1746,20 +1879,48 @@ body {
   text-align: center;
 }
 
-.recipe-detail__ingredient-image-wrap {
+/* Shared ingredient photo (recipe detail, cesta, importar, preview al subir) */
+.ingredient-thumb {
   width: 100%;
-  height: 70px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
 }
 
+.ingredient-thumb--card {
+  height: 74px;
+  min-height: 74px;
+}
+
+.ingredient-thumb--compact {
+  height: 58px;
+  min-height: 58px;
+}
+
+.ingredient-thumb__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
+
+/* Legacy aliases (recipe-detail cards) */
+.recipe-detail__ingredient-image-wrap.ingredient-thumb,
+.recipe-detail__ingredient-image-wrap {
+  width: 100%;
+}
+
+.recipe-detail__ingredient-image.ingredient-thumb__img,
 .recipe-detail__ingredient-image {
-  width: 48px;
-  height: 48px;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
   object-fit: contain;
 }
 
@@ -2253,19 +2414,6 @@ body {
 
 .create-recipe-ingredient-summary__imageWrap {
   width: 100%;
-  height: 76px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-}
-
-.create-recipe-ingredient-summary__image {
-  width: 54px;
-  height: 54px;
-  object-fit: contain;
 }
 
 .create-recipe-ingredient-summary__name {
@@ -2666,34 +2814,88 @@ body {
   margin: 0.5rem 0 0.75rem;
 }
 
-button.import-ingredients-dialog__card {
-  cursor: pointer;
+.import-ingredients-dialog__card {
   width: 100%;
-  text-align: inherit;
-  font: inherit;
-  color: inherit;
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease,
-    border-color 0.12s ease;
+  display: flex;
+  flex-direction: column;
 }
 
-button.import-ingredients-dialog__card:hover {
-  border-color: rgba(45, 90, 39, 0.35);
-  box-shadow: 0 4px 12px rgba(44, 36, 25, 0.1);
-}
-
-button.import-ingredients-dialog__card:active {
-  transform: scale(0.98);
-}
-
-.import-ingredients-dialog__card-hint {
+.import-ingredients-dialog__card-media-btn {
   display: block;
-  margin-top: 0.35rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 8px 8px 0 0;
+  transition: opacity 0.12s ease;
+}
+
+.import-ingredients-dialog__card-media-btn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.import-ingredients-dialog__card-media-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.import-ingredients-dialog__pills {
+  align-items: stretch;
+}
+
+.import-ingredients-dialog__pill-btn {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fff;
   text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text);
+  padding: 0.3rem 0.2rem;
+  cursor: pointer;
+  min-width: 0;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+.import-ingredients-dialog__pill-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: #f8faf7;
+}
+
+.import-ingredients-dialog__pill-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.import-ingredients-dialog__pill-btn--unit {
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Nested "Editar ítem" above the import dialog */
+.modal-backdrop .modal-backdrop {
+  z-index: 1450;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ===== Upload staging queue ===== */
@@ -2929,8 +3131,108 @@ button.import-ingredients-dialog__card:active {
 
 .image-editor__canvas-wrap {
   flex: 1;
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: #1a1a1a;
+}
+
+.image-editor__live-preview {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.75rem 0.5rem;
+  background: #2c2c2c;
+  border-bottom: 1px solid #444;
+}
+
+.image-editor__live-preview-title {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #e8e4de;
+  text-align: center;
+}
+
+.image-editor__live-preview-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  color: #b8b0a6;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.image-editor__live-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.image-editor__live-preview-tag {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #b8b0a6;
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+.image-editor__live-preview-saved {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.image-editor__live-preview-saved-frame {
+  width: 120px;
+  height: 120px;
+  border: 2px solid var(--color-primary);
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.image-editor__live-preview-saved-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.image-editor__live-preview-placeholder {
+  font-size: 0.68rem;
+  color: #888;
+  text-align: center;
+  padding: 0.35rem;
+  line-height: 1.3;
+}
+
+.image-editor__live-preview-context {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.image-editor__live-preview-context--tile {
+  width: min(148px, 42vw);
+}
+
+.image-editor__live-preview-context .upload-layout-preview__media-strip {
+  border-color: #555;
+}
+
+.image-editor__live-preview-context .ingredient-thumb {
+  border-color: #555;
+}
+
+.image-editor__cropper-area {
+  flex: 1;
+  position: relative;
   min-height: 0;
 }
 
@@ -3387,4 +3689,1245 @@ button.import-ingredients-dialog__card:active {
     width: 82px;
     height: 82px;
   }
+}
+
+/* ===== Calendar ===== */
+.cal-page {
+  --cal-control-h: 2.5rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: calc(100dvh - 2.5rem);
+}
+
+.cal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cal-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cal-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.cal-toolbar .btn--primary,
+.cal-toolbar .btn--secondary {
+  height: var(--cal-control-h);
+  margin-top: 0;
+  padding: 0 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.cal-today-btn {
+  height: var(--cal-control-h);
+  padding: 0 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.cal-today-btn:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+
+.cal-today-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cal-date-panel {
+  display: flex;
+  justify-content: center;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: var(--space-md) clamp(0.75rem, 2vw, 1.25rem);
+}
+
+.cal-content-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: var(--space-md);
+  min-height: min(70vh, 720px);
+}
+
+.cal-main {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.cal-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cal-nav-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  border-radius: var(--radius);
+  padding: 0.35rem 0.65rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.cal-nav-btn--today {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.cal-header__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.cal-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cal-view-tabs {
+  display: inline-flex;
+  height: var(--cal-control-h);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--color-card);
+  box-sizing: border-box;
+}
+
+.cal-view-tab {
+  border: none;
+  background: transparent;
+  height: 100%;
+  min-width: var(--cal-control-h);
+  padding: 0 0.85rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.cal-view-tab--active {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.cal-header__add {
+  white-space: nowrap;
+}
+
+/* Date navigator (title + arrows + pickers) */
+.cal-date-nav {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.cal-date-nav__center {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.cal-date-nav__title {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+  font-weight: 600;
+  line-height: 1.3;
+  text-transform: capitalize;
+}
+
+.cal-date-nav__controls {
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+}
+
+.cal-date-nav__pickers {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  flex: none;
+}
+
+.cal-date-nav__select {
+  height: var(--cal-control-h);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  padding: 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  box-sizing: border-box;
+  line-height: 1.2;
+}
+
+.cal-date-nav__select--day {
+  min-width: var(--cal-control-h);
+  text-align: center;
+}
+
+.cal-date-nav__select--month {
+  min-width: 6.5rem;
+}
+
+.cal-date-nav__select--year {
+  min-width: 4.75rem;
+}
+
+.cal-date-nav__arrow {
+  flex-shrink: 0;
+  width: var(--cal-control-h);
+  height: var(--cal-control-h);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.cal-date-nav__arrow:hover {
+  background: var(--color-card);
+}
+
+.cal-date-nav__today-badge {
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  vertical-align: middle;
+  color: var(--color-primary);
+  background: #e8f5e6;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+
+.cal-menu-wrap {
+  position: relative;
+}
+
+.cal-menu-btn {
+  width: var(--cal-control-h);
+  height: var(--cal-control-h);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.cal-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  min-width: 11rem;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(44, 36, 25, 0.12);
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+}
+
+.cal-menu-dropdown button {
+  border: none;
+  background: none;
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.cal-menu-dropdown button:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+
+.cal-menu-dropdown button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cal-toast {
+  background: #e8f5e6;
+  color: var(--color-primary);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.85rem;
+  margin: 0 0 var(--space-md);
+  font-size: 0.95rem;
+}
+
+.cal-hint,
+.cal-page .cal-hint {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+.cal-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--color-text-secondary);
+}
+
+.cal-day-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+}
+
+.cal-meal-block {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: var(--space-md);
+  margin-bottom: 0;
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-meal-block__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.cal-meal-block__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cal-meal-block__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.cal-meal-block--dragging {
+  opacity: 0.55;
+}
+
+.cal-meal-block--drop-target {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 2px;
+}
+
+.cal-drag-handle {
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  border-radius: 6px;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  cursor: grab;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+.cal-drag-handle:active {
+  cursor: grabbing;
+}
+
+.cal-drag-handle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cal-meal-block__import-all {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.65rem;
+}
+
+.cal-meal-block__entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  flex: 1;
+}
+
+.cal-day-entry-row {
+  display: grid;
+  grid-template-columns: minmax(10.5rem, 12.5rem) 1fr auto;
+  gap: var(--space-md);
+  align-items: start;
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-card);
+}
+
+.cal-day-entry-row--dragging {
+  opacity: 0.55;
+}
+
+.cal-day-entry-row--drop-target {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 2px;
+}
+
+.cal-day-entry-row__recipe {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.cal-day-entry-row__handle {
+  margin-top: 0.15rem;
+}
+
+.cal-day-recipe-card {
+  flex: 1;
+  min-width: 0;
+  max-width: 11.5rem;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-bg);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.cal-day-recipe-card__title {
+  margin: 0;
+  padding: 0.55rem 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text);
+  text-decoration: none;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cal-day-recipe-card__title:hover {
+  color: var(--color-primary);
+}
+
+.cal-day-recipe-card__media-wrap {
+  position: relative;
+}
+
+.cal-day-recipe-card__media {
+  display: block;
+}
+
+.cal-day-recipe-card__img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  vertical-align: middle;
+}
+
+.cal-day-recipe-card__remove {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  z-index: 1;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.cal-day-recipe-card__remove:hover:not(:disabled) {
+  border-color: #c44;
+  color: #a33;
+}
+
+.cal-day-recipe-card__remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cal-day-entry-row__ingredients-panel {
+  min-width: 0;
+  padding-left: var(--space-sm);
+  margin-left: var(--space-xs);
+}
+
+.cal-day-entry-row__ingredients-heading {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--color-text);
+}
+
+.cal-day-entry-row__ingredients-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.cal-day-ingredient-card {
+  width: 7.5rem;
+  flex-shrink: 0;
+}
+
+.cal-day-entry-row__import {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 1.65rem;
+}
+
+.cal-day-entry-row__import-btn {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.65rem;
+}
+
+@media (max-width: 720px) {
+  .cal-day-entry-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+  }
+
+  .cal-day-recipe-card {
+    max-width: none;
+  }
+
+  .cal-day-entry-row__ingredients-panel {
+    padding-left: 0;
+    margin-left: 0;
+  }
+
+  .cal-day-entry-row__import {
+    justify-content: flex-start;
+    padding-top: 0;
+  }
+}
+
+.cal-entry-card {
+  width: 100%;
+  max-width: none;
+  background: var(--color-bg);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 0 0.35rem;
+  position: relative;
+}
+
+.cal-entry-card__handle {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: start;
+  margin: 0.35rem 0 0 0.35rem;
+}
+
+.cal-entry-card__media {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.cal-entry-card--dragging {
+  opacity: 0.55;
+}
+
+.cal-entry-card--drop-target {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: -2px;
+}
+
+.cal-entry-card__media {
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 0 8px 0 0;
+}
+
+.cal-entry-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cal-entry-card__body {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 0 0.5rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cal-entry-card__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cal-entry-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.cal-icon-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  border-radius: 6px;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.cal-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cal-icon-btn--danger:hover:not(:disabled) {
+  border-color: #c44;
+  color: #a33;
+}
+
+.cal-week-wrap {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cal-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.4rem;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.cal-week-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-card);
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  overflow: hidden;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.cal-week-column:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+
+.cal-week-column--today {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px rgba(76, 140, 74, 0.25);
+}
+
+.cal-week-column__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+  padding: 0.35rem 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  flex-shrink: 0;
+}
+
+.cal-week-column--today .cal-week-column__head {
+  background: #e8f5e6;
+}
+
+.cal-week-column__dow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.cal-week-column__num {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.cal-week-column__body {
+  flex: 1;
+  min-height: 0;
+  padding: 0.28rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  overflow: hidden;
+}
+
+.cal-week-column__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.cal-week-column__add-icon {
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 300;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  opacity: 0.4;
+}
+
+.cal-week-column__more {
+  margin-top: 0.25rem;
+  padding: 0.15rem 0.1rem 0;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.cal-week-meal-block__label {
+  margin: 0 0 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+/* Each visible category shares column height equally (max 3, no scroll) */
+.cal-week-meal-block {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-week-meal-block__tile {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+}
+
+.cal-week-meal-block__tile .recipe-mini-tile {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.cal-week-meal-block__tile .recipe-mini-tile--week .recipe-mini-tile__media {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  aspect-ratio: unset;
+  height: auto;
+}
+
+.cal-week-meal-block__tile .recipe-mini-tile--week .recipe-mini-tile__img,
+.cal-week-meal-block__tile .recipe-mini-tile--week .recipe-mini-tile__fallback {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.cal-week-meal-block__tile .recipe-mini-tile--week .recipe-mini-tile__title {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  padding: 0.22rem 0.3rem 0.28rem;
+  -webkit-line-clamp: 2;
+}
+
+.cal-week-meal-block__tile .recipe-mini-tile--week .recipe-mini-tile__default-cover {
+  max-width: 42%;
+  max-height: 42%;
+  width: auto;
+  height: auto;
+}
+
+.cal-week-hint {
+  margin-top: 0.35rem;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+/* Week view: panel height follows grid, no extra min-height scroll */
+.cal-main:has(.cal-week-wrap) {
+  overflow: hidden;
+}
+
+.cal-content-panel:has(.cal-week-wrap) {
+  min-height: 0;
+  flex: 1;
+}
+
+.cal-month {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cal-month__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.cal-month__weekday {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.cal-month__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cal-month__cell {
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0.2rem;
+  font-family: inherit;
+  color: inherit;
+  overflow: hidden;
+  text-align: left;
+}
+
+.cal-month__cell--pad {
+  visibility: hidden;
+  pointer-events: none;
+  border: none;
+}
+
+.cal-month__cell--today {
+  border-color: var(--color-primary);
+}
+
+.cal-month__cell--selected {
+  background: #e8f5e6;
+}
+
+.cal-month__cell--has-plan .cal-month__day-num {
+  font-weight: 700;
+}
+
+.cal-month__day-num {
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.1;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.cal-month__add-icon {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  opacity: 0.38;
+  line-height: 1;
+}
+
+.cal-month__previews {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.15rem;
+  width: 100%;
+  overflow: hidden;
+  margin-top: 0.1rem;
+}
+
+.cal-month__previews .recipe-mini-tile {
+  min-height: 0;
+  height: 100%;
+  pointer-events: none;
+}
+
+.cal-month__more {
+  grid-column: 1 / -1;
+  align-self: end;
+  justify-self: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  padding: 0.05rem 0;
+  line-height: 1.1;
+}
+
+.cal-month-hint {
+  margin-top: 0.35rem;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+/* Month + week: fill viewport on desktop (no page scroll); mobile may still scroll */
+@media (min-width: 768px) {
+  .app-content:has(.cal-page--fit) {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .cal-page--fit {
+    flex: 1;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+    gap: 0.5rem;
+  }
+
+  .cal-page--fit .cal-toolbar,
+  .cal-page--fit .cal-date-panel,
+  .cal-page--fit .cal-toast,
+  .cal-page--fit .cal-page__error,
+  .cal-page--fit .cal-week-hint,
+  .cal-page--fit .cal-month-hint {
+    flex-shrink: 0;
+  }
+
+  .cal-page--fit .cal-date-panel {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .cal-page--fit .cal-content-panel {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cal-page--fit .cal-main {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .cal-page--fit .cal-week-hint,
+  .cal-page--fit .cal-month-hint {
+    margin-top: 0.2rem;
+    font-size: 0.78rem;
+  }
+}
+
+.cal-main:has(.cal-month),
+.cal-main:has(.cal-week-wrap) {
+  overflow: hidden;
+}
+
+.cal-content-panel:has(.cal-month),
+.cal-content-panel:has(.cal-week-wrap) {
+  min-height: 0;
+  flex: 1;
+}
+
+@media (min-width: 768px) {
+  .cal-page--fit {
+    min-height: 0;
+  }
+
+  .cal-page--fit .cal-content-panel {
+    min-height: 0;
+  }
+}
+
+.cal-modal,
+.cal-modal--wide {
+  position: relative;
+}
+
+.cal-modal--wide {
+  max-width: 28rem;
+}
+
+.cal-modal__close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  border: none;
+  background: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.cal-search-field__row {
+  position: relative;
+}
+
+.cal-search-field__icon {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.cal-picker-list {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  max-height: 10rem;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.cal-picker-list__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border: none;
+  background: var(--color-card);
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.cal-picker-list__item:hover,
+.cal-picker-list__item--active {
+  background: var(--color-bg);
+}
+
+.cal-picker-list__item--active {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.cal-picker-list__badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+.cal-picker-list__thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.cal-picker-list__create {
+  margin-top: 0.35rem;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-decoration: underline;
+}
+
+.cal-picker-list--compact {
+  max-height: 7.5rem;
+}
+
+.cal-picker-list--recipes .cal-picker-list__item--recipe {
+  padding: 0.4rem 0.55rem;
+}
+
+.cal-picker-list__check {
+  width: 1.25rem;
+  flex-shrink: 0;
+  text-align: center;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.cal-search-field--disabled {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.cal-add-dialog {
+  max-width: 420px;
+  max-height: min(90vh, 38rem);
+  overflow-y: auto;
+}
+
+.cal-add-dialog__count {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.cal-add-dialog__summary {
+  margin-top: 0;
+}
+
+.cal-add-dialog__success {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 0.95rem;
+}
+
+.cal-add-dialog__actions {
+  flex-wrap: wrap;
+}
+
+.cal-warnings {
+  margin: 0 0 var(--space-md);
+  padding-left: 1.2rem;
+  color: #8a6d3b;
+  font-size: 0.9rem;
+}
+
+@media (min-width: 1024px) {
+  .cal-month__cell {
+    border-radius: 10px;
+  }
+
 }

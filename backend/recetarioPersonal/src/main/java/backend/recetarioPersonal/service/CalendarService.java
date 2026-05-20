@@ -296,8 +296,6 @@ public class CalendarService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
 
-        User owner = userRepository.getReferenceById(userId);
-
         long distinctMealTypes = request.items().stream()
                 .map(MealOrderItemRequest::mealTypeId)
                 .distinct()
@@ -306,16 +304,24 @@ public class CalendarService {
             throw new IllegalArgumentException("No puedes repetir el mismo tipo de comida en el orden.");
         }
 
-        dayMealLayoutRepository.deleteByOwner_UserIdAndPlanDate(userId, date);
-
         for (MealOrderItemRequest item : request.items()) {
             MealType mealType = mealTypeService.resolveForAssignment(userId, item.mealTypeId(), null);
-            DayMealLayout row = new DayMealLayout();
-            row.setOwner(owner);
-            row.setPlanDate(date);
-            row.setMealType(mealType);
-            row.setMealSortOrder(item.sortOrder());
-            dayMealLayoutRepository.save(row);
+            var layout = dayMealLayoutRepository.findByOwner_UserIdAndPlanDateAndMealType_MealTypeId(
+                    userId, date, mealType.getMealTypeId());
+            if (layout.isPresent()) {
+                DayMealLayout row = layout.get();
+                row.setMealSortOrder(item.sortOrder());
+                dayMealLayoutRepository.save(row);
+            } else {
+                ensureMealTypeInDayLayout(userId, date, mealType);
+                dayMealLayoutRepository
+                        .findByOwner_UserIdAndPlanDateAndMealType_MealTypeId(
+                                userId, date, mealType.getMealTypeId())
+                        .ifPresent(row -> {
+                            row.setMealSortOrder(item.sortOrder());
+                            dayMealLayoutRepository.save(row);
+                        });
+            }
         }
     }
 

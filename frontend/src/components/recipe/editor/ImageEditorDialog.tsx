@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Cropper from "react-easy-crop";
 import type { Area, Point } from "react-easy-crop";
-import { applyImageEdits, NO_EDITS, type ImageEdits } from "../../../utils/imageEditing";
+import {
+  applyImageEdits,
+  NO_EDITS,
+  renderCroppedPreviewBlob,
+  type ImageEdits,
+} from "../../../utils/imageEditing";
+import {
+  ImageEditorLivePreview,
+  type ImageEditorPreviewContext,
+} from "./ImageEditorLivePreview";
 
 type Props = {
   open: boolean;
@@ -13,6 +22,10 @@ type Props = {
   saving?: boolean;
   // Optional error message shown next to the footer buttons.
   errorMessage?: string;
+  /** Frames shown in the live preview strip above the cropper. */
+  previewContext?: ImageEditorPreviewContext;
+  recipeTitle?: string;
+  showCoverTile?: boolean;
   onCancel: () => void;
   // Parent decides when to rasterize using the returned edits.
   onApply: (edits: ImageEdits) => void;
@@ -37,6 +50,9 @@ export function ImageEditorDialog({
   initialEdits,
   saving = false,
   errorMessage,
+  previewContext = "recipe",
+  recipeTitle = "Tu receta",
+  showCoverTile = true,
   onCancel,
   onApply,
 }: Props) {
@@ -49,9 +65,14 @@ export function ImageEditorDialog({
   const [contrast, setContrast] = useState(100);
   const [saturation, setSaturation] = useState(100);
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
+  const [liveCropArea, setLiveCropArea] = useState<Area | null>(null);
   const [transformedUrl, setTransformedUrl] = useState<string | null>(null);
   const [loadingTransform, setLoadingTransform] = useState(false);
+  const [resultPreviewUrl, setResultPreviewUrl] = useState<string | null>(null);
+  const [resultPreviewLoading, setResultPreviewLoading] = useState(false);
   const lastUrlRef = useRef<string | null>(null);
+  const lastPreviewUrlRef = useRef<string | null>(null);
+  const previewGenRef = useRef(0);
 
   // Reset state on open / new file / new initial edits.
   useEffect(() => {
@@ -64,6 +85,7 @@ export function ImageEditorDialog({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setCroppedArea(initialEdits?.crop ?? null);
+    setLiveCropArea(initialEdits?.crop ?? null);
     setAspect("free");
   }, [open, file, initialEdits]);
 
@@ -84,13 +106,55 @@ export function ImageEditorDialog({
       // Crop geometry no longer matches the new orientation.
       setCrop({ x: 0, y: 0 });
       setZoom(1);
+      setLiveCropArea(null);
     });
     return () => {
       cancelled = true;
     };
   }, [open, file, rotation, flipH]);
 
-  // Release the last object URL on close.
+  const effectiveCrop = liveCropArea ?? croppedArea;
+
+  // Live raster preview (same output as applyImageEdits, debounced).
+  useEffect(() => {
+    if (!open || !transformedUrl || loadingTransform) return;
+
+    const gen = ++previewGenRef.current;
+    const timer = window.setTimeout(() => {
+      setResultPreviewLoading(true);
+      void renderCroppedPreviewBlob(transformedUrl, effectiveCrop, {
+        brightness,
+        contrast,
+        saturation,
+      })
+        .then((blob) => {
+          if (gen !== previewGenRef.current) return;
+          const url = URL.createObjectURL(blob);
+          if (lastPreviewUrlRef.current) URL.revokeObjectURL(lastPreviewUrlRef.current);
+          lastPreviewUrlRef.current = url;
+          setResultPreviewUrl(url);
+        })
+        .catch(() => {
+          if (gen !== previewGenRef.current) return;
+          setResultPreviewUrl(null);
+        })
+        .finally(() => {
+          if (gen === previewGenRef.current) setResultPreviewLoading(false);
+        });
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    open,
+    transformedUrl,
+    loadingTransform,
+    effectiveCrop,
+    brightness,
+    contrast,
+    saturation,
+  ]);
+
+  // Release object URLs on close.
   useEffect(() => {
     if (open) return;
     if (lastUrlRef.current) {
@@ -98,6 +162,12 @@ export function ImageEditorDialog({
       lastUrlRef.current = null;
       setTransformedUrl(null);
     }
+    if (lastPreviewUrlRef.current) {
+      URL.revokeObjectURL(lastPreviewUrlRef.current);
+      lastPreviewUrlRef.current = null;
+      setResultPreviewUrl(null);
+    }
+    previewGenRef.current += 1;
   }, [open]);
 
   // Esc closes (unless we are mid-save).
@@ -115,8 +185,13 @@ export function ImageEditorDialog({
     [aspect],
   );
 
+  const onCropAreaChange = useCallback((_: Area, areaPixels: Area) => {
+    setLiveCropArea(areaPixels);
+  }, []);
+
   const onCropComplete = useCallback((_: Area, areaPixels: Area) => {
     setCroppedArea(areaPixels);
+    setLiveCropArea(areaPixels);
   }, []);
 
   const rotateLeft = () => setRotation(((rotation + 270) % 360) as ImageEdits["rotation"]);
@@ -133,6 +208,7 @@ export function ImageEditorDialog({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setCroppedArea(null);
+    setLiveCropArea(null);
   };
 
   const handleApply = () => {
@@ -142,7 +218,7 @@ export function ImageEditorDialog({
       brightness,
       contrast,
       saturation,
-      crop: croppedArea,
+      crop: effectiveCrop,
     };
     onApply(edits);
   };
@@ -175,26 +251,36 @@ export function ImageEditorDialog({
 
         <div className="image-editor__body">
           <div className="image-editor__canvas-wrap">
-            {transformedUrl && !loadingTransform ? (
-              <Cropper
-                image={transformedUrl}
-                crop={crop}
-                zoom={zoom}
-                aspect={aspectValue}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-                showGrid
-                restrictPosition
-                objectFit="contain"
-                style={{
-                  containerStyle: { background: "#1a1a1a" },
-                  mediaStyle: { filter: filterStyle, transition: "filter 0.05s linear" },
-                }}
-              />
-            ) : (
-              <p className="image-editor__loading">Procesando imagen…</p>
-            )}
+            <ImageEditorLivePreview
+              previewSrc={resultPreviewUrl}
+              loading={loadingTransform || resultPreviewLoading}
+              context={previewContext}
+              recipeTitle={recipeTitle}
+              showCoverTile={showCoverTile}
+            />
+            <div className="image-editor__cropper-area">
+              {transformedUrl && !loadingTransform ? (
+                <Cropper
+                  image={transformedUrl}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={aspectValue}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropAreaChange={onCropAreaChange}
+                  onCropComplete={onCropComplete}
+                  showGrid
+                  restrictPosition
+                  objectFit="contain"
+                  style={{
+                    containerStyle: { background: "#1a1a1a" },
+                    mediaStyle: { filter: filterStyle, transition: "filter 0.05s linear" },
+                  }}
+                />
+              ) : (
+                <p className="image-editor__loading">Procesando imagen…</p>
+              )}
+            </div>
           </div>
 
           <aside className="image-editor__controls">

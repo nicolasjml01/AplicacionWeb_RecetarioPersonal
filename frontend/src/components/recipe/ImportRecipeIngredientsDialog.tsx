@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { getRecipeIngredients, importRecipeIngredientsToShoppingList } from "../../api/recipes";
 import type { RecipeIngredientDto } from "../../types/recipes";
+import { ImportIngredientEditDialog } from "./ImportIngredientEditDialog";
+import { ImportShoppingIngredientCard } from "./ImportShoppingIngredientCard";
+import { defaultUnitName, displayUnitLabel } from "./importUnitDisplay";
+import { useShoppingUnits } from "./useShoppingUnits";
 
 type Props = {
   open: boolean;
@@ -15,6 +19,18 @@ function orderedVisibleIds(all: RecipeIngredientDto[], idSet: Set<number>): numb
   return all.filter((r) => idSet.has(r.recipeIngredientId)).map((r) => r.recipeIngredientId);
 }
 
+function buildInitialQuantities(rows: RecipeIngredientDto[]): Record<number, number> {
+  const map: Record<number, number> = {};
+  for (const r of rows) map[r.recipeIngredientId] = r.quantity;
+  return map;
+}
+
+function buildInitialUnitNames(rows: RecipeIngredientDto[]): Record<number, string> {
+  const map: Record<number, string> = {};
+  for (const r of rows) map[r.recipeIngredientId] = defaultUnitName(r.unitOfMeasure);
+  return map;
+}
+
 export function ImportRecipeIngredientsDialog({
   open,
   userId,
@@ -24,19 +40,27 @@ export function ImportRecipeIngredientsDialog({
   onSuccess,
 }: Props) {
   const [rows, setRows] = useState<RecipeIngredientDto[]>([]);
-  /** Ingredientes que siguen en pantalla (se importarán). */
   const [visibleIds, setVisibleIds] = useState<number[]>([]);
-  /** Orden LIFO de ids quitados, para Deshacer / Ctrl+Z. */
+  const [quantities, setQuantities] = useState<Record<number, number>>({});
+  const [unitNames, setUnitNames] = useState<Record<number, string>>({});
   const [removedStack, setRemovedStack] = useState<number[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editQuantityText, setEditQuantityText] = useState("");
+  const [editUnitText, setEditUnitText] = useState("");
+  const [editError, setEditError] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const { units, loadingUnits } = useShoppingUnits(open);
 
   useEffect(() => {
     if (!open || !userId || recipeId == null || !Number.isFinite(recipeId)) {
       setRows([]);
       setVisibleIds([]);
+      setQuantities({});
+      setUnitNames({});
       setRemovedStack([]);
+      setEditingId(null);
       setError("");
       setLoading(false);
       return;
@@ -51,13 +75,19 @@ export function ImportRecipeIngredientsDialog({
         const sorted = [...list].sort((a, b) => a.displayOrder - b.displayOrder);
         setRows(sorted);
         setVisibleIds(sorted.map((r) => r.recipeIngredientId));
+        setQuantities(buildInitialQuantities(sorted));
+        setUnitNames(buildInitialUnitNames(sorted));
         setRemovedStack([]);
+        setEditingId(null);
       })
       .catch((e) => {
         if (!cancelled) {
           setRows([]);
           setVisibleIds([]);
+          setQuantities({});
+          setUnitNames({});
           setRemovedStack([]);
+          setEditingId(null);
           setError(e instanceof Error ? e.message : "No se pudieron cargar los ingredientes.");
         }
       })
@@ -90,9 +120,41 @@ export function ImportRecipeIngredientsDialog({
 
   const resetAllVisible = useCallback(() => {
     setVisibleIds(rows.map((r) => r.recipeIngredientId));
+    setQuantities(buildInitialQuantities(rows));
+    setUnitNames(buildInitialUnitNames(rows));
     setRemovedStack([]);
+    setEditingId(null);
     setError("");
   }, [rows]);
+
+  const openEdit = useCallback(
+    (row: RecipeIngredientDto) => {
+      const id = row.recipeIngredientId;
+      setEditingId(id);
+      setEditQuantityText(String(quantities[id] ?? row.quantity));
+      setEditUnitText(unitNames[id] ?? defaultUnitName(row.unitOfMeasure));
+      setEditError("");
+    },
+    [quantities, unitNames],
+  );
+
+  const closeEdit = useCallback(() => {
+    setEditingId(null);
+    setEditError("");
+  }, []);
+
+  const confirmEdit = useCallback(() => {
+    if (editingId == null) return;
+    const qty = Number(editQuantityText);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      setEditError("La cantidad debe ser un número mayor que cero.");
+      return;
+    }
+    setQuantities((prev) => ({ ...prev, [editingId]: qty }));
+    setUnitNames((prev) => ({ ...prev, [editingId]: editUnitText.trim() }));
+    closeEdit();
+    setError("");
+  }, [editingId, editQuantityText, editUnitText, closeEdit]);
 
   useEffect(() => {
     if (!open) return;
@@ -114,11 +176,27 @@ export function ImportRecipeIngredientsDialog({
       setError("Deja al menos un ingrediente en pantalla, o pulsa Cancelar.");
       return;
     }
+    const items = visibleIds.map((id) => {
+      const row = rows.find((r) => r.recipeIngredientId === id);
+      const q = quantities[id] ?? row?.quantity;
+      if (q == null || !Number.isFinite(q) || q <= 0) return null;
+      const unit = unitNames[id] ?? (row ? defaultUnitName(row.unitOfMeasure) : "");
+      return {
+        recipeIngredientId: id,
+        quantity: q,
+        unitName: unit.trim() || null,
+      };
+    });
+    if (items.some((x) => x == null)) {
+      setError("Revisa las cantidades: deben ser mayores que cero.");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
     try {
       await importRecipeIngredientsToShoppingList(userId, recipeId, {
-        recipeIngredientIds: visibleIds,
+        items: items as { recipeIngredientId: number; quantity: number }[],
       });
       const n = visibleIds.length;
       onSuccess(n === 1 ? "1 ingrediente añadido a la cesta." : `${n} ingredientes añadidos a la cesta.`);
@@ -149,8 +227,8 @@ export function ImportRecipeIngredientsDialog({
           Añadir a la lista de la compra{titleRecipe}
         </h2>
         <p className="create-recipe-dialog__msg import-ingredients-dialog__hint">
-          Toca una tarjeta para quitar lo que no necesites comprar. Lo que siga visible se añadirá a la cesta.{" "}
-          <strong>Deshacer</strong> recupera el último que quitaste.
+          Toca la imagen para quitar lo que no compres. Toca cantidad o unidad para editar (como en la
+          cesta). <strong>Deshacer</strong> recupera el último que quitaste.
         </p>
 
         {loading && <p className="create-recipe-hint">Cargando ingredientes…</p>}
@@ -189,28 +267,24 @@ export function ImportRecipeIngredientsDialog({
             ) : (
               <div
                 className="recipe-detail__ingredients-grid import-ingredients-dialog__grid"
-                aria-label="Ingredientes a añadir (toca una tarjeta para quitar)"
+                aria-label="Ingredientes a añadir"
               >
                 {visibleRows.map((row) => {
-                  const unitLabel = row.unitOfMeasure?.symbol ?? row.unitOfMeasure?.name ?? "—";
+                  const id = row.recipeIngredientId;
+                  const unitName = unitNames[id] ?? defaultUnitName(row.unitOfMeasure);
+                  const qty = quantities[id] ?? row.quantity;
                   return (
-                    <button
-                      key={row.recipeIngredientId}
-                      type="button"
-                      className="recipe-detail__ingredient-card import-ingredients-dialog__card"
-                      onClick={() => removeFromView(row.recipeIngredientId)}
-                      aria-label={`Quitar ${row.ingredient.name} de la compra (ya lo tengo)`}
-                    >
-                      <div className="recipe-detail__ingredient-image-wrap">
-                        <img src="/logoShoppingList.png" alt="" className="recipe-detail__ingredient-image" />
-                      </div>
-                      <p className="recipe-detail__ingredient-name">{row.ingredient.name}</p>
-                      <div className="recipe-detail__ingredient-pills">
-                        <span>{row.quantity}</span>
-                        <span>{unitLabel}</span>
-                      </div>
-                      <span className="import-ingredients-dialog__card-hint">Toca para quitar</span>
-                    </button>
+                    <ImportShoppingIngredientCard
+                      key={id}
+                      name={row.ingredient.name}
+                      ingredientImageUrl={row.ingredient.imageUrl}
+                      quantity={qty}
+                      unitLabel={displayUnitLabel(unitName, units)}
+                      unitTitle={unitName.trim() || undefined}
+                      disabled={submitting}
+                      onEdit={() => openEdit(row)}
+                      onRemove={() => removeFromView(id)}
+                    />
                   );
                 })}
               </div>
@@ -232,6 +306,24 @@ export function ImportRecipeIngredientsDialog({
           </button>
         </div>
       </div>
+
+      <ImportIngredientEditDialog
+        open={editingId != null}
+        ingredientName={
+          editingId != null
+            ? rows.find((r) => r.recipeIngredientId === editingId)?.ingredient.name ?? ""
+            : ""
+        }
+        quantityText={editQuantityText}
+        unitText={editUnitText}
+        units={units}
+        loadingUnits={loadingUnits}
+        error={editError}
+        onQuantityChange={setEditQuantityText}
+        onUnitChange={setEditUnitText}
+        onCancel={closeEdit}
+        onConfirm={confirmEdit}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { RecipeUploadLayoutPreview } from "../../media/UploadLayoutPreview";
 import { ImageEditorDialog } from "./ImageEditorDialog";
 import { hasEdits, isEditableImage, type ImageEdits } from "../../../utils/imageEditing";
 
@@ -17,6 +18,10 @@ type Props = {
   // Files just picked in the OS dialog.
   files: File[];
   contextLabel?: string;
+  /** Shown on the listado/cover preview tile. */
+  recipeTitle?: string;
+  /** False when the gallery already has media (new files are not auto-cover). */
+  isCoverCandidate?: boolean;
   onCancel: () => void;
   // Parent rasterizes and uploads in the order received.
   onConfirm: (items: Array<{ file: File; edits: ImageEdits | null }>) => void;
@@ -25,7 +30,15 @@ type Props = {
 // Pre-upload queue: lets the user edit / remove each file before sending.
 // Edits are kept as data (no rasterization yet) so reopening the editor on a
 // row keeps its previous values.
-export function UploadStagingDialog({ open, files, contextLabel, onCancel, onConfirm }: Props) {
+export function UploadStagingDialog({
+  open,
+  files,
+  contextLabel,
+  recipeTitle = "Tu receta",
+  isCoverCandidate = true,
+  onCancel,
+  onConfirm,
+}: Props) {
   const [items, setItems] = useState<StagingItem[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
@@ -61,6 +74,11 @@ export function UploadStagingDialog({ open, files, contextLabel, onCancel, onCon
     [items],
   );
 
+  const layoutPreviewItem = useMemo(
+    () => items.find((it) => !it.file.type.startsWith("video/")) ?? null,
+    [items],
+  );
+
   if (!open) return null;
 
   const removeAt = (idx: number) => {
@@ -93,6 +111,15 @@ export function UploadStagingDialog({ open, files, contextLabel, onCancel, onCon
           <h2 className="upload-staging__title">Subir archivos</h2>
           {contextLabel && <p className="upload-staging__context">{contextLabel}</p>}
         </header>
+
+        {layoutPreviewItem && (
+          <RecipeUploadLayoutPreview
+            previewSrc={layoutPreviewItem.previewUrl}
+            edits={layoutPreviewItem.edits}
+            recipeTitle={recipeTitle}
+            isCoverCandidate={isCoverCandidate}
+          />
+        )}
 
         {items.length === 0 ? (
           <p className="upload-staging__empty">No quedan archivos por subir.</p>
@@ -183,6 +210,9 @@ export function UploadStagingDialog({ open, files, contextLabel, onCancel, onCon
           file={editingItem.file}
           fileName={editingItem.file.name}
           initialEdits={editingItem.edits}
+          previewContext="recipe"
+          recipeTitle={recipeTitle}
+          showCoverTile={isCoverCandidate}
           onCancel={() => setEditingIndex(null)}
           onApply={handleApplyEdits}
         />

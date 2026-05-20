@@ -8,6 +8,7 @@ import backend.recetarioPersonal.repository.RecipeIngredientRepository;
 import backend.recetarioPersonal.repository.RecipeRepository;
 import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.view.CreateRecipeIngredientRequest;
+import backend.recetarioPersonal.view.ImportRecipeIngredientItemRequest;
 import backend.recetarioPersonal.view.IngredientDto;
 import backend.recetarioPersonal.view.RecipeIngredientDto;
 import backend.recetarioPersonal.view.UnitOfMeasureDto;
@@ -124,15 +125,41 @@ public class RecipeIngredientService {
     }
 
     @Transactional
-    public void importToShoppingList(long userId, long recipeId, Float factor, List<Long> recipeIngredientIds) {
+    public void importToShoppingList(
+            long userId,
+            long recipeId,
+            Float factor,
+            List<Long> recipeIngredientIds,
+            List<ImportRecipeIngredientItemRequest> items) {
         ensureUserAndRecipeOwner(userId, recipeId);
-        float f = (factor == null || factor <= 0f) ? 1.0f : factor;
 
         List<RecipeIngredient> rows = recipeIngredientRepository.findByRecipe_RecipeIdOrderByDisplayOrderAsc(recipeId);
         if (rows.isEmpty()) {
             throw new IllegalArgumentException("La receta no tiene ingredientes para importar.");
         }
 
+        var byId = rows.stream()
+                .collect(java.util.stream.Collectors.toMap(RecipeIngredient::getRecipeIngredientId, r -> r));
+
+        if (items != null && !items.isEmpty()) {
+            for (var item : items) {
+                RecipeIngredient r = byId.get(item.recipeIngredientId());
+                if (r == null) {
+                    throw new IllegalArgumentException(
+                            "Ingrediente de receta no encontrado: " + item.recipeIngredientId());
+                }
+                String unitName = resolveImportUnitName(item.unitName(), r);
+                shoppingListService.addOrMergeItem(
+                        userId,
+                        r.getIngredient().getName(),
+                        item.quantity(),
+                        unitName,
+                        null);
+            }
+            return;
+        }
+
+        float f = (factor == null || factor <= 0f) ? 1.0f : factor;
         List<RecipeIngredient> toImport;
         if (recipeIngredientIds == null) {
             toImport = rows;
@@ -151,15 +178,20 @@ public class RecipeIngredientService {
 
         for (RecipeIngredient r : toImport) {
             String unitName = r.getUnitOfMeasure() != null ? r.getUnitOfMeasure().getName() : null;
-
             shoppingListService.addOrMergeItem(
-                userId,
-                r.getIngredient().getName(),
-                r.getQuantity() * f,
-                unitName,
-                null
-            );
+                    userId,
+                    r.getIngredient().getName(),
+                    r.getQuantity() * f,
+                    unitName,
+                    null);
         }
+    }
+
+    private static String resolveImportUnitName(String requestedUnit, RecipeIngredient row) {
+        if (requestedUnit != null && !requestedUnit.isBlank()) {
+            return requestedUnit.trim();
+        }
+        return row.getUnitOfMeasure() != null ? row.getUnitOfMeasure().getName() : null;
     }
 
     private Recipe ensureUserAndRecipeOwner(long userId, long recipeId) {

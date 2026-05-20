@@ -25,7 +25,13 @@ public interface DayMealLayoutRepository extends JpaRepository<DayMealLayout, Lo
             """)
     int maxMealSortOrder(@Param("userId") long userId, @Param("planDate") LocalDate planDate);
 
-    void deleteByOwner_UserIdAndPlanDate(long ownerUserId, LocalDate planDate);
+    /** Bulk delete for a day; flush so re-insert in the same transaction does not hit uk_day_meal_layout. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM DayMealLayout l
+            WHERE l.owner.userId = :userId AND l.planDate = :planDate
+            """)
+    int deleteByOwner_UserIdAndPlanDate(@Param("userId") long userId, @Param("planDate") LocalDate planDate);
 
     List<DayMealLayout> findByOwner_UserIdAndPlanDateBetweenOrderByPlanDateAscMealSortOrderAsc(
             long ownerUserId, LocalDate from, LocalDate to);

@@ -4,6 +4,7 @@ import { getCurrentUserId } from "../auth/session";
 import { deleteRecipe, getRecipe } from "../api/recipes";
 import type { RecipeDto } from "../types/recipes";
 import { RECIPE_DEFAULT_COVER_PATH } from "../constants/recipeAssets";
+import { IngredientThumb } from "../components/ingredient/IngredientThumb";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { ImportRecipeIngredientsDialog } from "../components/recipe/ImportRecipeIngredientsDialog";
@@ -388,9 +389,7 @@ export function RecipeDetailPage() {
                         : "sin unidad";
                       return (
                         <article key={ing.recipeIngredientId} className="recipe-detail__ingredient-card">
-                          <div className="recipe-detail__ingredient-image-wrap">
-                            <img src="/logoShoppingList.png" alt="" className="recipe-detail__ingredient-image" />
-                          </div>
+                          <IngredientThumb imageUrl={ing.ingredient.imageUrl} size="card" />
                           <p className="recipe-detail__ingredient-name">{ing.ingredient.name}</p>
                           <div className="recipe-detail__ingredient-pills">
                             <span>{ing.quantity}</span>

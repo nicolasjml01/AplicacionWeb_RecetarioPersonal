@@ -16,12 +16,11 @@ import {
   uploadOwnedIngredientImage,
 } from "../api/shopping";
 import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryDialog";
+import { IngredientThumb } from "../components/ingredient/IngredientThumb";
 import {
   defaultIngredientCategoryId,
   ingredientCategoriesForSelect,
 } from "../utils/ingredientCatalogUi";
-import { resolveMediaUrl } from "../utils/mediaUrl";
-
 type ModalState =
   | {
       open: false;
@@ -390,11 +389,6 @@ export function Shopping() {
                       ? item.unitOfMeasure.symbol
                       : (item.unitOfMeasure?.name ?? "—");
 
-                  const thumbSrc =
-                    item.ingredient.imageUrl?.trim().length
-                      ? resolveMediaUrl(item.ingredient.imageUrl.trim())
-                      : "/logoShoppingList.png";
-
                   return (
                     <div className="shopping-top-card" key={item.shoppingListItemId}>
                       <button
@@ -403,11 +397,7 @@ export function Shopping() {
                         onClick={() => handleMarkBought(item.shoppingListItemId)}
                         aria-label={`Marcar ${item.ingredient.name} como comprado`}
                       >
-                        <img
-                          src={thumbSrc}
-                          alt=""
-                          className="shopping-top-card__image"
-                        />
+                        <IngredientThumb imageUrl={item.ingredient.imageUrl} size="card" />
                       </button>
 
                       <div className="shopping-top-card__name">{item.ingredient.name}</div>
