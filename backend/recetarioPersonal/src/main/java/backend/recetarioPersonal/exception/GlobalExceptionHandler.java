@@ -68,6 +68,14 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("Petición multipart inválida o incompleta.", 400));
     }
     
+    @ExceptionHandler(RecipeImportException.class)
+    public ResponseEntity<ErrorResponse> handleRecipeImport(RecipeImportException ex) {
+        String msg = ex.getMessage() != null && !ex.getMessage().isBlank()
+                ? ex.getMessage()
+                : "No se pudo importar la receta desde ese enlace.";
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new ErrorResponse(msg, 422));
+    }
+
     @ExceptionHandler(FileStorageException.class)
     public ResponseEntity<ErrorResponse> handleFileStorage(FileStorageException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
