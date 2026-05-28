@@ -24,10 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 /**
- * Ingredient catalog and search scoped per user: platform seed data ({@code owner} null) plus that user's own rows.
- * <p><b>Seguridad:</b> con la configuración actual ({@code permitAll}) las rutas no exigen autenticación.
- * Cuando se restrinja el acceso (JWT, sesión, etc.), debe comprobarse que el usuario autenticado
- * coincida con {@code userId} en la URL en todas las operaciones de este controlador.</p>
+ * Per-user ingredient catalog: global seed rows ({@code owner == null}) plus user-owned rows.
+ * JWT required; path {@code userId} must match the authenticated user (see PathUserAuthorizationFilter).
  */
 @RestController
 @RequestMapping("/api/users/{userId}/ingredients")
@@ -41,6 +39,7 @@ public class IngredientController {
         this.ingredientImageService = ingredientImageService;
     }
 
+    /** Partial name search over catalog + user-owned ingredients visible to this user. */
     @GetMapping
     public ResponseEntity<List<IngredientDto>> search(
             @PathVariable long userId,
@@ -49,24 +48,19 @@ public class IngredientController {
         return ResponseEntity.ok(results);
     }
 
+    /** Full catalog grouped by category for pickers (shopping list, recipe editor). */
     @GetMapping("/catalog")
     public ResponseEntity<List<IngredientCategoryCatalogDto>> getCatalog(@PathVariable long userId) {
         return ResponseEntity.ok(ingredientService.getCatalogGroupedByCategory(userId));
     }
 
-    /**
-     * Lists ingredients created by this user ({@code owner} non-null), in any category, sorted by name.
-     * Excludes global catalog rows ({@code owner} null).
-     */
+    /** User-created ingredients only ({@code owner} set), sorted by name. */
     @GetMapping("/owned")
     public ResponseEntity<List<IngredientDto>> listOwned(@PathVariable long userId) {
         return ResponseEntity.ok(ingredientService.listCreatedByUser(userId));
     }
 
-    /**
-     * Updates name and category for a user-owned ingredient.
-     * Use {@link #uploadIngredientImage} to replace the image.
-     */
+    /** Updates name/category on a user-owned row. Image upload is a separate endpoint. */
     @PatchMapping("/{ingredientId}")
     public ResponseEntity<IngredientDto> patchOwned(
             @PathVariable long userId,
@@ -83,9 +77,7 @@ public class IngredientController {
         return ResponseEntity.ok(ingredientService.deleteOwnedIngredient(userId, ingredientId));
     }
 
-    /**
-     * Multipart field name expected: {@code file} (same convention as recipe media uploads).
-     */
+    /** Multipart part name: {@code file} (same as recipe media uploads). */
     @PostMapping(value = "/{ingredientId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<IngredientDto> uploadIngredientImage(
             @PathVariable long userId,

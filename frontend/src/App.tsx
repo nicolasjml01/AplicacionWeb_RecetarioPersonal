@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthLayout } from "./components/AuthLayout";
 import { MainLayout } from "./components/MainLayout";
+import { RequireAuth } from "./components/RequireAuth";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { Home } from "./pages/Home";
@@ -16,7 +17,8 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route element={<MainLayout />}>
+      <Route element={<RequireAuth />}>
+        <Route element={<MainLayout />}>
         <Route path="/home" element={<Home />} />
         <Route path="/home/drafts" element={<DraftRecipesPage />} />
         <Route path="/home/categories/:categoryId" element={<CategoryRecipesPage />} />
@@ -25,6 +27,7 @@ function App() {
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/shopping" element={<Shopping />} />
         <Route path="/account" element={<Account />} />
+        </Route>
       </Route>
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />

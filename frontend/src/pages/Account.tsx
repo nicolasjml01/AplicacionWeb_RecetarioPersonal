@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getCurrentUser, getCurrentUserId } from "../auth/session";
+import { logout } from "../api/auth";
+import { useNavigate } from "react-router-dom";
 import { deleteMealType, getMealTypes, updateMealType } from "../api/mealTypes";
 import {
   deleteOwnedIngredient,
@@ -43,6 +45,7 @@ function groupIngredientsByCategory(
 }
 
 export function Account() {
+  const navigate = useNavigate();
   const user = getCurrentUser();
   const userId = getCurrentUserId();
 
@@ -270,6 +273,19 @@ export function Account() {
           </header>
 
           <div className="account-page__action-grid">
+            <button
+              type="button"
+              className="account-page__action-card account-page__action-card--muted"
+              onClick={async () => {
+                await logout();
+                navigate("/login", { replace: true });
+              }}
+            >
+              <span className="account-page__action-card-title">Cerrar sesión</span>
+              <span className="account-page__action-card-desc">
+                Salir de la cuenta en este dispositivo
+              </span>
+            </button>
             <button
               type="button"
               className="account-page__action-card"

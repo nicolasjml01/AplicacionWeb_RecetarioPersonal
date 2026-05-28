@@ -1,4 +1,4 @@
-// What the backend returns when doing login or registration (without password)
+/** User profile from auth endpoints (password never included). */
 export interface User {
   id: number;
   name: string;
@@ -7,12 +7,20 @@ export interface User {
   email: string;
   verified: boolean;
 }
-// What the frontend sends to the POST /api/auth/login endpoint
+
+/** Login/register response: profile + JWT for Authorization header. */
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+}
+
+/** POST /api/auth/login body; login field accepts username or email. */
 export interface LoginRequest {
-  login: string; // can be username or email
+  login: string;
   password: string;
 }
-// What the frontend sends to the POST /api/auth/register endpoint
+
+/** POST /api/auth/register body. */
 export interface RegisterRequest {
   name: string;
   lastName: string;

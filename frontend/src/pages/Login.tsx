@@ -14,8 +14,7 @@ export function Login() {
     setError("");
     setLoading(true);
     try {
-      const user = await login(loginValue, password);
-      localStorage.setItem("currentUser", JSON.stringify(user));
+      await login(loginValue, password);
       navigate("/home", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed.");

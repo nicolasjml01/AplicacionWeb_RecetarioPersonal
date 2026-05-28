@@ -9,7 +9,7 @@ import type {
   UnitOfMeasureDto,
 } from "../types/shopping";
 
-import { API_BASE } from "../config/apiBase";
+import { apiFetch } from "./http";
 
 function readErrorMessage(res: Response): Promise<string> {
   return res
@@ -28,15 +28,15 @@ export async function searchIngredients(
   const q = query.trim();
   if (!q) return [];
 
-  const res = await fetch(
-    `${API_BASE}/api/users/${userId}/ingredients?search=${encodeURIComponent(q)}`,
+  const res = await apiFetch(
+    `/api/users/${userId}/ingredients?search=${encodeURIComponent(q)}`,
   );
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as IngredientDto[];
 }
 
 export async function getUnits(): Promise<UnitOfMeasureDto[]> {
-  const res = await fetch(`${API_BASE}/api/units-of-measure`);
+  const res = await apiFetch(`/api/units-of-measure`);
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as UnitOfMeasureDto[];
 }
@@ -44,7 +44,7 @@ export async function getUnits(): Promise<UnitOfMeasureDto[]> {
 export async function getShoppingList(
   userId: number,
 ): Promise<ShoppingListItemDto[]> {
-  const res = await fetch(`${API_BASE}/api/users/${userId}/shopping-list`);
+  const res = await apiFetch(`/api/users/${userId}/shopping-list`);
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as ShoppingListItemDto[];
 }
@@ -53,7 +53,7 @@ export async function addShoppingItem(
   userId: number,
   payload: CreateShoppingListItemRequest,
 ): Promise<ShoppingListItemDto> {
-  const res = await fetch(`${API_BASE}/api/users/${userId}/shopping-list`, {
+  const res = await apiFetch(`/api/users/${userId}/shopping-list`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -67,8 +67,8 @@ export async function patchShoppingItem(
   itemId: number,
   payload: UpdateShoppingListItemRequest,
 ): Promise<ShoppingListItemDto | null> {
-  const res = await fetch(
-    `${API_BASE}/api/users/${userId}/shopping-list/${itemId}`,
+  const res = await apiFetch(
+    `/api/users/${userId}/shopping-list/${itemId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -86,8 +86,8 @@ export async function patchShoppingItem(
 export async function getIngredientsCatalog(
   userId: number,
 ): Promise<IngredientCategoryCatalogDto[]> {
-  const res = await fetch(
-    `${API_BASE}/api/users/${userId}/ingredients/catalog`,
+  const res = await apiFetch(
+    `/api/users/${userId}/ingredients/catalog`,
   );
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as IngredientCategoryCatalogDto[];
@@ -97,7 +97,7 @@ export async function getIngredientsCatalog(
 export async function getOwnedIngredients(
   userId: number,
 ): Promise<IngredientDto[]> {
-  const res = await fetch(`${API_BASE}/api/users/${userId}/ingredients/owned`);
+  const res = await apiFetch(`/api/users/${userId}/ingredients/owned`);
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as IngredientDto[];
 }
@@ -107,8 +107,8 @@ export async function patchOwnedIngredient(
   ingredientId: number,
   payload: UpdateOwnedIngredientRequest,
 ): Promise<IngredientDto> {
-  const res = await fetch(
-    `${API_BASE}/api/users/${userId}/ingredients/${ingredientId}`,
+  const res = await apiFetch(
+    `/api/users/${userId}/ingredients/${ingredientId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -123,8 +123,8 @@ export async function deleteOwnedIngredient(
   userId: number,
   ingredientId: number,
 ): Promise<DeleteOwnedIngredientResponse> {
-  const res = await fetch(
-    `${API_BASE}/api/users/${userId}/ingredients/${ingredientId}`,
+  const res = await apiFetch(
+    `/api/users/${userId}/ingredients/${ingredientId}`,
     { method: "DELETE" },
   );
   if (!res.ok) throw new Error(await readErrorMessage(res));
@@ -138,8 +138,8 @@ export async function uploadOwnedIngredientImage(
 ): Promise<IngredientDto> {
   const fd = new FormData();
   fd.append("file", file);
-  const res = await fetch(
-    `${API_BASE}/api/users/${userId}/ingredients/${ingredientId}/image`,
+  const res = await apiFetch(
+    `/api/users/${userId}/ingredients/${ingredientId}/image`,
     { method: "POST", body: fd },
   );
   if (!res.ok) throw new Error(await readErrorMessage(res));

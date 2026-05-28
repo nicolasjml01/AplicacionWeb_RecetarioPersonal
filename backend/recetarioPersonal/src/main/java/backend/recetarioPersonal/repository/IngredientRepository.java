@@ -8,9 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Ingredient persistence. Visibility: catalog rows ({@code owner} null) plus rows owned by the given user.
- */
+/** Catalog ({@code owner} null) and per-user ingredient rows. */
 public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
 
     @Query("""

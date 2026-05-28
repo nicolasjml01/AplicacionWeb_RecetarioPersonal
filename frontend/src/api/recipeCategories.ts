@@ -1,15 +1,15 @@
 import type { RecipeCategoryDto } from "../types/recipes";
 
-import { API_BASE } from "../config/apiBase";
+import { apiFetch } from "./http";
 
 export async function getRecipeCategories(userId: number): Promise<RecipeCategoryDto[]> {
-  const res = await fetch(`${API_BASE}/api/users/${userId}/recipe-categories`);
+  const res = await apiFetch(`/api/users/${userId}/recipe-categories`);
   if (!res.ok) throw new Error("No se pudieron cargar las categorías.");
   return res.json() as Promise<RecipeCategoryDto[]>;
 }
 
 export async function createRecipeCategory(userId: number, name: string): Promise<RecipeCategoryDto> {
-  const res = await fetch(`${API_BASE}/api/users/${userId}/recipe-categories`, {
+  const res = await apiFetch(`/api/users/${userId}/recipe-categories`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
@@ -34,7 +34,7 @@ export async function updateRecipeCategory(
   categoryId: number,
   name: string
 ): Promise<RecipeCategoryDto> {
-  const res = await fetch(`${API_BASE}/api/users/${userId}/recipe-categories/${categoryId}`, {
+  const res = await apiFetch(`/api/users/${userId}/recipe-categories/${categoryId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),

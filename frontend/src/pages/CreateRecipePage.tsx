@@ -1218,7 +1218,7 @@ export function CreateRecipePage() {
     if (media.contentType.startsWith("video/")) return;
 
     try {
-      const res = await fetch(resolveMediaUrl(media.url));
+      const res = await fetch(resolveMediaUrl(media.url), { credentials: "include" });
       if (!res.ok) throw new Error(`Error (${res.status}) al leer la imagen.`);
       const blob = await res.blob();
       setEditExistingState({

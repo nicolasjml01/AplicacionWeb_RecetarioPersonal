@@ -1,10 +1,11 @@
-# Template for local configuration. Copy to application-local.properties and adjust values.
-# File: application-local.properties (same directory, gitignored)
+# LOCAL DEVELOPMENT ONLY — not used by Docker.
+# 1. Copy this file to application-local.properties (same directory).
+# 2. Set your Postgres password below.
+# 3. Run the backend with profile "local" (default in application.properties).
 
 spring.datasource.url=jdbc:postgresql://localhost:5432/recetario_db
 spring.datasource.username=recetario_user
 spring.datasource.password=your_password_here
-# app.media.root=C:/ruta/personal/recetario-media
 
-# Only if the phone calls the API on port 8080 directly (optional; Vite proxy avoids this):
-# server.address=0.0.0.0
+app.media.root=${user.home}/recetario-media
+spring.jpa.show-sql=true

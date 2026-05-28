@@ -1,6 +1,6 @@
 import type { RecipeDto, RecipeIngredientDto, RecipeStepDto } from "../types/recipes";
 
-import { API_BASE } from "../config/apiBase";
+import { apiFetch } from "./http";
 
 async function readErrorMessage(res: Response): Promise<string> {
   try {
@@ -76,9 +76,9 @@ export async function getRecipes(
   if (cs) params.set("categorySearch", cs);
 
   const qs = params.toString();
-  const url = `${API_BASE}/api/users/${userId}/recipes${qs ? `?${qs}` : ""}`;
+  const url = `/api/users/${userId}/recipes${qs ? `?${qs}` : ""}`;
 
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   if (!res.ok) throw new Error("No se pudieron cargar las recetas.");
   return res.json() as Promise<RecipeDto[]>;
 }
@@ -87,8 +87,8 @@ export async function getRecipe(
   userId: number,
   recipeId: number
 ): Promise<RecipeDto> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}`;
-  const res = await fetch(url);
+  const url = `/api/users/${userId}/recipes/${recipeId}`;
+  const res = await apiFetch(url);
   if (res.status === 404) throw new Error("Receta no encontrada.");
   if (!res.ok) throw new Error("No se pudo cargar la receta.");
   return res.json() as Promise<RecipeDto>;
@@ -98,7 +98,7 @@ export async function createRecipe(
   userId: number,
   payload: CreateRecipePayload
 ): Promise<RecipeDto> {
-  const url = `${API_BASE}/api/users/${userId}/recipes`;
+  const url = `/api/users/${userId}/recipes`;
   const body: Record<string, unknown> = {
     title: payload.title.trim(),
     categoryIds:
@@ -111,7 +111,7 @@ export async function createRecipe(
   }
   if (payload.draft === true) body.draft = true;
 
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -125,7 +125,7 @@ export async function patchRecipe(
   recipeId: number,
   payload: PatchRecipePayload
 ): Promise<RecipeDto> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}`;
+  const url = `/api/users/${userId}/recipes/${recipeId}`;
   const body: Record<string, unknown> = {};
   if (payload.title !== undefined) body.title = payload.title;
   if (payload.categoryIds !== undefined) {
@@ -140,7 +140,7 @@ export async function patchRecipe(
         ? payload.newCategoryNames
         : null;
   }
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -150,14 +150,14 @@ export async function patchRecipe(
 }
 
 export async function deleteRecipe(userId: number, recipeId: number): Promise<void> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}`;
-  const res = await fetch(url, { method: "DELETE" });
+  const url = `/api/users/${userId}/recipes/${recipeId}`;
+  const res = await apiFetch(url, { method: "DELETE" });
   if (!res.ok) throw new Error(await readErrorMessage(res));
 }
 
 export async function publishRecipe(userId: number, recipeId: number): Promise<RecipeDto> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/publish`;
-  const res = await fetch(url, { method: "POST" });
+  const url = `/api/users/${userId}/recipes/${recipeId}/publish`;
+  const res = await apiFetch(url, { method: "POST" });
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return res.json() as Promise<RecipeDto>;
 }
@@ -167,8 +167,8 @@ export async function addRecipeStep(
   recipeId: number,
   payload: CreateRecipeStepPayload
 ): Promise<RecipeStepDto> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/steps`;
-  const res = await fetch(url, {
+  const url = `/api/users/${userId}/recipes/${recipeId}/steps`;
+  const res = await apiFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -186,8 +186,8 @@ export async function patchRecipeStep(
   stepId: number,
   payload: PatchRecipeStepPayload
 ): Promise<RecipeStepDto> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/steps/${stepId}`;
-  const res = await fetch(url, {
+  const url = `/api/users/${userId}/recipes/${recipeId}/steps/${stepId}`;
+  const res = await apiFetch(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -201,8 +201,8 @@ export async function deleteRecipeStep(
   recipeId: number,
   stepId: number
 ): Promise<void> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/steps/${stepId}`;
-  const res = await fetch(url, { method: "DELETE" });
+  const url = `/api/users/${userId}/recipes/${recipeId}/steps/${stepId}`;
+  const res = await apiFetch(url, { method: "DELETE" });
   if (!res.ok) throw new Error(await readErrorMessage(res));
 }
 
@@ -225,7 +225,7 @@ export async function importRecipeIngredientsToShoppingList(
   recipeId: number,
   payload?: ImportRecipeIngredientsPayload
 ): Promise<void> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/ingredients/import-to-shopping-list`;
+  const url = `/api/users/${userId}/recipes/${recipeId}/ingredients/import-to-shopping-list`;
   const body: Record<string, unknown> = {};
   if (payload?.items != null && payload.items.length > 0) {
     body.items = payload.items;
@@ -237,7 +237,7 @@ export async function importRecipeIngredientsToShoppingList(
       body.recipeIngredientIds = payload.recipeIngredientIds;
     }
   }
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -249,8 +249,8 @@ export async function getRecipeIngredients(
   userId: number,
   recipeId: number
 ): Promise<RecipeIngredientDto[]> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/ingredients`;
-  const res = await fetch(url);
+  const url = `/api/users/${userId}/recipes/${recipeId}/ingredients`;
+  const res = await apiFetch(url);
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return res.json() as Promise<RecipeIngredientDto[]>;
 }
@@ -260,8 +260,8 @@ export async function addRecipeIngredient(
   recipeId: number,
   payload: CreateRecipeIngredientPayload
 ): Promise<RecipeIngredientDto> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/ingredients`;
-  const res = await fetch(url, {
+  const url = `/api/users/${userId}/recipes/${recipeId}/ingredients`;
+  const res = await apiFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -283,7 +283,7 @@ export async function patchRecipeIngredient(
   recipeIngredientId: number,
   payload: PatchRecipeIngredientPayload
 ): Promise<RecipeIngredientDto> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/ingredients/${recipeIngredientId}`;
+  const url = `/api/users/${userId}/recipes/${recipeId}/ingredients/${recipeIngredientId}`;
   const body: Record<string, unknown> = {};
   if (payload.ingredientName !== undefined) body.ingredientName = payload.ingredientName.trim();
   if (payload.quantity !== undefined) body.quantity = payload.quantity;
@@ -291,7 +291,7 @@ export async function patchRecipeIngredient(
   if (payload.ingredientCategoryId !== undefined) {
     body.ingredientCategoryId = payload.ingredientCategoryId;
   }
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -305,8 +305,8 @@ export async function deleteRecipeIngredient(
   recipeId: number,
   recipeIngredientId: number
 ): Promise<void> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/ingredients/${recipeIngredientId}`;
-  const res = await fetch(url, { method: "DELETE" });
+  const url = `/api/users/${userId}/recipes/${recipeId}/ingredients/${recipeIngredientId}`;
+  const res = await apiFetch(url, { method: "DELETE" });
   if (!res.ok) throw new Error(await readErrorMessage(res));
 }
 
@@ -335,8 +335,8 @@ export async function previewRecipeFromUrl(
   userId: number,
   url: string,
 ): Promise<RecipeImportPreviewDto> {
-  const endpoint = `${API_BASE}/api/users/${userId}/recipes/import/preview`;
-  const res = await fetch(endpoint, {
+  const endpoint = `/api/users/${userId}/recipes/import/preview`;
+  const res = await apiFetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url }),

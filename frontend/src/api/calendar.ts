@@ -10,7 +10,7 @@ import type {
   MealOrderItemRequest,
 } from "../types/calendar";
 
-import { API_BASE } from "../config/apiBase";
+import { apiFetch } from "./http";
 
 async function readErrorMessage(res: Response): Promise<string> {
   try {
@@ -23,7 +23,7 @@ async function readErrorMessage(res: Response): Promise<string> {
 }
 
 export async function getDayPlan(userId: number, date: string): Promise<DayPlanDto> {
-  const res = await fetch(`${API_BASE}/api/users/${userId}/calendar/days/${date}`);
+  const res = await apiFetch(`/api/users/${userId}/calendar/days/${date}`);
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as DayPlanDto;
 }
@@ -34,7 +34,7 @@ export async function getCalendarRange(
   to: string,
 ): Promise<CalendarRangeDto> {
   const params = new URLSearchParams({ from, to });
-  const res = await fetch(`${API_BASE}/api/users/${userId}/calendar?${params}`);
+  const res = await apiFetch(`/api/users/${userId}/calendar?${params}`);
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as CalendarRangeDto;
 }
@@ -43,7 +43,7 @@ export async function assignCalendarEntry(
   userId: number,
   payload: AssignCalendarEntryRequest,
 ): Promise<CalendarEntryDto> {
-  const res = await fetch(`${API_BASE}/api/users/${userId}/calendar/entries`, {
+  const res = await apiFetch(`/api/users/${userId}/calendar/entries`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -56,8 +56,8 @@ export async function removeCalendarEntry(
   userId: number,
   calendarEntryId: number,
 ): Promise<void> {
-  const res = await fetch(
-    `${API_BASE}/api/users/${userId}/calendar/entries/${calendarEntryId}`,
+  const res = await apiFetch(
+    `/api/users/${userId}/calendar/entries/${calendarEntryId}`,
     { method: "DELETE" },
   );
   if (!res.ok) throw new Error(await readErrorMessage(res));
@@ -68,7 +68,7 @@ export async function reorderDayMeals(
   date: string,
   items: MealOrderItemRequest[],
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/users/${userId}/calendar/days/${date}/meal-order`, {
+  const res = await apiFetch(`/api/users/${userId}/calendar/days/${date}/meal-order`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ items }),
@@ -82,8 +82,8 @@ export async function reorderCalendarEntries(
   items: CalendarEntryOrderItemRequest[],
 ): Promise<void> {
   const params = new URLSearchParams({ date });
-  const res = await fetch(
-    `${API_BASE}/api/users/${userId}/calendar/entries/reorder?${params}`,
+  const res = await apiFetch(
+    `/api/users/${userId}/calendar/entries/reorder?${params}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -98,8 +98,8 @@ export async function dayShoppingImportPreview(
   date: string,
   calendarEntryIds: number[],
 ): Promise<DayShoppingImportPreviewDto> {
-  const res = await fetch(
-    `${API_BASE}/api/users/${userId}/calendar/days/${date}/shopping-import-preview`,
+  const res = await apiFetch(
+    `/api/users/${userId}/calendar/days/${date}/shopping-import-preview`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -116,8 +116,8 @@ export async function importDayToShoppingList(
   calendarEntryIds: number[],
   items: ImportDayShoppingItemRequest[],
 ): Promise<ImportDayShoppingListResponse> {
-  const res = await fetch(
-    `${API_BASE}/api/users/${userId}/calendar/days/${date}/import-to-shopping-list`,
+  const res = await apiFetch(
+    `/api/users/${userId}/calendar/days/${date}/import-to-shopping-list`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -8,9 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-/*
-   This repository is used to manage the shopping list items.
- */
+/** Shopping list lines per user, with optional unit for merging duplicates. */
 public interface ShoppingListItemRepository extends JpaRepository<ShoppingListItem, Long> {
 
     List<ShoppingListItem> findByUser_UserId(Long userId);
