@@ -5,3 +5,6 @@ spring.datasource.url=jdbc:postgresql://localhost:5432/recetario_db
 spring.datasource.username=recetario_user
 spring.datasource.password=your_password_here
 # app.media.root=C:/ruta/personal/recetario-media
+
+# Only if the phone calls the API on port 8080 directly (optional; Vite proxy avoids this):
+# server.address=0.0.0.0

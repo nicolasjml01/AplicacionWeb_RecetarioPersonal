@@ -1,6 +1,6 @@
 import type { RecipeCategoryDto } from "../types/recipes";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_BASE } from "../config/apiBase";
 
 export async function getRecipeCategories(userId: number): Promise<RecipeCategoryDto[]> {
   const res = await fetch(`${API_BASE}/api/users/${userId}/recipe-categories`);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getRecipeIngredients, importRecipeIngredientsToShoppingList } from "../../api/recipes";
 import type { RecipeIngredientDto } from "../../types/recipes";
+import { ModalBackdrop, ModalPanel } from "../ui/ModalBackdrop";
 import { ImportIngredientEditDialog } from "./ImportIngredientEditDialog";
 import { ImportShoppingIngredientCard } from "./ImportShoppingIngredientCard";
 import { defaultUnitName, displayUnitLabel } from "./importUnitDisplay";
@@ -215,13 +216,10 @@ export function ImportRecipeIngredientsDialog({
   const canReset = rows.length > 0 && visibleIds.length !== rows.length;
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div
+    <ModalBackdrop onDismiss={onClose} disabled={submitting}>
+      <ModalPanel
         className="create-recipe-dialog import-ingredients-dialog"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="import-ingredients-title"
-        onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id="import-ingredients-title" className="create-recipe-dialog__title">
           Añadir a la lista de la compra{titleRecipe}
@@ -305,7 +303,7 @@ export function ImportRecipeIngredientsDialog({
             {submitting ? "Añadiendo…" : `Añadir a la cesta (${visibleIds.length})`}
           </button>
         </div>
-      </div>
+      </ModalPanel>
 
       <ImportIngredientEditDialog
         open={editingId != null}
@@ -324,6 +322,6 @@ export function ImportRecipeIngredientsDialog({
         onCancel={closeEdit}
         onConfirm={confirmEdit}
       />
-    </div>
+    </ModalBackdrop>
   );
 }

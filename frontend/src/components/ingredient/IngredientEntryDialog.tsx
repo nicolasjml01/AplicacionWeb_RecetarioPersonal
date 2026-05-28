@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { UnitOfMeasureDto } from "../../types/shopping";
+import { ModalBackdrop } from "../ui/ModalBackdrop";
 import { ImageEditorDialog } from "../recipe/editor/ImageEditorDialog";
 import { applyImageEdits, isEditableImage, type ImageEdits } from "../../utils/imageEditing";
 import type { IngredientCategoryOption } from "../../utils/ingredientCatalogUi";
@@ -163,17 +164,31 @@ export function IngredientEntryDialog({
     }
   };
 
+  const dismiss = () => (onRequestClose ? onRequestClose() : onCancel());
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!saving) onConfirm();
+  };
+
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="ingredient-dialog">
+    <ModalBackdrop onDismiss={dismiss} disabled={saving || imageEditorFile != null}>
+      <div
+        className="ingredient-dialog"
+        role="dialog"
+        aria-modal="true"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <button
           type="button"
           className="ingredient-dialog__close"
-          onClick={() => (onRequestClose ? onRequestClose() : onCancel())}
+          onClick={dismiss}
           aria-label="Cerrar"
+          disabled={saving}
         >
           ×
         </button>
+        <form onSubmit={handleSubmit}>
         <h2 className="ingredient-dialog__title">{title}</h2>
         <p className="ingredient-dialog__ingredient">{ingredientName}</p>
 
@@ -305,19 +320,29 @@ export function IngredientEntryDialog({
 
         {error && <p className="home-error ingredient-dialog__error">{error}</p>}
 
-        <div className="ingredient-dialog__actions">
+        <div
+          className={`ingredient-dialog__actions${
+            showDelete && onDelete ? " ingredient-dialog__actions--three" : " ingredient-dialog__actions--two"
+          }`}
+        >
           <button type="button" className="btn btn--secondary" onClick={onCancel} disabled={saving}>
             {cancelLabel}
           </button>
           {showDelete && onDelete && (
-            <button type="button" className="btn ingredient-dialog__delete-btn" onClick={onDelete} disabled={saving}>
+            <button
+              type="button"
+              className="btn create-recipe-dialog__btn-danger"
+              onClick={onDelete}
+              disabled={saving}
+            >
               {deleteLabel}
             </button>
           )}
-          <button type="button" className="btn btn--primary" onClick={onConfirm} disabled={saving}>
+          <button type="submit" className="btn btn--primary" disabled={saving}>
             {saving ? "Guardando..." : confirmLabel}
           </button>
         </div>
+        </form>
       </div>
 
       {imageEditorFile && (
@@ -335,6 +360,6 @@ export function IngredientEntryDialog({
           onApply={(edits) => void handleImageEditorApply(edits)}
         />
       )}
-    </div>
+    </ModalBackdrop>
   );
 }

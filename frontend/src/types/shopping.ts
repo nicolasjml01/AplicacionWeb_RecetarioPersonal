@@ -36,9 +36,17 @@ export interface CreateShoppingListItemRequest {
   ingredientCategoryId?: number | null;
 }
 
-/** {@code ingredientCategoryId}: send explicit id (including Propios) to avoid accidental reassignment from an empty JSON body. */
-export interface UpdateOwnedIngredientCategoryRequest {
-  ingredientCategoryId: number | null;
+export interface UpdateOwnedIngredientRequest {
+  name: string;
+  /** Omit or null → backend assigns "Propios". */
+  ingredientCategoryId?: number | null;
+}
+
+export interface DeleteOwnedIngredientResponse {
+  message: string;
+  shoppingListItemsRemoved: number;
+  recipeIngredientLinesRemoved: number;
+  recentEntriesRemoved: number;
 }
 
 export interface UpdateShoppingListItemRequest {

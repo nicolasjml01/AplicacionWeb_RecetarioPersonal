@@ -55,47 +55,6 @@ public class SchemaOrgRecipeExtractor implements RecipeExtractor {
         return Optional.of(toPreview(best, sourceUrl));
     }
 
-    private void collectRecipeNodes(JsonNode node, List<JsonNode> out) {
-        if (node == null || node.isNull()) {
-            return;
-        }
-        if (node.isArray()) {
-            for (JsonNode child : node) {
-                collectRecipeNodes(child, out);
-            }
-            return;
-        }
-        if (!node.isObject()) {
-            return;
-        }
-
-        if (isRecipeType(node.get("@type"))) {
-            out.add(node);
-        }
-
-        JsonNode graph = node.get("@graph");
-        if (graph != null) {
-            collectRecipeNodes(graph, out);
-        }
-    }
-
-    private boolean isRecipeType(JsonNode typeNode) {
-        if (typeNode == null || typeNode.isNull()) {
-            return false;
-        }
-        if (typeNode.isTextual()) {
-            return "Recipe".equalsIgnoreCase(typeNode.asText());
-        }
-        if (typeNode.isArray()) {
-            for (JsonNode item : typeNode) {
-                if (item.isTextual() && "Recipe".equalsIgnoreCase(item.asText())) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     private JsonNode pickBestRecipeNode(List<JsonNode> candidates, String sourceUrl) {
         if (candidates.size() == 1) {
             return candidates.get(0);
@@ -148,6 +107,47 @@ public class SchemaOrgRecipeExtractor implements RecipeExtractor {
         } catch (Exception ex) {
             return null;
         }
+    }
+
+    private void collectRecipeNodes(JsonNode node, List<JsonNode> out) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+        if (node.isArray()) {
+            for (JsonNode child : node) {
+                collectRecipeNodes(child, out);
+            }
+            return;
+        }
+        if (!node.isObject()) {
+            return;
+        }
+
+        if (isRecipeType(node.get("@type"))) {
+            out.add(node);
+        }
+
+        JsonNode graph = node.get("@graph");
+        if (graph != null) {
+            collectRecipeNodes(graph, out);
+        }
+    }
+
+    private boolean isRecipeType(JsonNode typeNode) {
+        if (typeNode == null || typeNode.isNull()) {
+            return false;
+        }
+        if (typeNode.isTextual()) {
+            return "Recipe".equalsIgnoreCase(typeNode.asText());
+        }
+        if (typeNode.isArray()) {
+            for (JsonNode item : typeNode) {
+                if (item.isTextual() && "Recipe".equalsIgnoreCase(item.asText())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private RecipeImportPreviewDto toPreview(JsonNode recipe, String sourceUrl) {
@@ -217,7 +217,7 @@ public class SchemaOrgRecipeExtractor implements RecipeExtractor {
         if (trimmed.isEmpty()) {
             return;
         }
-        result.add(new ImportedIngredientLineDto(trimmed, trimmed, null, null));
+        result.add(ImportedIngredientLineParser.parse(trimmed));
     }
 
     private List<ImportedStepLineDto> parseInstructions(JsonNode node) {

@@ -33,4 +33,8 @@ public interface ShoppingListItemRepository extends JpaRepository<ShoppingListIt
             @Param("ingredientId") long ingredientId,
             @Param("unitId") Long unitId
     );
+
+    void deleteByIngredient_IngredientId(long ingredientId);
+
+    long countByIngredient_IngredientId(long ingredientId);
 }

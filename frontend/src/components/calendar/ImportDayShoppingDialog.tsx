@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { dayShoppingImportPreview, importDayToShoppingList } from "../../api/calendar";
+import { ModalBackdrop, ModalPanel } from "../ui/ModalBackdrop";
 import { ImportIngredientEditDialog } from "../recipe/ImportIngredientEditDialog";
 import { ImportShoppingIngredientCard } from "../recipe/ImportShoppingIngredientCard";
 import { defaultUnitName, displayUnitLabel } from "../recipe/importUnitDisplay";
@@ -184,17 +185,10 @@ export function ImportDayShoppingDialog({
   };
 
   return (
-    <div
-      className="modal-backdrop"
-      role="presentation"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
+    <ModalBackdrop onDismiss={onClose} disabled={submitting}>
+      <ModalPanel
         className="create-recipe-dialog import-ingredients-dialog cal-modal--wide"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="import-day-title"
-        onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id="import-day-title" className="create-recipe-dialog__title">
           Día completo a la cesta
@@ -269,7 +263,7 @@ export function ImportDayShoppingDialog({
             {submitting ? "Añadiendo…" : `Añadir a la cesta (${visibleLines.length})`}
           </button>
         </div>
-      </div>
+      </ModalPanel>
 
       <ImportIngredientEditDialog
         open={editingKey != null}
@@ -284,6 +278,6 @@ export function ImportDayShoppingDialog({
         onCancel={closeEdit}
         onConfirm={confirmEdit}
       />
-    </div>
+    </ModalBackdrop>
   );
 }

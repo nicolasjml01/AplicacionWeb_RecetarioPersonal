@@ -111,3 +111,7 @@ export type CalendarViewMode = "day" | "week" | "month";
 export interface CreateMealTypeRequest {
   name: string;
 }
+
+export interface UpdateMealTypeRequest {
+  name: string;
+}

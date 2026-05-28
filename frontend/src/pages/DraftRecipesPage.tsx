@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useModalDismiss } from "../hooks/useModalDismiss";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
 import { deleteRecipe, getRecipes } from "../api/recipes";
@@ -39,6 +40,11 @@ export function DraftRecipesPage() {
     const t = window.setTimeout(() => setActionNotice(""), 2200);
     return () => window.clearTimeout(t);
   }, [actionNotice]);
+
+  useModalDismiss({
+    enabled: openMenuRecipeId != null,
+    onDismiss: () => setOpenMenuRecipeId(null),
+  });
 
   const handleDeleteRecipe = async () => {
     if (!userId || !pendingDeleteRecipe) return;

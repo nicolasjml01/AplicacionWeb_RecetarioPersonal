@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_BASE } from "../config/apiBase";
 
 /** Blob/data URLs from file pickers — use as-is for upload previews. */
 export function isLocalMediaUrl(url: string): boolean {

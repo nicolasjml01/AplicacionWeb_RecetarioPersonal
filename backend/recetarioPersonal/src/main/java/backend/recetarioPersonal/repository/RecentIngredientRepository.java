@@ -28,4 +28,8 @@ public interface RecentIngredientRepository extends JpaRepository<RecentIngredie
           )
         """, nativeQuery = true)
     void deleteOlderThanTop10(@Param("userId") long userId);
+
+    void deleteByIngredient_IngredientId(long ingredientId);
+
+    long countByIngredient_IngredientId(long ingredientId);
 }

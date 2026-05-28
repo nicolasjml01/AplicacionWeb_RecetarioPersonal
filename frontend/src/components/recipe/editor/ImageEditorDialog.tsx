@@ -11,6 +11,7 @@ import {
   ImageEditorLivePreview,
   type ImageEditorPreviewContext,
 } from "./ImageEditorLivePreview";
+import { ModalBackdrop } from "../../ui/ModalBackdrop";
 
 type Props = {
   open: boolean;
@@ -170,16 +171,6 @@ export function ImageEditorDialog({
     previewGenRef.current += 1;
   }, [open]);
 
-  // Esc closes (unless we are mid-save).
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !saving) onCancel();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onCancel, saving]);
-
   const aspectValue = useMemo(
     () => ASPECTS.find((a) => a.key === aspect)?.value,
     [aspect],
@@ -228,8 +219,19 @@ export function ImageEditorDialog({
   const filterStyle = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
 
   return (
-    <div className="image-editor-backdrop" role="dialog" aria-modal="true" aria-label="Editor de imagen">
-      <div className="image-editor-dialog">
+    <ModalBackdrop
+      className="image-editor-backdrop"
+      role="dialog"
+      onDismiss={onCancel}
+      disabled={saving}
+    >
+      <div
+        className="image-editor-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Editor de imagen"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <header className="image-editor__header">
           <h2 className="image-editor__title">
             Editar imagen{fileName ? ` — ${fileName}` : ""}
@@ -363,7 +365,7 @@ export function ImageEditorDialog({
           </button>
         </footer>
       </div>
-    </div>
+    </ModalBackdrop>
   );
 }
 

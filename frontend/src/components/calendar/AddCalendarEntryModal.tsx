@@ -7,6 +7,7 @@ import type { RecipeDto } from "../../types/recipes";
 import { RECIPE_DEFAULT_COVER_PATH } from "../../constants/recipeAssets";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { getRecipeCoverMedia } from "../../utils/recipeCover";
+import { ModalBackdrop, ModalPanel } from "../ui/ModalBackdrop";
 
 type Props = {
   open: boolean;
@@ -162,17 +163,10 @@ export function AddCalendarEntryModal({ open, userId, planDate, onClose, onAdded
     .filter((t): t is string => Boolean(t));
 
   return (
-    <div
-      className="modal-backdrop"
-      role="presentation"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
+    <ModalBackdrop onDismiss={onClose} disabled={submitting}>
+      <ModalPanel
         className="create-recipe-dialog cal-add-dialog"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="add-cal-entry-title"
-        onMouseDown={(e) => e.stopPropagation()}
       >
         <button type="button" className="cal-modal__close" onClick={onClose} aria-label="Cerrar">
           ✕
@@ -305,7 +299,7 @@ export function AddCalendarEntryModal({ open, userId, planDate, onClose, onAdded
                 : "Añadir"}
           </button>
         </div>
-      </div>
-    </div>
+      </ModalPanel>
+    </ModalBackdrop>
   );
 }

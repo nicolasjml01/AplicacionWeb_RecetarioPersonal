@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useModalDismiss } from "../hooks/useModalDismiss";
 import { useNavigate, useParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
 import { getRecipeCategories, updateRecipeCategory } from "../api/recipeCategories";
@@ -135,6 +136,11 @@ export function CategoryRecipesPage() {
       setUpdatingCategory(false);
     }
   };
+
+  useModalDismiss({
+    enabled: openMenuRecipeId != null,
+    onDismiss: () => setOpenMenuRecipeId(null),
+  });
 
   if (!userId) return <p className="home-error">No hay usuario en sesión.</p>;
   if (!Number.isFinite(categoryId))

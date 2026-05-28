@@ -1,6 +1,6 @@
 import type { RecipeMediaDto } from "../types/recipes";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_BASE } from "../config/apiBase";
 
 async function readErrorMessage(res: Response): Promise<string> {
   try {

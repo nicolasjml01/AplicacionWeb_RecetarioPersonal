@@ -1,6 +1,5 @@
 import type { User, RegisterRequest, LoginRequest } from "../types/auth";
-
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_BASE } from "../config/apiBase";
 
 // Calls POST /api/auth/login. Throws on failure.
 export async function login(login: string, password: string): Promise<User> {

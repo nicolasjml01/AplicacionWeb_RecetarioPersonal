@@ -2,12 +2,14 @@ package backend.recetarioPersonal.controller;
 
 import backend.recetarioPersonal.service.IngredientImageService;
 import backend.recetarioPersonal.service.IngredientService;
+import backend.recetarioPersonal.view.DeleteOwnedIngredientResponse;
 import backend.recetarioPersonal.view.IngredientCategoryCatalogDto;
 import backend.recetarioPersonal.view.IngredientDto;
 import backend.recetarioPersonal.view.UpdateOwnedIngredientRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,19 +64,23 @@ public class IngredientController {
     }
 
     /**
-     * Updates category for a user-owned ingredient. See {@link UpdateOwnedIngredientRequest} for JSON semantics.
-     * Does not change the display name; use {@link #uploadIngredientImage} to replace the image.
+     * Updates name and category for a user-owned ingredient.
+     * Use {@link #uploadIngredientImage} to replace the image.
      */
     @PatchMapping("/{ingredientId}")
     public ResponseEntity<IngredientDto> patchOwned(
             @PathVariable long userId,
             @PathVariable long ingredientId,
             @RequestBody @Valid UpdateOwnedIngredientRequest request) {
-        IngredientDto dto = ingredientService.updateOwnedIngredientCategory(
-                userId,
-                ingredientId,
-                request.ingredientCategoryId());
+        IngredientDto dto = ingredientService.updateOwnedIngredient(userId, ingredientId, request);
         return ResponseEntity.ok(dto);
+    }
+
+    @DeleteMapping("/{ingredientId}")
+    public ResponseEntity<DeleteOwnedIngredientResponse> deleteOwned(
+            @PathVariable long userId,
+            @PathVariable long ingredientId) {
+        return ResponseEntity.ok(ingredientService.deleteOwnedIngredient(userId, ingredientId));
     }
 
     /**

@@ -2,9 +2,10 @@ import type {
   CreateMealTypeRequest,
   DeleteMealTypeResponse,
   MealTypeDto,
+  UpdateMealTypeRequest,
 } from "../types/calendar";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_BASE } from "../config/apiBase";
 
 async function readErrorMessage(res: Response): Promise<string> {
   try {
@@ -39,6 +40,20 @@ export async function createMealType(
 ): Promise<MealTypeDto> {
   const res = await fetch(`${API_BASE}/api/users/${userId}/meal-types`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return (await res.json()) as MealTypeDto;
+}
+
+export async function updateMealType(
+  userId: number,
+  mealTypeId: number,
+  payload: UpdateMealTypeRequest,
+): Promise<MealTypeDto> {
+  const res = await fetch(`${API_BASE}/api/users/${userId}/meal-types/${mealTypeId}`, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });

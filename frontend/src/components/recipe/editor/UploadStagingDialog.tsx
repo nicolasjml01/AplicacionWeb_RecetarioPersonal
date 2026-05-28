@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { RecipeUploadLayoutPreview } from "../../media/UploadLayoutPreview";
+import { ModalBackdrop } from "../../ui/ModalBackdrop";
 import { ImageEditorDialog } from "./ImageEditorDialog";
 import { hasEdits, isEditableImage, type ImageEdits } from "../../../utils/imageEditing";
 
@@ -59,16 +60,6 @@ export function UploadStagingDialog({
     };
   }, [open, files]);
 
-  // Esc cancels (but not while the editor child dialog is open).
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && editingIndex == null) onCancel();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, editingIndex, onCancel]);
-
   const editedCount = useMemo(
     () => items.reduce((acc, it) => acc + (it.edits && hasEdits(it.edits) ? 1 : 0), 0),
     [items],
@@ -105,8 +96,19 @@ export function UploadStagingDialog({
   const editingItem = editingIndex != null ? items[editingIndex] : null;
 
   return (
-    <div className="upload-staging-backdrop" role="dialog" aria-modal="true" aria-label="Confirmar subida">
-      <div className="upload-staging-dialog">
+    <ModalBackdrop
+      className="upload-staging-backdrop"
+      role="dialog"
+      onDismiss={onCancel}
+      disabled={editingIndex != null}
+    >
+      <div
+        className="upload-staging-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Confirmar subida"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <header className="upload-staging__header">
           <h2 className="upload-staging__title">Subir archivos</h2>
           {contextLabel && <p className="upload-staging__context">{contextLabel}</p>}
@@ -217,7 +219,7 @@ export function UploadStagingDialog({
           onApply={handleApplyEdits}
         />
       )}
-    </div>
+    </ModalBackdrop>
   );
 }
 

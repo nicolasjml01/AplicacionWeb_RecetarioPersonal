@@ -5,10 +5,15 @@ import backend.recetarioPersonal.model.IngredientCategory;
 import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.IngredientCategoryRepository;
 import backend.recetarioPersonal.repository.IngredientRepository;
+import backend.recetarioPersonal.repository.RecentIngredientRepository;
+import backend.recetarioPersonal.repository.RecipeIngredientRepository;
+import backend.recetarioPersonal.repository.ShoppingListItemRepository;
 import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.service.util.IngredientNameNormalizer;
+import backend.recetarioPersonal.view.DeleteOwnedIngredientResponse;
 import backend.recetarioPersonal.view.IngredientCategoryCatalogDto;
 import backend.recetarioPersonal.view.IngredientDto;
+import backend.recetarioPersonal.view.UpdateOwnedIngredientRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,17 +32,29 @@ public class IngredientService {
     private final IngredientCategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final RecentIngredientService recentIngredientService;
+    private final ShoppingListItemRepository shoppingListItemRepository;
+    private final RecipeIngredientRepository recipeIngredientRepository;
+    private final RecentIngredientRepository recentIngredientRepository;
+    private final MediaStorageService mediaStorageService;
 
     public IngredientService(
             IngredientRepository ingredientRepository,
             IngredientCategoryRepository categoryRepository,
             UserRepository userRepository,
-            RecentIngredientService recentIngredientService
+            RecentIngredientService recentIngredientService,
+            ShoppingListItemRepository shoppingListItemRepository,
+            RecipeIngredientRepository recipeIngredientRepository,
+            RecentIngredientRepository recentIngredientRepository,
+            MediaStorageService mediaStorageService
     ) {
         this.ingredientRepository = ingredientRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.recentIngredientService = recentIngredientService;
+        this.shoppingListItemRepository = shoppingListItemRepository;
+        this.recipeIngredientRepository = recipeIngredientRepository;
+        this.recentIngredientRepository = recentIngredientRepository;
+        this.mediaStorageService = mediaStorageService;
     }
 
     /**
@@ -71,25 +88,80 @@ public class IngredientService {
     }
 
     /**
-     * Changes the ingredient category for a row owned by {@code userId}.
-     * {@code ingredientCategoryId} {@code null} assigns the default category {@code "Propios"} (same as
-     * {@link #findOrCreateByName(String, long, Long)}); otherwise the id must exist in {@code ingredient_categories}.
+     * Updates name and/or category for a row owned by {@code userId}.
+     * {@code ingredientCategoryId} {@code null} assigns {@code "Propios"}.
      */
     @Transactional
-    public IngredientDto updateOwnedIngredientCategory(
+    public IngredientDto updateOwnedIngredient(
             long userId,
             long ingredientId,
-            Long ingredientCategoryId
+            UpdateOwnedIngredientRequest request
     ) {
         userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
-        Ingredient ing = ingredientRepository.findByIngredientIdAndOwner_UserId(ingredientId, userId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Ingrediente no encontrado o no es tuyo (solo puedes editar ingredientes que hayas creado)."));
-        IngredientCategory category = resolveCategoryForNewUserIngredient(ingredientCategoryId);
+        Ingredient ing = findOwnedOrThrow(userId, ingredientId);
+
+        String trimmed = request.name().trim();
+        if (trimmed.isBlank()) {
+            throw new IllegalArgumentException("El nombre del ingrediente es obligatorio.");
+        }
+        String key = IngredientNameNormalizer.normalize(trimmed);
+        if (key.isEmpty()) {
+            throw new IllegalArgumentException("El nombre del ingrediente es obligatorio.");
+        }
+        ingredientRepository.findVisibleToUserByNormalizedKey(key, userId).ifPresent(existing -> {
+            if (!existing.getIngredientId().equals(ingredientId)) {
+                throw new IllegalArgumentException("Ya existe un ingrediente con ese nombre.");
+            }
+        });
+        ing.setName(trimmed);
+        ing.setNormalizedName(key);
+
+        IngredientCategory category = resolveCategoryForNewUserIngredient(request.ingredientCategoryId());
         ing.setCategory(category);
         ingredientRepository.save(ing);
         return toDto(ing);
+    }
+
+    @Transactional
+    public DeleteOwnedIngredientResponse deleteOwnedIngredient(long userId, long ingredientId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        Ingredient ing = findOwnedOrThrow(userId, ingredientId);
+        String ingredientName = ing.getName();
+
+        long shoppingRemoved = shoppingListItemRepository.countByIngredient_IngredientId(ingredientId);
+        long recipeLinesRemoved = recipeIngredientRepository.countByIngredient_IngredientId(ingredientId);
+        long recentRemoved = recentIngredientRepository.countByIngredient_IngredientId(ingredientId);
+
+        shoppingListItemRepository.deleteByIngredient_IngredientId(ingredientId);
+        recipeIngredientRepository.deleteByIngredient_IngredientId(ingredientId);
+        recentIngredientRepository.deleteByIngredient_IngredientId(ingredientId);
+
+        String imagePath = ing.getImageRelativePath();
+        ingredientRepository.delete(ing);
+        if (imagePath != null && !imagePath.isBlank()) {
+            mediaStorageService.deleteIfExists(imagePath);
+        }
+
+        String message = String.format(
+                "Se eliminó \"%s\" (%d línea(s) en recetas, %d en la cesta, %d reciente(s)).",
+                ingredientName,
+                recipeLinesRemoved,
+                shoppingRemoved,
+                recentRemoved);
+
+        return new DeleteOwnedIngredientResponse(
+                message,
+                (int) shoppingRemoved,
+                (int) recipeLinesRemoved,
+                (int) recentRemoved);
+    }
+
+    private Ingredient findOwnedOrThrow(long userId, long ingredientId) {
+        return ingredientRepository.findByIngredientIdAndOwner_UserId(ingredientId, userId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Ingrediente no encontrado o no es tuyo (solo puedes editar ingredientes que hayas creado)."));
     }
 
     /**

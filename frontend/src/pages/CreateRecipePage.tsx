@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useOverlayDismiss } from "../hooks/useOverlayDismiss";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
 import {
   appendRecipeReturnNav,
@@ -18,6 +19,7 @@ import {
   patchRecipe,
   patchRecipeStep,
   publishRecipe,
+  type RecipeImportPreviewDto,
 } from "../api/recipes";
 import {
   deleteRecipeMedia,
@@ -46,6 +48,8 @@ import {
   defaultIngredientCategoryId,
   ingredientCategoriesForSelect,
 } from "../utils/ingredientCatalogUi";
+import { parseImportedIngredientLine } from "../utils/parseImportedIngredientLine";
+import { formatImportQuantityForInput } from "../components/recipe/importQuantity";
 
 const DEFAULT_CATEGORY = "Sin categoría";
 const DRAFT_INIT_TITLE = "Receta nueva";
@@ -165,6 +169,44 @@ function applyIngredientsFromRecipe(sortedIngredients: RecipeIngredientDto[]): I
   }));
 }
 
+function applyIngredientsFromImport(imported: RecipeImportPreviewDto["ingredients"]): IngredientRow[] {
+  return imported
+    .map((i, idx) => {
+      const raw = (i.rawText ?? i.ingredientName ?? "").trim();
+      const parsed = parseImportedIngredientLine(raw, {
+        ingredientName: i.ingredientName,
+        quantity: i.quantity,
+        measurementUnit: i.measurementUnit,
+      });
+      const quantity =
+        parsed.quantity != null && Number.isFinite(parsed.quantity)
+          ? formatImportQuantityForInput(parsed.quantity)
+          : "";
+      return {
+        key: `import-ing-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+        ingredientName: parsed.ingredientName,
+        quantity,
+        measurementUnit: (parsed.measurementUnit ?? "").trim(),
+        ingredientImageUrl: null,
+        ingredientCategoryId: null,
+        pendingIngredientImage: null,
+      };
+    })
+    .filter((i) => i.ingredientName.length > 0 || i.quantity.length > 0 || i.measurementUnit.length > 0);
+}
+
+function applyStepsFromImport(imported: RecipeImportPreviewDto["steps"]): StepRow[] {
+  const sorted = [...imported].sort((a, b) => a.stepNumber - b.stepNumber);
+  return sorted
+    .map((s, idx) => ({
+      key: `import-step-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+      stepNumber: idx + 1,
+      content: s.content?.trim() ?? "",
+      media: [],
+    }))
+    .filter((s) => s.content.length > 0);
+}
+
 function makeLocalStep(stepNumber: number): StepRow {
   return {
     key: `local-${stepNumber}-${Date.now()}`,
@@ -195,6 +237,7 @@ type IngredientModalState =
     };
 
 export function CreateRecipePage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = getCurrentUserId();
@@ -242,6 +285,8 @@ export function CreateRecipePage() {
   const [submitError, setSubmitError] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
+  const [ingredientDeleteConfirmOpen, setIngredientDeleteConfirmOpen] = useState(false);
+  const [ingredientDiscardConfirmOpen, setIngredientDiscardConfirmOpen] = useState(false);
   const [exitBusy, setExitBusy] = useState(false);
   const [stepUploadTarget, setStepUploadTarget] = useState<number | null>(null);
   // Holds the picked files between OS dialog and actual upload, so the user
@@ -351,14 +396,20 @@ export function CreateRecipePage() {
       .catch(() => setIngredientCatalog([]));
   }, [userId]);
 
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (!categoryWrapRef.current?.contains(e.target as Node)) setCategoryDropdownOpen(false);
-      if (!ingredientsWrapRef.current?.contains(e.target as Node)) setIngredientDropdownOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, []);
+  const closeCategoryDropdown = useCallback(() => setCategoryDropdownOpen(false), []);
+  const closeIngredientDropdown = useCallback(() => setIngredientDropdownOpen(false), []);
+
+  useOverlayDismiss({
+    enabled: categoryDropdownOpen,
+    containerRef: categoryWrapRef,
+    onDismiss: closeCategoryDropdown,
+  });
+
+  useOverlayDismiss({
+    enabled: ingredientDropdownOpen,
+    containerRef: ingredientsWrapRef,
+    onDismiss: closeIngredientDropdown,
+  });
 
   useEffect(() => {
     const q = ingredientSearch.trim();
@@ -495,12 +546,22 @@ export function CreateRecipePage() {
     setIngredientResults([]);
     setIngredientDropdownOpen(false);
     setGlobalMedia([]);
-    setSteps([makeLocalStep(1)]);
+    const importPreview = (location.state as { importPreview?: RecipeImportPreviewDto } | null)?.importPreview;
+    if (importPreview != null) {
+      const importedTitle = importPreview.title?.trim() ?? "";
+      setTitle(importedTitle);
+      const importedIngredients = applyIngredientsFromImport(importPreview.ingredients ?? []);
+      setIngredients(importedIngredients.length > 0 ? importedIngredients : [makeLocalIngredient()]);
+      const importedSteps = applyStepsFromImport(importPreview.steps ?? []);
+      setSteps(importedSteps.length > 0 ? importedSteps : [makeLocalStep(1)]);
+    } else {
+      setSteps([makeLocalStep(1)]);
+    }
     setInitialIngredientIds([]);
     setInitialStepIds([]);
     setIsPublishedEditMode(false);
     setBooting(false);
-  }, [userId, draftIdParam, editIdParam, categoryIdParam, navigate, applyRecipe, searchParams]);
+  }, [userId, draftIdParam, editIdParam, categoryIdParam, navigate, applyRecipe, searchParams, location.state]);
 
   useEffect(() => {
     void bootstrap();
@@ -905,8 +966,8 @@ export function CreateRecipePage() {
       ingredientModalUnit.trim() !== originalUnit.trim() ||
       extrasDirty;
     if (changed) {
-      const ok = window.confirm("Tienes cambios sin guardar en este ingrediente. ¿Cerrar igualmente?");
-      if (!ok) return;
+      setIngredientDiscardConfirmOpen(true);
+      return;
     }
     closeIngredientModal();
   };
@@ -952,11 +1013,18 @@ export function CreateRecipePage() {
     closeIngredientModal();
   };
 
-  const deleteIngredientFromModal = () => {
+  const requestDeleteIngredientFromModal = () => {
     if (!ingredientModal.open || ingredientModal.mode !== "edit" || !ingredientModal.rowKey) return;
-    const ok = window.confirm("¿Seguro que quieres borrar este ingrediente?");
-    if (!ok) return;
+    setIngredientDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteIngredientFromModal = () => {
+    if (!ingredientModal.open || ingredientModal.mode !== "edit" || !ingredientModal.rowKey) {
+      setIngredientDeleteConfirmOpen(false);
+      return;
+    }
     removeIngredientRow(ingredientModal.rowKey);
+    setIngredientDeleteConfirmOpen(false);
     closeIngredientModal();
   };
 
@@ -1697,7 +1765,36 @@ export function CreateRecipePage() {
         onRequestClose={requestCloseIngredientModal}
         onCancel={closeIngredientModal}
         onConfirm={saveIngredientFromModal}
-        onDelete={deleteIngredientFromModal}
+        onDelete={requestDeleteIngredientFromModal}
+      />
+
+      <ConfirmDialog
+        open={ingredientDeleteConfirmOpen}
+        title="¿Eliminar este ingrediente?"
+        message={
+          ingredientModal.open
+            ? `Se quitará "${ingredientModal.ingredientName}" de la receta. Podrás volver a añadirlo después.`
+            : ""
+        }
+        cancelLabel="Cancelar"
+        confirmLabel="Sí, eliminar"
+        confirmVariant="danger"
+        onCancel={() => setIngredientDeleteConfirmOpen(false)}
+        onConfirm={confirmDeleteIngredientFromModal}
+      />
+
+      <ConfirmDialog
+        open={ingredientDiscardConfirmOpen}
+        title="¿Cerrar sin guardar?"
+        message="Tienes cambios sin guardar en este ingrediente. Si cierras ahora, se perderán."
+        cancelLabel="Seguir editando"
+        confirmLabel="Cerrar igualmente"
+        confirmVariant="danger"
+        onCancel={() => setIngredientDiscardConfirmOpen(false)}
+        onConfirm={() => {
+          setIngredientDiscardConfirmOpen(false);
+          closeIngredientModal();
+        }}
       />
 
       <ConfirmDialog

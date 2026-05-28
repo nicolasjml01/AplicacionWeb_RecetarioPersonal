@@ -1,14 +1,15 @@
 import type {
   CreateShoppingListItemRequest,
+  DeleteOwnedIngredientResponse,
   IngredientCategoryCatalogDto,
   IngredientDto,
   ShoppingListItemDto,
-  UpdateOwnedIngredientCategoryRequest,
+  UpdateOwnedIngredientRequest,
   UpdateShoppingListItemRequest,
   UnitOfMeasureDto,
 } from "../types/shopping";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_BASE } from "../config/apiBase";
 
 function readErrorMessage(res: Response): Promise<string> {
   return res
@@ -101,10 +102,10 @@ export async function getOwnedIngredients(
   return (await res.json()) as IngredientDto[];
 }
 
-export async function patchOwnedIngredientCategory(
+export async function patchOwnedIngredient(
   userId: number,
   ingredientId: number,
-  payload: UpdateOwnedIngredientCategoryRequest,
+  payload: UpdateOwnedIngredientRequest,
 ): Promise<IngredientDto> {
   const res = await fetch(
     `${API_BASE}/api/users/${userId}/ingredients/${ingredientId}`,
@@ -116,6 +117,18 @@ export async function patchOwnedIngredientCategory(
   );
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return (await res.json()) as IngredientDto;
+}
+
+export async function deleteOwnedIngredient(
+  userId: number,
+  ingredientId: number,
+): Promise<DeleteOwnedIngredientResponse> {
+  const res = await fetch(
+    `${API_BASE}/api/users/${userId}/ingredients/${ingredientId}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return (await res.json()) as DeleteOwnedIngredientResponse;
 }
 
 export async function uploadOwnedIngredientImage(

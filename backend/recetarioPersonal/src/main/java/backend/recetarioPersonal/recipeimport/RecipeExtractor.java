@@ -10,7 +10,7 @@ public interface RecipeExtractor {
 
     /**
      * @param html      page body
-     * @param sourceUrl canonical URL requested by the user (for warnings / matching)
+     * @param sourceUrl canonical URL requested by the user (for matching when several Recipe blocks exist)
      */
     Optional<RecipeImportPreviewDto> extract(String html, String sourceUrl);
 }

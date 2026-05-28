@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useOverlayDismiss } from "../hooks/useOverlayDismiss";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
 import { deleteRecipe, getRecipe } from "../api/recipes";
@@ -188,15 +189,13 @@ export function RecipeDetailPage() {
     };
   }, [userId, recipeId]);
 
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (!actionsRef.current?.contains(e.target as Node)) {
-        setActionsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, []);
+  const closeActionsMenu = useCallback(() => setActionsOpen(false), []);
+
+  useOverlayDismiss({
+    enabled: actionsOpen,
+    containerRef: actionsRef,
+    onDismiss: closeActionsMenu,
+  });
 
   useEffect(() => {
     if (!actionNotice) return;

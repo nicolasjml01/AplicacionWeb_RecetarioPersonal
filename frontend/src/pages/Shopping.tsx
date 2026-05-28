@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useOverlayDismiss } from "../hooks/useOverlayDismiss";
 import { getCurrentUserId } from "../auth/session";
 import type {
   IngredientCategoryCatalogDto,
@@ -67,6 +68,7 @@ export function Shopping() {
   const [searchLoading, setSearchLoading] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchWrapRef = useRef<HTMLDivElement | null>(null);
 
   // Modal state
   const [modal, setModal] = useState<ModalState>({ open: false });
@@ -193,6 +195,19 @@ export function Shopping() {
   const showSearchDropdown =
     ingredientResults.length > 0 ||
     (search.trim() !== "" && !searchLoading && !searchError);
+
+  const closeSearchDropdown = useCallback(() => {
+    setSearch("");
+    setIngredientResults([]);
+    setSearchError("");
+    searchInputRef.current?.blur();
+  }, []);
+
+  useOverlayDismiss({
+    enabled: showSearchDropdown,
+    containerRef: searchWrapRef,
+    onDismiss: closeSearchDropdown,
+  });
 
   function openAddModal(ingredientName: string, isNewIngredient: boolean) {
     setModal({ open: true, mode: "add", ingredientName, isNewIngredient });
@@ -432,13 +447,10 @@ export function Shopping() {
                 type="button"
                 className="shopping-search-overlay"
                 aria-label="Cerrar resultados de búsqueda"
-                onClick={() => {
-                  setIngredientResults([]);
-                  setSearchError("");
-                }}
+                onClick={closeSearchDropdown}
               />
             )}
-            <div className="shopping-search">
+            <div className="shopping-search" ref={searchWrapRef}>
               <button
                 type="button"
                 className="shopping-plus"
@@ -469,8 +481,7 @@ export function Shopping() {
                       className="shopping-search__result"
                       onClick={() => {
                         openAddModal(ing.name, false);
-                        setSearch("");
-                        setIngredientResults([]);
+                        closeSearchDropdown();
                       }}
                     >
                       {ing.name}
@@ -487,8 +498,7 @@ export function Shopping() {
                         className="shopping-search__result"
                         onClick={() => {
                           openAddModal(search.trim(), true);
-                          setSearch("");
-                          setIngredientResults([]);
+                          closeSearchDropdown();
                         }}
                       >
                         Añadir «{search.trim()}»

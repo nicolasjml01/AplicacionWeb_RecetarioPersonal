@@ -1,6 +1,6 @@
 import type { RecipeDto, RecipeIngredientDto, RecipeStepDto } from "../types/recipes";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { API_BASE } from "../config/apiBase";
 
 async function readErrorMessage(res: Response): Promise<string> {
   try {
@@ -308,4 +308,39 @@ export async function deleteRecipeIngredient(
   const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/ingredients/${recipeIngredientId}`;
   const res = await fetch(url, { method: "DELETE" });
   if (!res.ok) throw new Error(await readErrorMessage(res));
+}
+
+export type ImportedIngredientLineDto = {
+  rawText: string | null;
+  ingredientName: string | null;
+  quantity: number | null;
+  measurementUnit: string | null;
+};
+
+export type ImportedStepLineDto = {
+  stepNumber: number;
+  content: string;
+};
+
+export type RecipeImportPreviewDto = {
+  title: string;
+  sourceUrl: string;
+  imageUrl: string | null;
+  ingredients: ImportedIngredientLineDto[];
+  steps: ImportedStepLineDto[];
+  warnings: string[];
+};
+
+export async function previewRecipeFromUrl(
+  userId: number,
+  url: string,
+): Promise<RecipeImportPreviewDto> {
+  const endpoint = `${API_BASE}/api/users/${userId}/recipes/import/preview`;
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return res.json() as Promise<RecipeImportPreviewDto>;
 }

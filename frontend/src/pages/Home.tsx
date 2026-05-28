@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useModalDismiss } from "../hooks/useModalDismiss";
+import { useOverlayDismiss } from "../hooks/useOverlayDismiss";
 import { getCurrentUserId } from "../auth/session";
-import { getRecipes } from "../api/recipes";
+import { getRecipes, previewRecipeFromUrl } from "../api/recipes";
 import { createRecipeCategory, getRecipeCategories, updateRecipeCategory } from "../api/recipeCategories";
 import type { RecipeCategoryDto, RecipeDto } from "../types/recipes";
 import { CategoryCard } from "../components/home/CategoryCard";
@@ -29,6 +31,8 @@ export function Home() {
   const [editingCategory, setEditingCategory] = useState<RecipeCategoryDto | null>(null);
   const [updatingCategory, setUpdatingCategory] = useState(false);
   const [error, setError] = useState("");
+  const [importError, setImportError] = useState("");
+  const [importingFromUrl, setImportingFromUrl] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -87,28 +91,29 @@ export function Home() {
     return [...catMatches, ...recMatches]; // First category matches, then recipe matches
   }, [search, categories, recipes]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!searchContainerRef.current) return;
-      const target = event.target as Node;
-      if (!searchContainerRef.current.contains(target)) {
-        setIsSearchOpen(false);
-      }
-    };
+  const searchTrimmed = search.trim();
+  const isSearchUrl = useMemo(() => {
+    if (!searchTrimmed) return false;
+    try {
+      const parsed = new URL(searchTrimmed);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, [searchTrimmed]);
 
-    const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsSearchOpen(false);
-      }
-    };
+  const closeSearchDropdown = useCallback(() => setIsSearchOpen(false), []);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEsc);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEsc);
-    };
-  }, []);
+  useOverlayDismiss({
+    enabled: isSearchOpen,
+    containerRef: searchContainerRef,
+    onDismiss: closeSearchDropdown,
+  });
+
+  useModalDismiss({
+    enabled: fabOpen,
+    onDismiss: () => setFabOpen(false),
+  });
 
   const handleCreateCategory = async (name: string) => {
     if (!userId) return;
@@ -147,6 +152,23 @@ export function Home() {
     navigate(appendRecipeReturnNav(`/home/recipes/${recipeId}`, ret));
   };
 
+  const handleImportFromSearchUrl = async () => {
+    if (!userId || !isSearchUrl || importingFromUrl) return;
+    setImportError("");
+    setImportingFromUrl(true);
+    try {
+      const preview = await previewRecipeFromUrl(userId, searchTrimmed);
+      setIsSearchOpen(false);
+      navigate("/home/recipes/new", {
+        state: { importPreview: preview },
+      });
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "No se pudo importar la receta.");
+    } finally {
+      setImportingFromUrl(false);
+    }
+  };
+
   if (!userId) return <p className="home-error">No hay usuario en sesión.</p>;
   if (loading) return <p>Cargando...</p>;
 
@@ -161,11 +183,31 @@ export function Home() {
               setIsSearchOpen(true);
             }}
             onFocus={() => setIsSearchOpen(true)}
-            placeholder="Buscar categorías o recetas"
-            aria-label="Buscar categorías o recetas"
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+              e.preventDefault();
+              if (isSearchUrl && !importingFromUrl) {
+                void handleImportFromSearchUrl();
+                return;
+              }
+              const first = searchResults[0];
+              if (!first) return;
+              if (first.type === "category") {
+                handleOpenCategory(first.id);
+              } else {
+                handleOpenRecipe(first.id);
+              }
+            }}
+            placeholder="Buscar categoría / receta / Importar receta desde enlace"
+            aria-label="Buscar categoría / receta / Importar receta desde enlace"
           />
           {search.trim() && isSearchOpen && (
             <div className="home-search__dropdown" role="listbox" aria-label="Resultados de búsqueda">
+              {isSearchUrl && (
+                <button type="button" onClick={handleImportFromSearchUrl} disabled={importingFromUrl}>
+                  {importingFromUrl ? "⏳ Importando receta..." : "🌐 Importar receta desde este enlace"}
+                </button>
+              )}
               {searchResults.length === 0 && <div className="home-search__empty">Sin coincidencias</div>}
               {searchResults.map((r) =>
                 r.type === "category" ? (
@@ -203,6 +245,7 @@ export function Home() {
       </div>
 
       {error && <p className="home-error">{error}</p>}
+      {importError && <p className="home-error">{importError}</p>}
 
       <div className="home-grid">
         {categories.map((c) => (
