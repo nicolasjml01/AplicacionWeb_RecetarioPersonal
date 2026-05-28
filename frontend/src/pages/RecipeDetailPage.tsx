@@ -28,22 +28,21 @@ function MediaCarousel({ media, hero = false }: MediaCarouselProps) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [stepOverflow, setStepOverflow] = useState(false);
 
+  const canMeasureOverflow = !hero && media.length > 1;
+
   useLayoutEffect(() => {
-    if (hero) return;
+    if (!canMeasureOverflow) return;
     const el = scrollerRef.current;
-    if (!el || media.length <= 1) {
-      setStepOverflow(false);
-      return;
-    }
+    if (!el) return;
     const check = () => {
       // Margen por subpíxeles / barras de scroll para no forzar scroll cuando caben todas las miniaturas
-      setStepOverflow(el.scrollWidth > el.clientWidth + 8);
+      setStepOverflow(el.scrollWidth > el.clientWidth + STEP_MEDIA_GAP_PX);
     };
     check();
     const ro = new ResizeObserver(check);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [hero, media]);
+  }, [canMeasureOverflow, media]);
 
   const scrollHero = (direction: "prev" | "next") => {
     const el = scrollerRef.current;
@@ -98,8 +97,8 @@ function MediaCarousel({ media, hero = false }: MediaCarouselProps) {
     </figure>
   ));
 
-  const showNav = hero ? media.length > 1 : stepOverflow;
-  const inlineNoScroll = !hero && media.length > 1 && !stepOverflow;
+  const showNav = hero ? media.length > 1 : canMeasureOverflow && stepOverflow;
+  const inlineNoScroll = canMeasureOverflow && !stepOverflow;
 
   return (
     <div

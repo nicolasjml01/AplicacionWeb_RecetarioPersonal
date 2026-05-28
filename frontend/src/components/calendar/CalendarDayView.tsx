@@ -37,7 +37,7 @@ export function CalendarDayView({
   const [ingredientsByRecipeId, setIngredientsByRecipeId] = useState<
     Record<number, RecipeIngredientDto[]>
   >({});
-  const [ingredientsLoading, setIngredientsLoading] = useState(false);
+  const [loadedRecipeIdsKey, setLoadedRecipeIdsKey] = useState<string | null>(null);
 
   const recipeIds = useMemo(() => {
     const ids = new Set<number>();
@@ -49,15 +49,13 @@ export function CalendarDayView({
     return [...ids];
   }, [dayPlan]);
 
+  const canLoadIngredients = !loading && recipeIds.length > 0;
+  const recipeIdsKey = recipeIds.join(",");
+
   useEffect(() => {
-    if (loading || recipeIds.length === 0) {
-      setIngredientsByRecipeId({});
-      setIngredientsLoading(false);
-      return;
-    }
+    if (!canLoadIngredients) return;
 
     let cancelled = false;
-    setIngredientsLoading(true);
     void Promise.all(
       recipeIds.map(async (recipeId) => {
         const list = await getRecipeIngredients(userId, recipeId);
@@ -71,18 +69,22 @@ export function CalendarDayView({
           map[id] = list;
         }
         setIngredientsByRecipeId(map);
+        setLoadedRecipeIdsKey(recipeIdsKey);
       })
       .catch(() => {
-        if (!cancelled) setIngredientsByRecipeId({});
-      })
-      .finally(() => {
-        if (!cancelled) setIngredientsLoading(false);
+        if (!cancelled) {
+          setIngredientsByRecipeId({});
+          setLoadedRecipeIdsKey(recipeIdsKey);
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [userId, recipeIds, loading]);
+  }, [userId, recipeIds, recipeIdsKey, canLoadIngredients]);
+
+  const ingredientsMap = canLoadIngredients ? ingredientsByRecipeId : {};
+  const ingredientsLoading = canLoadIngredients && loadedRecipeIdsKey !== recipeIdsKey;
 
   const allowDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -114,7 +116,7 @@ export function CalendarDayView({
           blockIndex={blockIndex}
           busy={busy}
           ingredientsLoading={ingredientsLoading}
-          ingredientsByRecipeId={ingredientsByRecipeId}
+          ingredientsByRecipeId={ingredientsMap}
           dragBlockIndex={dragBlockIndex}
           dragEntry={dragEntry}
           onDragBlockStart={() => setDragBlockIndex(blockIndex)}

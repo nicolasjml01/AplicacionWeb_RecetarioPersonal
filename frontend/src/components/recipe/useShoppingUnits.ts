@@ -4,15 +4,16 @@ import type { UnitOfMeasureDto } from "../../types/shopping";
 
 export function useShoppingUnits(enabled: boolean) {
   const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
-  const [loadingUnits, setLoadingUnits] = useState(false);
+  const [pendingVersion, setPendingVersion] = useState(0);
+  const [settledVersion, setSettledVersion] = useState(0);
 
   useEffect(() => {
-    if (!enabled) {
-      setUnits([]);
-      return;
-    }
+    if (!enabled) return;
+
     let cancelled = false;
-    setLoadingUnits(true);
+    queueMicrotask(() => {
+      if (!cancelled) setPendingVersion((v) => v + 1);
+    });
     void getUnits()
       .then((list) => {
         if (!cancelled) setUnits(list);
@@ -21,12 +22,15 @@ export function useShoppingUnits(enabled: boolean) {
         if (!cancelled) setUnits([]);
       })
       .finally(() => {
-        if (!cancelled) setLoadingUnits(false);
+        if (!cancelled) setSettledVersion((v) => v + 1);
       });
     return () => {
       cancelled = true;
     };
   }, [enabled]);
 
-  return { units, loadingUnits };
+  return {
+    units: enabled ? units : [],
+    loadingUnits: enabled && pendingVersion !== settledVersion,
+  };
 }

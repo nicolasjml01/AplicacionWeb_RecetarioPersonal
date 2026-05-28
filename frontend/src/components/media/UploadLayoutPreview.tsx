@@ -1,22 +1,13 @@
 import type { CSSProperties } from "react";
 import { IngredientThumb } from "../ingredient/IngredientThumb";
 import { RecipeMiniTilePreview } from "../recipe/RecipeMiniTile";
-import type { ImageEdits } from "../../utils/imageEditing";
+import { editsToFilter, type ImageEdits } from "../../utils/imageEditing";
 
 type Props = {
   previewSrc: string;
   /** CSS filter from pending brightness/contrast/saturation edits. */
   imageStyle?: CSSProperties;
 };
-
-function editsToFilter(edits: ImageEdits | null | undefined): CSSProperties | undefined {
-  if (!edits) return undefined;
-  const { brightness, contrast, saturation } = edits;
-  if (brightness === 100 && contrast === 100 && saturation === 100) return undefined;
-  return {
-    filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`,
-  };
-}
 
 /** How an ingredient photo appears in recipes and the shopping list. */
 export function IngredientUploadLayoutPreview({ previewSrc }: Pick<Props, "previewSrc">) {
@@ -73,5 +64,3 @@ export function RecipeUploadLayoutPreview({
     </div>
   );
 }
-
-export { editsToFilter };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RecipeUploadLayoutPreview } from "../../media/UploadLayoutPreview";
 import { ModalBackdrop } from "../../ui/ModalBackdrop";
 import { ImageEditorDialog } from "./ImageEditorDialog";
@@ -28,9 +28,21 @@ type Props = {
   onConfirm: (items: Array<{ file: File; edits: ImageEdits | null }>) => void;
 };
 
+function stagingBatchKey(files: File[]): string {
+  return files.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join("|");
+}
+
+function buildStagingItems(files: File[]): StagingItem[] {
+  return files.map((f, i) => ({
+    id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+    file: f,
+    edits: null,
+    previewUrl: URL.createObjectURL(f),
+    editable: isEditableImage(f),
+  }));
+}
+
 // Pre-upload queue: lets the user edit / remove each file before sending.
-// Edits are kept as data (no rasterization yet) so reopening the editor on a
-// row keeps its previous values.
 export function UploadStagingDialog({
   open,
   files,
@@ -40,25 +52,42 @@ export function UploadStagingDialog({
   onCancel,
   onConfirm,
 }: Props) {
-  const [items, setItems] = useState<StagingItem[]>([]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  if (!open) return null;
 
-  // Build rows + preview URLs whenever a new batch comes in.
+  return (
+    <UploadStagingDialogBody
+      key={stagingBatchKey(files)}
+      files={files}
+      contextLabel={contextLabel}
+      recipeTitle={recipeTitle}
+      isCoverCandidate={isCoverCandidate}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
+function UploadStagingDialogBody({
+  files,
+  contextLabel,
+  recipeTitle,
+  isCoverCandidate,
+  onCancel,
+  onConfirm,
+}: Omit<Props, "open">) {
+  const [items, setItems] = useState(() => buildStagingItems(files));
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const itemsSnapshotRef = useRef(items);
+
   useEffect(() => {
-    if (!open) return;
-    const next: StagingItem[] = files.map((f, i) => ({
-      id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
-      file: f,
-      edits: null,
-      previewUrl: URL.createObjectURL(f),
-      editable: isEditableImage(f),
-    }));
-    setItems(next);
-    setEditingIndex(null);
+    itemsSnapshotRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
     return () => {
-      for (const it of next) URL.revokeObjectURL(it.previewUrl);
+      for (const it of itemsSnapshotRef.current) URL.revokeObjectURL(it.previewUrl);
     };
-  }, [open, files]);
+  }, []);
 
   const editedCount = useMemo(
     () => items.reduce((acc, it) => acc + (it.edits && hasEdits(it.edits) ? 1 : 0), 0),
@@ -69,8 +98,6 @@ export function UploadStagingDialog({
     () => items.find((it) => !it.file.type.startsWith("video/")) ?? null,
     [items],
   );
-
-  if (!open) return null;
 
   const removeAt = (idx: number) => {
     setItems((prev) => {

@@ -652,6 +652,67 @@ export function CreateRecipePage() {
     return created.recipeId;
   }, [userId, recipeId, title, selectedCategoryIds, pendingNewCategoryNames, categoryQuery, categories]);
 
+  const parseQuantity = (raw: string): number => {
+    const value = Number(raw.replace(",", "."));
+    return Number.isFinite(value) && value >= 0 ? value : 0;
+  };
+
+  const syncIngredients = useCallback(
+    async (rid: number) => {
+      if (!userId) return;
+
+      const normalized = ingredients
+        .map((i) => ({
+          ...i,
+          ingredientName: i.ingredientName.trim(),
+          measurementUnit: i.measurementUnit.trim(),
+          quantityRaw: i.quantity.trim(),
+        }))
+        .filter((i) => i.ingredientName.length > 0);
+
+      const currentIds = new Set(
+        normalized.map((i) => i.recipeIngredientId).filter((id): id is number => id != null),
+      );
+
+      for (const oldId of initialIngredientIds) {
+        if (!currentIds.has(oldId)) {
+          await deleteRecipeIngredient(userId, rid, oldId);
+        }
+      }
+
+      for (const row of normalized) {
+        const quantity = parseQuantity(row.quantityRaw);
+        if (row.recipeIngredientId == null) {
+          const created = await addRecipeIngredient(userId, rid, {
+            ingredientName: row.ingredientName,
+            quantity,
+            measurementUnit: row.measurementUnit,
+            ...(row.ingredientCategoryId != null
+              ? { ingredientCategoryId: row.ingredientCategoryId }
+              : {}),
+          });
+          if (row.pendingIngredientImage) {
+            await uploadOwnedIngredientImage(
+              userId,
+              created.ingredient.ingredientId,
+              row.pendingIngredientImage,
+            );
+          }
+        } else {
+          await patchRecipeIngredient(userId, rid, row.recipeIngredientId, {
+            ingredientName: row.ingredientName,
+            quantity,
+            measurementUnit: row.measurementUnit,
+            ...(row.ingredientCategoryId != null
+              ? { ingredientCategoryId: row.ingredientCategoryId }
+              : {}),
+          });
+        }
+      }
+    },
+    [userId, ingredients, initialIngredientIds],
+  );
+
   const saveCurrentAsDraft = useCallback(async (): Promise<number | null> => {
     if (!userId) return null;
     if (!hasMeaningfulChanges && recipeId == null) return null;
@@ -711,7 +772,6 @@ export function CreateRecipePage() {
     categoryQuery,
     categories,
     ingredients,
-    initialIngredientIds,
     steps,
     refreshRecipe,
     syncIngredients,
@@ -766,8 +826,6 @@ export function CreateRecipePage() {
     pendingNewCategoryNames,
     categoryQuery,
     categories,
-    ingredients,
-    initialIngredientIds,
     initialStepIds,
     steps,
     refreshRecipe,
@@ -841,64 +899,6 @@ export function CreateRecipePage() {
   const removeIngredientRow = (key: string) => {
     setIngredients((prev) => prev.filter((i) => i.key !== key));
   };
-
-  const parseQuantity = (raw: string): number => {
-    const value = Number(raw.replace(",", "."));
-    return Number.isFinite(value) && value >= 0 ? value : 0;
-  };
-
-  async function syncIngredients(rid: number) {
-    if (!userId) return;
-
-    const normalized = ingredients
-      .map((i) => ({
-        ...i,
-        ingredientName: i.ingredientName.trim(),
-        measurementUnit: i.measurementUnit.trim(),
-        quantityRaw: i.quantity.trim(),
-      }))
-      .filter((i) => i.ingredientName.length > 0);
-
-    const currentIds = new Set(
-      normalized.map((i) => i.recipeIngredientId).filter((id): id is number => id != null),
-    );
-
-    for (const oldId of initialIngredientIds) {
-      if (!currentIds.has(oldId)) {
-        await deleteRecipeIngredient(userId, rid, oldId);
-      }
-    }
-
-    for (const row of normalized) {
-      const quantity = parseQuantity(row.quantityRaw);
-      if (row.recipeIngredientId == null) {
-        const created = await addRecipeIngredient(userId, rid, {
-          ingredientName: row.ingredientName,
-          quantity,
-          measurementUnit: row.measurementUnit,
-          ...(row.ingredientCategoryId != null
-            ? { ingredientCategoryId: row.ingredientCategoryId }
-            : {}),
-        });
-        if (row.pendingIngredientImage) {
-          await uploadOwnedIngredientImage(
-            userId,
-            created.ingredient.ingredientId,
-            row.pendingIngredientImage,
-          );
-        }
-      } else {
-        await patchRecipeIngredient(userId, rid, row.recipeIngredientId, {
-          ingredientName: row.ingredientName,
-          quantity,
-          measurementUnit: row.measurementUnit,
-          ...(row.ingredientCategoryId != null
-            ? { ingredientCategoryId: row.ingredientCategoryId }
-            : {}),
-        });
-      }
-    }
-  }
 
   const openAddIngredientModal = (
     ingredientName: string,

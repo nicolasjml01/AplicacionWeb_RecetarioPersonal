@@ -32,6 +32,8 @@ type Props = {
   onApply: (edits: ImageEdits) => void;
 };
 
+type SessionProps = Omit<Props, "open">;
+
 type AspectKey = "free" | "1:1" | "4:3" | "16:9";
 
 const ASPECTS: { key: AspectKey; label: string; value: number | undefined }[] = [
@@ -41,11 +43,32 @@ const ASPECTS: { key: AspectKey; label: string; value: number | undefined }[] = 
   { key: "16:9", label: "16:9", value: 16 / 9 },
 ];
 
+function imageEditorSessionKey(file: File | Blob, initialEdits?: ImageEdits | null): string {
+  const filePart =
+    file instanceof File ? `${file.name}:${file.size}:${file.lastModified}` : `blob:${file.size}`;
+  return `${filePart}:${JSON.stringify(initialEdits ?? null)}`;
+}
+
+function initialRotation(initialEdits?: ImageEdits | null): ImageEdits["rotation"] {
+  return initialEdits?.rotation ?? 0;
+}
+
 // Mini image editor. Rotation/flip are pre-baked into the cropper's source
 // image, so croppedAreaPixels are in the same space applyImageEdits crops
 // from later. Brightness/contrast/saturation use CSS filter for live preview.
-export function ImageEditorDialog({
-  open,
+export function ImageEditorDialog({ open, file, initialEdits, ...rest }: Props) {
+  if (!open) return null;
+  return (
+    <ImageEditorDialogSession
+      key={imageEditorSessionKey(file, initialEdits)}
+      file={file}
+      initialEdits={initialEdits}
+      {...rest}
+    />
+  );
+}
+
+function ImageEditorDialogSession({
   file,
   fileName,
   initialEdits,
@@ -56,45 +79,38 @@ export function ImageEditorDialog({
   showCoverTile = true,
   onCancel,
   onApply,
-}: Props) {
-  const [rotation, setRotation] = useState<ImageEdits["rotation"]>(0);
-  const [flipH, setFlipH] = useState(false);
+}: SessionProps) {
+  const [rotation, setRotation] = useState<ImageEdits["rotation"]>(() =>
+    initialRotation(initialEdits),
+  );
+  const [flipH, setFlipH] = useState(() => initialEdits?.flipH ?? false);
   const [aspect, setAspect] = useState<AspectKey>("free");
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [brightness, setBrightness] = useState(100);
-  const [contrast, setContrast] = useState(100);
-  const [saturation, setSaturation] = useState(100);
-  const [croppedArea, setCroppedArea] = useState<Area | null>(null);
-  const [liveCropArea, setLiveCropArea] = useState<Area | null>(null);
+  const [brightness, setBrightness] = useState(() => initialEdits?.brightness ?? 100);
+  const [contrast, setContrast] = useState(() => initialEdits?.contrast ?? 100);
+  const [saturation, setSaturation] = useState(() => initialEdits?.saturation ?? 100);
+  const [croppedArea, setCroppedArea] = useState<Area | null>(() => initialEdits?.crop ?? null);
+  const [liveCropArea, setLiveCropArea] = useState<Area | null>(() => initialEdits?.crop ?? null);
   const [transformedUrl, setTransformedUrl] = useState<string | null>(null);
-  const [loadingTransform, setLoadingTransform] = useState(false);
+  const [loadingTransform, setLoadingTransform] = useState(true);
   const [resultPreviewUrl, setResultPreviewUrl] = useState<string | null>(null);
   const [resultPreviewLoading, setResultPreviewLoading] = useState(false);
   const lastUrlRef = useRef<string | null>(null);
   const lastPreviewUrlRef = useRef<string | null>(null);
   const previewGenRef = useRef(0);
 
-  // Reset state on open / new file / new initial edits.
   useEffect(() => {
-    if (!open) return;
-    setRotation(initialEdits?.rotation ?? 0);
-    setFlipH(initialEdits?.flipH ?? false);
-    setBrightness(initialEdits?.brightness ?? 100);
-    setContrast(initialEdits?.contrast ?? 100);
-    setSaturation(initialEdits?.saturation ?? 100);
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-    setCroppedArea(initialEdits?.crop ?? null);
-    setLiveCropArea(initialEdits?.crop ?? null);
-    setAspect("free");
-  }, [open, file, initialEdits]);
+    return () => {
+      if (lastUrlRef.current) URL.revokeObjectURL(lastUrlRef.current);
+      if (lastPreviewUrlRef.current) URL.revokeObjectURL(lastPreviewUrlRef.current);
+      previewGenRef.current += 1;
+    };
+  }, []);
 
   // Re-bake the source image whenever rotation/flip changes.
   useEffect(() => {
-    if (!open) return;
     let cancelled = false;
-    setLoadingTransform(true);
     void renderTransformedBlobUrl(file, rotation, flipH).then((url) => {
       if (cancelled) {
         URL.revokeObjectURL(url);
@@ -112,13 +128,13 @@ export function ImageEditorDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, file, rotation, flipH]);
+  }, [file, rotation, flipH]);
 
   const effectiveCrop = liveCropArea ?? croppedArea;
 
   // Live raster preview (same output as applyImageEdits, debounced).
   useEffect(() => {
-    if (!open || !transformedUrl || loadingTransform) return;
+    if (!transformedUrl || loadingTransform) return;
 
     const gen = ++previewGenRef.current;
     const timer = window.setTimeout(() => {
@@ -145,31 +161,7 @@ export function ImageEditorDialog({
     }, 120);
 
     return () => window.clearTimeout(timer);
-  }, [
-    open,
-    transformedUrl,
-    loadingTransform,
-    effectiveCrop,
-    brightness,
-    contrast,
-    saturation,
-  ]);
-
-  // Release object URLs on close.
-  useEffect(() => {
-    if (open) return;
-    if (lastUrlRef.current) {
-      URL.revokeObjectURL(lastUrlRef.current);
-      lastUrlRef.current = null;
-      setTransformedUrl(null);
-    }
-    if (lastPreviewUrlRef.current) {
-      URL.revokeObjectURL(lastPreviewUrlRef.current);
-      lastPreviewUrlRef.current = null;
-      setResultPreviewUrl(null);
-    }
-    previewGenRef.current += 1;
-  }, [open]);
+  }, [transformedUrl, loadingTransform, effectiveCrop, brightness, contrast, saturation]);
 
   const aspectValue = useMemo(
     () => ASPECTS.find((a) => a.key === aspect)?.value,
@@ -185,11 +177,23 @@ export function ImageEditorDialog({
     setLiveCropArea(areaPixels);
   }, []);
 
-  const rotateLeft = () => setRotation(((rotation + 270) % 360) as ImageEdits["rotation"]);
-  const rotateRight = () => setRotation(((rotation + 90) % 360) as ImageEdits["rotation"]);
-  const toggleFlip = () => setFlipH((v) => !v);
+  const markTransformPending = () => setLoadingTransform(true);
+
+  const rotateLeft = () => {
+    markTransformPending();
+    setRotation(((rotation + 270) % 360) as ImageEdits["rotation"]);
+  };
+  const rotateRight = () => {
+    markTransformPending();
+    setRotation(((rotation + 90) % 360) as ImageEdits["rotation"]);
+  };
+  const toggleFlip = () => {
+    markTransformPending();
+    setFlipH((v) => !v);
+  };
 
   const resetAll = () => {
+    markTransformPending();
     setRotation(0);
     setFlipH(false);
     setBrightness(100);
@@ -213,8 +217,6 @@ export function ImageEditorDialog({
     };
     onApply(edits);
   };
-
-  if (!open) return null;
 
   const filterStyle = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
 

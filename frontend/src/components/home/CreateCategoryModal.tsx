@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { ModalBackdrop, ModalPanel } from "../ui/ModalBackdrop";
 
 type Props = {
@@ -12,25 +11,18 @@ type Props = {
   initialName?: string;
 };
 
-export function CreateCategoryModal({
-  open,
+type FormProps = Omit<Props, "open">;
+
+function CreateCategoryForm({
   loading,
   onClose,
   onSubmit,
   title = "Nueva categoría",
   submitLabel = "Guardar",
   initialName = "",
-}: Props) {
-  const [name, setName] = useState("");
+}: FormProps) {
+  const [name, setName] = useState(initialName);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    setName(initialName);
-    setError("");
-  }, [open, initialName]);
-
-  if (!open) return null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -73,4 +65,9 @@ export function CreateCategoryModal({
       </ModalPanel>
     </ModalBackdrop>
   );
+}
+
+export function CreateCategoryModal({ open, initialName = "", ...rest }: Props) {
+  if (!open) return null;
+  return <CreateCategoryForm key={initialName} initialName={initialName} {...rest} />;
 }

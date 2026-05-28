@@ -1,6 +1,8 @@
 // Image edits modeled as plain data so we can keep them in the upload queue
 // without rasterizing, and re-open the editor on previous values.
 
+import type { CSSProperties } from "react";
+
 export type ImageEdits = {
   // Crop in the rotated/flipped image space (pixels).
   crop: { x: number; y: number; width: number; height: number } | null;
@@ -180,4 +182,14 @@ export async function renderCroppedPreviewBlob(
   ctx.drawImage(img, src.x, src.y, src.width, src.height, 0, 0, outW, outH);
 
   return canvasToBlob(out, "image/jpeg", 0.88);
+}
+
+/** CSS filter for live preview of brightness/contrast/saturation edits. */
+export function editsToFilter(edits: ImageEdits | null | undefined): CSSProperties | undefined {
+  if (!edits) return undefined;
+  const { brightness, contrast, saturation } = edits;
+  if (brightness === 100 && contrast === 100 && saturation === 100) return undefined;
+  return {
+    filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`,
+  };
 }

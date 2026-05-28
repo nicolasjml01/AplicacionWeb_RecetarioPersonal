@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import type { IngredientDto } from "../../types/shopping";
 import type { IngredientCategoryOption } from "../../utils/ingredientCatalogUi";
 import { defaultIngredientCategoryId } from "../../utils/ingredientCatalogUi";
@@ -15,30 +15,24 @@ type Props = {
   onSave: (name: string, categoryId: number | null) => void;
 };
 
-export function EditOwnedIngredientModal({
-  open,
+type FormProps = Omit<Props, "open" | "ingredient"> & {
+  ingredient: IngredientDto;
+};
+
+function EditOwnedIngredientForm({
   ingredient,
   categoryOptions,
   saving = false,
   error = "",
   onClose,
   onSave,
-}: Props) {
-  const [name, setName] = useState("");
-  const [categoryId, setCategoryId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!open || !ingredient) return;
-    setName(ingredient.name);
-    setCategoryId(
-      ingredient.categoryId ??
-        defaultIngredientCategoryId(categoryOptions),
-    );
-  }, [open, ingredient, categoryOptions]);
+}: FormProps) {
+  const [name, setName] = useState(ingredient.name);
+  const [categoryId, setCategoryId] = useState<number | null>(
+    ingredient.categoryId ?? defaultIngredientCategoryId(categoryOptions),
+  );
 
   const categorySelectOptions = useMemo(() => categoryOptions, [categoryOptions]);
-
-  if (!open || !ingredient) return null;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -104,5 +98,16 @@ export function EditOwnedIngredientModal({
         </form>
       </ModalPanel>
     </ModalBackdrop>
+  );
+}
+
+export function EditOwnedIngredientModal({ open, ingredient, ...rest }: Props) {
+  if (!open || !ingredient) return null;
+  return (
+    <EditOwnedIngredientForm
+      key={ingredient.ingredientId}
+      ingredient={ingredient}
+      {...rest}
+    />
   );
 }

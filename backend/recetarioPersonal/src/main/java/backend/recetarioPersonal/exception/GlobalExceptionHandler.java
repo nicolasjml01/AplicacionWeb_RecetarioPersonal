@@ -73,7 +73,7 @@ public class GlobalExceptionHandler {
         String msg = ex.getMessage() != null && !ex.getMessage().isBlank()
                 ? ex.getMessage()
                 : "No se pudo importar la receta desde ese enlace.";
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new ErrorResponse(msg, 422));
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(new ErrorResponse(msg, 422));
     }
 
     @ExceptionHandler(FileStorageException.class)

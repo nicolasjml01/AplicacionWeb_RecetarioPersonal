@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import type { MealTypeDto } from "../../types/calendar";
 import { ModalBackdrop, ModalPanel } from "../ui/ModalBackdrop";
 
@@ -11,21 +11,16 @@ type Props = {
   onSave: (name: string) => void;
 };
 
-export function EditMealTypeModal({
-  open,
+type FormProps = Omit<Props, "open" | "mealType"> & { mealType: MealTypeDto };
+
+function EditMealTypeForm({
   mealType,
   saving = false,
   error = "",
   onClose,
   onSave,
-}: Props) {
-  const [name, setName] = useState("");
-
-  useEffect(() => {
-    if (open && mealType) setName(mealType.name);
-  }, [open, mealType]);
-
-  if (!open || !mealType) return null;
+}: FormProps) {
+  const [name, setName] = useState(mealType.name);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -65,4 +60,9 @@ export function EditMealTypeModal({
       </ModalPanel>
     </ModalBackdrop>
   );
+}
+
+export function EditMealTypeModal({ open, mealType, ...rest }: Props) {
+  if (!open || !mealType) return null;
+  return <EditMealTypeForm key={mealType.mealTypeId} mealType={mealType} {...rest} />;
 }
