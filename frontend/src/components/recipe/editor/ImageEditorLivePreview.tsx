@@ -25,18 +25,25 @@ export function ImageEditorLivePreview({
       <div className="image-editor__live-preview-row">
         <div className="image-editor__live-preview-saved">
           <span className="image-editor__live-preview-tag">Archivo final</span>
-          <div className="image-editor__live-preview-saved-frame">
-            {loading && <span className="image-editor__live-preview-placeholder">Actualizando…</span>}
-            {!loading && previewSrc && (
+          <div
+            className={[
+              "image-editor__live-preview-saved-frame",
+              loading && previewSrc ? "image-editor__live-preview-saved-frame--pending" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {previewSrc ? (
               <img src={previewSrc} alt="" className="image-editor__live-preview-saved-img" />
-            )}
-            {!loading && !previewSrc && (
-              <span className="image-editor__live-preview-placeholder">Mueve el recuadro para ver la vista previa</span>
+            ) : (
+              <span className="image-editor__live-preview-placeholder">
+                {loading ? "Generando vista previa…" : "Mueve el recuadro para ver la vista previa"}
+              </span>
             )}
           </div>
         </div>
 
-        {context === "recipe" && previewSrc && !loading && (
+        {context === "recipe" && previewSrc && (
           <>
             <div className="image-editor__live-preview-context">
               <span className="image-editor__live-preview-tag">Galería</span>
@@ -53,7 +60,7 @@ export function ImageEditorLivePreview({
           </>
         )}
 
-        {context === "ingredient" && previewSrc && !loading && (
+        {context === "ingredient" && previewSrc && (
           <div className="image-editor__live-preview-context">
             <span className="image-editor__live-preview-tag">Recetas y cesta</span>
             <IngredientThumb previewSrc={previewSrc} size="card" />

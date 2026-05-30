@@ -31,7 +31,10 @@ export function ModalBackdrop({
   }, [active, modalId]);
 
   const dismissIfTop = () => {
-    if (isTopModal(modalId)) onDismiss();
+    if (isTopModal(modalId)) {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      onDismiss();
+    }
   };
 
   useModalDismiss({

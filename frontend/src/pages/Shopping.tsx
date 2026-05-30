@@ -332,7 +332,7 @@ export function Shopping() {
   return (
     <div className="shopping-page">
       <h1 className="shopping-title">Lista de la compra</h1>
-      <div className="shopping-layout">
+      <div className="shopping-layout shopping-layout--list-first">
         {/* LEFT: categories catalog (fixed on desktop/tablet) */}
         <section className="shopping-layout__left">
           <div className="shopping-panel shopping-panel--catalog">

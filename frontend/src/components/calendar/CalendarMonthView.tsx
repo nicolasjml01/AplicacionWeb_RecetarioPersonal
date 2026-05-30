@@ -1,7 +1,6 @@
-import { RecipeMiniTilePreview } from "../recipe/RecipeMiniTile";
 import type { CalendarRangeDto } from "../../types/calendar";
+import { DayRecipePreviews } from "./DayRecipePreviews";
 import { collectDayEntries } from "./collectDayEntries";
-import { MONTH_RECIPE_LIMIT } from "./calendarPreviewLimits";
 import { monthGridCells, toIsoDate, WEEKDAY_LABELS } from "../../utils/calendarDates";
 
 type Props = {
@@ -64,34 +63,13 @@ export function CalendarMonthView({ range, monthAnchor, loading, selectedIso, on
                   +
                 </span>
               ) : (
-                <MonthDayPreviews entries={entries} />
+                <DayRecipePreviews entries={entries} />
               )}
             </button>
           );
         })}
       </div>
       <p className="cal-month-hint cal-hint">Pulsa un día para ver el detalle y editar el menú.</p>
-    </div>
-  );
-}
-
-function MonthDayPreviews({ entries }: { entries: ReturnType<typeof collectDayEntries> }) {
-  const visible = entries.slice(0, MONTH_RECIPE_LIMIT);
-  const hiddenCount = entries.length - visible.length;
-
-  return (
-    <div className="cal-month__previews">
-      {visible.map((entry) => (
-        <RecipeMiniTilePreview
-          key={entry.calendarEntryId}
-          title={entry.recipeTitle}
-          coverImageUrl={entry.coverImageUrl}
-          layout="month"
-        />
-      ))}
-      {hiddenCount > 0 && (
-        <span className="cal-month__more">+{hiddenCount}</span>
-      )}
     </div>
   );
 }

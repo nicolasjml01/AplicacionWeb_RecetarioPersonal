@@ -29,6 +29,7 @@
   --page-max-editor: 960px;
   --page-padding-x: clamp(0.75rem, 2.5vw, 1.75rem);
   --page-padding-bottom-mobile: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+  --app-bottom-nav-height: 4.5rem;
   --app-sidebar-width: 104px;
   /* Auth screens */
   --auth-card-max: 26.25rem;
@@ -1365,7 +1366,7 @@ body {
 
 .shopping-layout__right {
   position: relative;
-  padding-bottom: calc(var(--page-padding-bottom-mobile) + 5rem);
+  padding-bottom: calc(var(--app-bottom-nav-height) + 6.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .shopping-page {
@@ -1381,13 +1382,13 @@ body {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   width: 100%;
   max-width: none;
   transform: none;
   padding: 0.6rem var(--page-padding-x);
   box-sizing: border-box;
-  z-index: 110;
+  z-index: 95;
 }
 
 @media (min-width: 768px) {
@@ -3576,6 +3577,11 @@ body {
   line-height: 1.3;
 }
 
+.image-editor__live-preview-saved-frame--pending .image-editor__live-preview-saved-img {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
 .image-editor__live-preview-context {
   display: flex;
   flex-direction: column;
@@ -4767,13 +4773,14 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
+/* Week: one full-width row per day (date strip + recipe thumbnails) */
 .cal-week-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
   width: 100%;
   flex: 1;
   min-height: 0;
@@ -4782,10 +4789,12 @@ body {
 
 .cal-week-column {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
   min-width: 0;
-  height: 100%;
-  min-height: 0;
+  height: auto;
+  min-height: 5.25rem;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-card);
@@ -4814,11 +4823,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.05rem;
-  padding: 0.35rem 0.25rem;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg);
+  width: 3.5rem;
   flex-shrink: 0;
+  padding: 0.45rem 0.35rem;
+  border-bottom: none;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-bg);
 }
 
 .cal-week-column--today .cal-week-column__head {
@@ -4832,19 +4844,53 @@ body {
 }
 
 .cal-week-column__num {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 700;
   line-height: 1.1;
 }
 
 .cal-week-column__body {
   flex: 1;
-  min-height: 0;
-  padding: 0.28rem;
+  min-width: 0;
+  min-height: 4.75rem;
+  padding: 0.4rem 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.28rem;
+  justify-content: center;
   overflow: hidden;
+}
+
+.cal-week-column .cal-day-previews {
+  margin-top: 0;
+  min-height: 4.25rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: minmax(4rem, 1fr);
+  gap: 0.3rem;
+}
+
+@media (min-width: 768px) {
+  .cal-week-column__head {
+    width: 4.25rem;
+  }
+
+  .cal-week-column__dow {
+    font-size: 0.8rem;
+  }
+
+  .cal-week-column__num {
+    font-size: 1.2rem;
+  }
+
+  .cal-week-column {
+    min-height: 5.5rem;
+  }
+
+  .cal-week-column .cal-day-previews {
+    min-height: 4.5rem;
+    grid-template-rows: minmax(4.25rem, 1fr);
+    gap: 0.35rem;
+    max-width: 32rem;
+  }
 }
 
 .cal-week-column__empty {
@@ -4941,14 +4987,17 @@ body {
   font-size: 0.85rem;
 }
 
-/* Week view: panel height follows grid, no extra min-height scroll */
+/* Week view: scroll inside panel (stacked rows need vertical space) */
 .cal-main:has(.cal-week-wrap) {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .cal-content-panel:has(.cal-week-wrap) {
   min-height: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .cal-month {
@@ -5041,6 +5090,7 @@ body {
   line-height: 1;
 }
 
+.cal-day-previews,
 .cal-month__previews {
   flex: 1;
   min-height: 0;
@@ -5053,12 +5103,14 @@ body {
   margin-top: 0.1rem;
 }
 
+.cal-day-previews .recipe-mini-tile,
 .cal-month__previews .recipe-mini-tile {
   min-height: 0;
   height: 100%;
   pointer-events: none;
 }
 
+.cal-day-previews__more,
 .cal-month__more {
   grid-column: 1 / -1;
   align-self: end;
@@ -5142,6 +5194,11 @@ body {
     overflow: hidden;
   }
 
+  .cal-page--fit .cal-main:has(.cal-week-wrap) {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   .cal-page--fit .cal-week-hint,
   .cal-page--fit .cal-month-hint {
     margin-top: 0.2rem;
@@ -5149,13 +5206,11 @@ body {
   }
 }
 
-.cal-main:has(.cal-month),
-.cal-main:has(.cal-week-wrap) {
+.cal-main:has(.cal-month) {
   overflow: hidden;
 }
 
-.cal-content-panel:has(.cal-month),
-.cal-content-panel:has(.cal-week-wrap) {
+.cal-content-panel:has(.cal-month) {
   min-height: 0;
   flex: 1;
 }
@@ -5614,6 +5669,11 @@ body {
   background: rgba(255, 255, 255, 0.94);
 }
 
+.account-manage-card__menu-wrap .recipe-detail__menu {
+  min-width: 8.5rem;
+  max-width: min(220px, calc(100vw - 1.5rem));
+}
+
 .create-recipe-dialog .ingredient-dialog__image-block {
   margin-bottom: var(--space-md);
 }
@@ -5739,5 +5799,94 @@ html {
   .home-modal,
   .shopping-modal {
     max-width: none;
+  }
+}
+
+/* ----- Mobile: shopping order, calendar scroll, menus, inputs ----- */
+@media (max-width: 767px) {
+  .form-input,
+  .home-modal__input,
+  .shopping-search__input {
+    font-size: 16px;
+  }
+
+  .shopping-layout--list-first {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .shopping-layout--list-first .shopping-layout__right {
+    order: 1;
+  }
+
+  .shopping-layout--list-first .shopping-layout__left {
+    order: 2;
+  }
+
+  .shopping-layout__right {
+    padding-bottom: calc(var(--app-bottom-nav-height) + 7rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .account-manage-card__menu-wrap .recipe-detail__menu {
+    right: 0;
+    left: auto;
+    max-width: min(220px, calc(100% - 0.35rem));
+  }
+
+  .account-manage-panel,
+  .account-manage-grid {
+    overflow: visible;
+  }
+
+  /* Calendar: allow page scroll; wider cells via horizontal pan */
+  .app-shell:has(.cal-page--fit),
+  .app-content:has(.cal-page--fit) {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .app-content:has(.cal-page--fit) .app-page {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .cal-page--fit {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .cal-page--fit .cal-content-panel,
+  .cal-content-panel:has(.cal-month),
+  .cal-content-panel:has(.cal-week-wrap) {
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .cal-main:has(.cal-month) {
+    overflow: visible;
+  }
+
+  .cal-main:has(.cal-week-wrap) {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .cal-month {
+    overflow: visible;
+  }
+
+  .cal-content-panel:has(.cal-week-wrap) {
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .image-editor-dialog {
+    max-height: min(96dvh, 100%);
+  }
+
+  .image-editor__cropper-area {
+    min-height: 12rem;
   }
 }

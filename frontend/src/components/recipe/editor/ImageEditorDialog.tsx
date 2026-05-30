@@ -91,7 +91,6 @@ function ImageEditorDialogSession({
   const [contrast, setContrast] = useState(() => initialEdits?.contrast ?? 100);
   const [saturation, setSaturation] = useState(() => initialEdits?.saturation ?? 100);
   const [croppedArea, setCroppedArea] = useState<Area | null>(() => initialEdits?.crop ?? null);
-  const [liveCropArea, setLiveCropArea] = useState<Area | null>(() => initialEdits?.crop ?? null);
   const [transformedUrl, setTransformedUrl] = useState<string | null>(null);
   const [loadingTransform, setLoadingTransform] = useState(true);
   const [resultPreviewUrl, setResultPreviewUrl] = useState<string | null>(null);
@@ -123,23 +122,20 @@ function ImageEditorDialogSession({
       // Crop geometry no longer matches the new orientation.
       setCrop({ x: 0, y: 0 });
       setZoom(1);
-      setLiveCropArea(null);
     });
     return () => {
       cancelled = true;
     };
   }, [file, rotation, flipH]);
 
-  const effectiveCrop = liveCropArea ?? croppedArea;
-
-  // Live raster preview (same output as applyImageEdits, debounced).
+  // Live raster preview (debounced; only after crop settles — avoids flicker while dragging).
   useEffect(() => {
     if (!transformedUrl || loadingTransform) return;
 
     const gen = ++previewGenRef.current;
     const timer = window.setTimeout(() => {
       setResultPreviewLoading(true);
-      void renderCroppedPreviewBlob(transformedUrl, effectiveCrop, {
+      void renderCroppedPreviewBlob(transformedUrl, croppedArea, {
         brightness,
         contrast,
         saturation,
@@ -158,23 +154,18 @@ function ImageEditorDialogSession({
         .finally(() => {
           if (gen === previewGenRef.current) setResultPreviewLoading(false);
         });
-    }, 120);
+    }, 320);
 
     return () => window.clearTimeout(timer);
-  }, [transformedUrl, loadingTransform, effectiveCrop, brightness, contrast, saturation]);
+  }, [transformedUrl, loadingTransform, croppedArea, brightness, contrast, saturation]);
 
   const aspectValue = useMemo(
     () => ASPECTS.find((a) => a.key === aspect)?.value,
     [aspect],
   );
 
-  const onCropAreaChange = useCallback((_: Area, areaPixels: Area) => {
-    setLiveCropArea(areaPixels);
-  }, []);
-
   const onCropComplete = useCallback((_: Area, areaPixels: Area) => {
     setCroppedArea(areaPixels);
-    setLiveCropArea(areaPixels);
   }, []);
 
   const markTransformPending = () => setLoadingTransform(true);
@@ -203,7 +194,6 @@ function ImageEditorDialogSession({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setCroppedArea(null);
-    setLiveCropArea(null);
   };
 
   const handleApply = () => {
@@ -213,7 +203,7 @@ function ImageEditorDialogSession({
       brightness,
       contrast,
       saturation,
-      crop: effectiveCrop,
+      crop: croppedArea,
     };
     onApply(edits);
   };
@@ -257,7 +247,7 @@ function ImageEditorDialogSession({
           <div className="image-editor__canvas-wrap">
             <ImageEditorLivePreview
               previewSrc={resultPreviewUrl}
-              loading={loadingTransform || resultPreviewLoading}
+              loading={resultPreviewLoading}
               context={previewContext}
               recipeTitle={recipeTitle}
               showCoverTile={showCoverTile}
@@ -271,7 +261,6 @@ function ImageEditorDialogSession({
                   aspect={aspectValue}
                   onCropChange={setCrop}
                   onZoomChange={setZoom}
-                  onCropAreaChange={onCropAreaChange}
                   onCropComplete={onCropComplete}
                   showGrid
                   restrictPosition
