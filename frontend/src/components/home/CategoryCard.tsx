@@ -8,6 +8,7 @@ type Props = {
   previewRecipes: RecipeDto[];
   onOpenCategory: (categoryId: number) => void;
   onEditCategory: (category: RecipeCategoryDto) => void;
+  onDeleteCategory: (category: RecipeCategoryDto) => void;
   onCreateRecipeInCategory: (categoryId: number) => void;
 };
 
@@ -16,6 +17,7 @@ export function CategoryCard({
   previewRecipes,
   onOpenCategory,
   onEditCategory,
+  onDeleteCategory,
   onCreateRecipeInCategory,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -78,6 +80,17 @@ export function CategoryCard({
                 }}
               >
                 Editar categoría
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="recipe-detail__menu-item recipe-detail__menu-item--danger"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDeleteCategory(category);
+                }}
+              >
+                Eliminar categoría
               </button>
             </div>
           )}

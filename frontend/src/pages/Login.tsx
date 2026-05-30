@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login } from "../api/auth";
+import { PasswordInput } from "../components/ui/PasswordInput";
 
 export function Login() {
   const [loginValue, setLoginValue] = useState("");
@@ -17,7 +18,7 @@ export function Login() {
       await login(loginValue, password);
       navigate("/home", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed.");
+      setError(err instanceof Error ? err.message : "Error al iniciar sesión.");
     } finally {
       setLoading(false);
     }
@@ -25,11 +26,11 @@ export function Login() {
 
   return (
     <>
-      <img src="/logo.png" alt="App logo" className="auth-logo" />
-      <h1 className="auth-title">Log in</h1>
+      <img src="/logo.png" alt="Logo de la aplicación" className="auth-logo" />
+      <h1 className="auth-title">Iniciar sesión</h1>
       <form onSubmit={handleSubmit} className="auth-form">
         <div className="form-group">
-          <label htmlFor="login">Email or username</label>
+          <label htmlFor="login">Correo o nombre de usuario</label>
           <input
             id="login"
             type="text"
@@ -40,36 +41,27 @@ export function Login() {
             required
           />
         </div>
-        <div className="form-group">
-          <div className="form-label-row">
-            <label htmlFor="password">Password</label>
-            <Link to="/forgot-password" className="auth-link auth-link--small">
-              Forgot password?
-            </Link>
-          </div>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="form-input"
-            required
-          />
-        </div>
+        <PasswordInput
+          id="password"
+          label="Contraseña"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+          required
+        />
         {error && (
           <p className="auth-error" role="alert">
             {error}
           </p>
         )}
         <button type="submit" className="btn btn--primary" disabled={loading}>
-          {loading ? "Signing in…" : "Log in"}
+          {loading ? "Iniciando sesión…" : "Iniciar sesión"}
         </button>
       </form>
       <p className="auth-footer">
-        Don't have an account?{" "}
+        ¿No tienes cuenta?{" "}
         <Link to="/register" className="auth-link">
-          Create account
+          Crear cuenta
         </Link>
       </p>
     </>

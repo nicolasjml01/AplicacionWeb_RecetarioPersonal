@@ -1573,6 +1573,7 @@ export function CreateRecipePage() {
                 >
                   <span className="create-recipe-ingredient-summary__imageWrap">
                     <IngredientRowThumb
+                      name={row.ingredientName}
                       imageUrl={row.ingredientImageUrl}
                       pendingImageFile={row.pendingIngredientImage}
                       size="card"
@@ -1758,6 +1759,10 @@ export function CreateRecipePage() {
         ingredientCategoryOptions={ingredientCategorySelectOptions}
         selectedIngredientCategoryId={ingredientModalCategoryId}
         onSelectedIngredientCategoryIdChange={setIngredientModalCategoryId}
+        createExtrasLabels={{
+          imageHint:
+            "Opcional. Puedes recortar y ajustar la foto como en las imágenes de la receta.",
+        }}
         createImageFile={ingredientModalImageFile}
         onCreateImageFileChange={setIngredientModalImageFile}
         onQuantityChange={setIngredientModalQuantity}

@@ -3,11 +3,17 @@ import { useModalDismiss } from "../hooks/useModalDismiss";
 import { useOverlayDismiss } from "../hooks/useOverlayDismiss";
 import { getCurrentUserId } from "../auth/session";
 import { getRecipes, previewRecipeFromUrl } from "../api/recipes";
-import { createRecipeCategory, getRecipeCategories, updateRecipeCategory } from "../api/recipeCategories";
+import {
+  createRecipeCategory,
+  deleteRecipeCategory,
+  getRecipeCategories,
+  updateRecipeCategory,
+} from "../api/recipeCategories";
 import type { RecipeCategoryDto, RecipeDto } from "../types/recipes";
 import { CategoryCard } from "../components/home/CategoryCard";
 import { FabMenu } from "../components/home/FabMenu";
 import { CreateCategoryModal } from "../components/home/CreateCategoryModal";
+import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { appendRecipeReturnNav, type RecipeReturnNav } from "../utils/recipeReturnNav";
 
@@ -30,6 +36,8 @@ export function Home() {
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<RecipeCategoryDto | null>(null);
   const [updatingCategory, setUpdatingCategory] = useState(false);
+  const [pendingDeleteCategory, setPendingDeleteCategory] = useState<RecipeCategoryDto | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState(false);
   const [error, setError] = useState("");
   const [importError, setImportError] = useState("");
   const [importingFromUrl, setImportingFromUrl] = useState(false);
@@ -145,6 +153,29 @@ export function Home() {
     }
   };
 
+  const handleConfirmDeleteCategory = async () => {
+    if (!userId || !pendingDeleteCategory) return;
+    setDeletingCategory(true);
+    setError("");
+    try {
+      await deleteRecipeCategory(userId, pendingDeleteCategory.categoryId);
+      const deletedId = pendingDeleteCategory.categoryId;
+      setCategories((prev) => prev.filter((c) => c.categoryId !== deletedId));
+      setRecipes((prev) =>
+        prev.map((r) => ({
+          ...r,
+          categories: r.categories.filter((c) => c.categoryId !== deletedId),
+        })),
+      );
+      setPendingDeleteCategory(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo eliminar la categoría.");
+      setPendingDeleteCategory(null);
+    } finally {
+      setDeletingCategory(false);
+    }
+  };
+
   const handleOpenRecipe = (recipeId: number) => {
     setIsSearchOpen(false);
     const trimmed = search.trim();
@@ -255,6 +286,7 @@ export function Home() {
             previewRecipes={recipesByCategoryId.get(c.categoryId) ?? []}
             onOpenCategory={handleOpenCategory}
             onEditCategory={(category) => setEditingCategory(category)}
+            onDeleteCategory={(category) => setPendingDeleteCategory(category)}
             onCreateRecipeInCategory={(categoryId) =>
               navigate(
                 appendRecipeReturnNav(`/home/recipes/new?categoryId=${categoryId}`, {
@@ -281,6 +313,29 @@ export function Home() {
         initialName={editingCategory?.name ?? ""}
         onClose={() => setEditingCategory(null)}
         onSubmit={handleEditCategory}
+      />
+
+      <ConfirmDialog
+        open={pendingDeleteCategory != null}
+        title="¿Eliminar esta categoría?"
+        message={
+          pendingDeleteCategory
+            ? (() => {
+                const count = recipesByCategoryId.get(pendingDeleteCategory.categoryId)?.length ?? 0;
+                if (count > 0) {
+                  return `Se eliminará "${pendingDeleteCategory.name}". Las ${count} receta${count === 1 ? "" : "s"} de esta categoría no se borrarán; solo dejarán de estar agrupadas aquí.`;
+                }
+                return `Se eliminará la categoría "${pendingDeleteCategory.name}". Esta acción no se puede deshacer.`;
+              })()
+            : ""
+        }
+        cancelLabel="Cancelar"
+        confirmLabel={deletingCategory ? "Eliminando…" : "Sí, eliminar"}
+        confirmVariant="danger"
+        onCancel={() => {
+          if (!deletingCategory) setPendingDeleteCategory(null);
+        }}
+        onConfirm={() => void handleConfirmDeleteCategory()}
       />
     </section>
   );

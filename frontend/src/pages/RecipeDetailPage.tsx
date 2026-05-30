@@ -387,7 +387,12 @@ export function RecipeDetailPage() {
                         : "sin unidad";
                       return (
                         <article key={ing.recipeIngredientId} className="recipe-detail__ingredient-card">
-                          <IngredientThumb imageUrl={ing.ingredient.imageUrl} size="card" />
+                          <IngredientThumb
+                            name={ing.ingredient.name}
+                            imageUrl={ing.ingredient.imageUrl}
+                            size="card"
+                            alt={ing.ingredient.name}
+                          />
                           <p className="recipe-detail__ingredient-name">{ing.ingredient.name}</p>
                           <div className="recipe-detail__ingredient-pills">
                             <span>{ing.quantity}</span>

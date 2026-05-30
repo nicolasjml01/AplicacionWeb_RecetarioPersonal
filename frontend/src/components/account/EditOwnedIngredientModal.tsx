@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import type { IngredientDto } from "../../types/shopping";
 import type { IngredientCategoryOption } from "../../utils/ingredientCatalogUi";
 import { defaultIngredientCategoryId } from "../../utils/ingredientCatalogUi";
-import { IngredientThumb } from "../ingredient/IngredientThumb";
+import { IngredientImagePicker } from "../ingredient/IngredientImagePicker";
 import { ModalBackdrop, ModalPanel } from "../ui/ModalBackdrop";
 
 type Props = {
@@ -12,7 +12,7 @@ type Props = {
   saving?: boolean;
   error?: string;
   onClose: () => void;
-  onSave: (name: string, categoryId: number | null) => void;
+  onSave: (name: string, categoryId: number | null, imageFile: File | null) => void;
 };
 
 type FormProps = Omit<Props, "open" | "ingredient"> & {
@@ -31,6 +31,7 @@ function EditOwnedIngredientForm({
   const [categoryId, setCategoryId] = useState<number | null>(
     ingredient.categoryId ?? defaultIngredientCategoryId(categoryOptions),
   );
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const categorySelectOptions = useMemo(() => categoryOptions, [categoryOptions]);
 
@@ -38,7 +39,7 @@ function EditOwnedIngredientForm({
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    onSave(trimmed, categoryId);
+    onSave(trimmed, categoryId, imageFile);
   };
 
   return (
@@ -51,9 +52,17 @@ function EditOwnedIngredientForm({
           <h2 id="edit-owned-ingredient-title" className="create-recipe-dialog__title">
             Editar ingrediente
           </h2>
-          <div className="account-edit-ingredient-preview">
-            <IngredientThumb imageUrl={ingredient.imageUrl} size="card" alt={ingredient.name} />
-          </div>
+
+          <IngredientImagePicker
+            imageFile={imageFile}
+            onImageFileChange={setImageFile}
+            existingImageUrl={ingredient.imageUrl}
+            disabled={saving}
+            labels={{
+              hint: "Puedes añadir o cambiar la foto; se verá en recetas, la cesta y tu despensa.",
+            }}
+          />
+
           <label className="form-group">
             <span>Nombre</span>
             <input

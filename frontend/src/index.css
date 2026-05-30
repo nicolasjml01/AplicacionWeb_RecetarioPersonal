@@ -30,6 +30,15 @@
   --page-padding-x: clamp(0.75rem, 2.5vw, 1.75rem);
   --page-padding-bottom-mobile: calc(5.25rem + env(safe-area-inset-bottom, 0px));
   --app-sidebar-width: 104px;
+  /* Auth screens */
+  --auth-card-max: 26.25rem;
+  --auth-card-padding: clamp(1.25rem, 4vw, 1.75rem);
+}
+
+html {
+  font-size: clamp(16px, 15px + 0.22vw, 18px);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 * {
@@ -49,31 +58,49 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: clamp(0.75rem, 3vw, 1.5rem);
+  padding: clamp(0.75rem, 3vw, 2rem);
   box-sizing: border-box;
+}
+
+.auth-layout__brand {
+  display: none;
+}
+
+.auth-layout__brand-logo {
+  width: min(100%, 320px);
+  height: auto;
+  object-fit: contain;
+}
+
+.auth-layout__brand-tagline {
+  margin: clamp(1rem, 2vw, 1.5rem) 0 0;
+  font-size: clamp(1.05rem, 1rem + 0.35vw, 1.35rem);
+  font-weight: 600;
+  color: var(--color-primary);
+  line-height: 1.35;
 }
 
 .auth-layout__card {
   width: 100%;
-  max-width: 420px;
+  max-width: var(--auth-card-max);
   background: var(--color-card);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) + 2px);
   box-shadow: 0 2px 12px rgba(44, 36, 25, 0.08);
-  padding: var(--space-lg);
+  padding: var(--auth-card-padding);
 }
 
 /* Auth pages: logo, title, form */
 .auth-logo {
   display: block;
   margin: 0 auto var(--space-lg);
-  width: clamp(180px, 90%, 320px);
+  width: clamp(180px, 88%, 320px);
   height: auto;
   object-fit: contain;
 }
 
 .auth-title {
   margin: 0 0 var(--space-lg);
-  font-size: 1.5rem;
+  font-size: clamp(1.45rem, 1.25rem + 0.6vw, 1.85rem);
   font-weight: 600;
   color: var(--color-text);
   text-align: center;
@@ -98,15 +125,15 @@ body {
 }
 
 .form-group label {
-  font-size: 0.9rem;
+  font-size: clamp(0.9rem, 0.85rem + 0.15vw, 1rem);
   font-weight: 500;
   color: var(--color-text);
 }
 
 .form-input {
   width: 100%;
-  padding: 0.6rem 0.75rem;
-  font-size: 1rem;
+  padding: clamp(0.6rem, 0.55rem + 0.15vw, 0.78rem) clamp(0.75rem, 0.7rem + 0.2vw, 0.95rem);
+  font-size: clamp(1rem, 0.95rem + 0.15vw, 1.06rem);
   font-family: inherit;
   color: var(--color-text);
   background: var(--color-card);
@@ -120,9 +147,44 @@ body {
   box-shadow: 0 0 0 2px rgba(45, 90, 39, 0.2);
 }
 
+.password-input {
+  position: relative;
+}
+
+.password-input__field {
+  padding-right: 2.75rem;
+}
+
+.password-input__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.password-input__toggle:hover {
+  color: var(--color-primary);
+  background: rgba(45, 90, 39, 0.08);
+}
+
+.password-input__toggle:focus-visible {
+  outline: 2px solid rgba(45, 90, 39, 0.35);
+  outline-offset: 1px;
+}
+
 .btn {
-  padding: 0.65rem 1rem;
-  font-size: 1rem;
+  padding: clamp(0.65rem, 0.6rem + 0.15vw, 0.78rem) clamp(1rem, 0.9rem + 0.25vw, 1.15rem);
+  font-size: clamp(1rem, 0.95rem + 0.15vw, 1.06rem);
   font-weight: 600;
   font-family: inherit;
   border: none;
@@ -157,7 +219,7 @@ body {
 }
 
 .auth-link--small {
-  font-size: 0.85rem;
+  font-size: clamp(0.85rem, 0.82rem + 0.12vw, 0.95rem);
 }
 
 .auth-back {
@@ -165,7 +227,7 @@ body {
   margin-bottom: var(--space-md);
   color: var(--color-text-secondary);
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: clamp(0.9rem, 0.85rem + 0.12vw, 1rem);
 }
 
 .auth-back:hover {
@@ -184,9 +246,67 @@ body {
   margin: var(--space-lg) 0 0;
   padding-top: var(--space-md);
   border-top: 1px solid var(--color-border);
-  font-size: 0.95rem;
+  font-size: clamp(0.95rem, 0.9rem + 0.15vw, 1.05rem);
   color: var(--color-text-secondary);
   text-align: center;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --auth-card-max: 30rem;
+    --auth-card-padding: clamp(1.5rem, 3vw, 2.15rem);
+  }
+
+  .auth-layout__card {
+    box-shadow: 0 8px 28px rgba(44, 36, 25, 0.1);
+  }
+}
+
+@media (min-width: 1024px) {
+  .auth-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(340px, 34rem);
+    gap: clamp(2rem, 4vw, 3.5rem);
+    align-items: center;
+    width: min(100%, 72rem);
+    max-width: 72rem;
+    margin-inline: auto;
+    padding: clamp(2rem, 4vw, 3rem);
+  }
+
+  .auth-layout__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: clamp(1rem, 2vw, 2rem);
+  }
+
+  .auth-layout__brand-logo {
+    width: min(100%, 22rem);
+  }
+
+  .auth-layout__card {
+    max-width: none;
+    width: 100%;
+  }
+
+  /* Logo duplicado: el panel lateral ya lo muestra en login */
+  .auth-layout__card .auth-logo {
+    display: none;
+  }
+}
+
+@media (min-width: 1440px) {
+  .auth-layout {
+    grid-template-columns: minmax(300px, 1.05fr) minmax(380px, 36rem);
+    gap: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .auth-layout__brand-logo {
+    width: min(100%, 26rem);
+  }
 }
 
 /* ----- Main app layout (logged-in screens) ----- */
@@ -365,12 +485,28 @@ body {
 
 .shopping-search__result {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   text-align: left;
-  padding: 0.6rem 0.6rem;
+  padding: 0.45rem 0.5rem;
   border: 0;
   background: transparent;
   cursor: pointer;
   border-radius: 6px;
+}
+
+.shopping-search__result .ingredient-thumb--compact {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+}
+
+.shopping-search__result-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
 }
 
 .shopping-search__result:hover {
@@ -620,6 +756,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  width: 100%;
+}
+
+.ingredient-dialog__create-extras .ingredient-dialog__image-block {
+  padding-top: 0.15rem;
+  border-top: 1px solid var(--color-border);
 }
 
 .ingredient-dialog__image-hint {
@@ -741,6 +883,12 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+  align-items: center;
+}
+
+.ingredient-dialog__image-actions .btn {
+  flex: 1 1 auto;
+  min-width: min(100%, 8.5rem);
 }
 
 .ingredient-dialog__row {
@@ -958,19 +1106,54 @@ body {
 .shopping-accordion__body {
   padding: 0.5rem 0.8rem 0.8rem;
   border-top: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
 }
 
-.shopping-accordion__ingredient {
+.shopping-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.55rem;
+  align-content: start;
+}
+
+@media (min-width: 480px) {
+  .shopping-catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+    gap: 0.65rem;
+  }
+}
+
+.ingredient-catalog-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  padding: 0.4rem;
   border: 1px solid var(--color-border);
   background: #fff;
-  border-radius: 6px;
-  padding: 0.45rem 0.6rem;
-  text-align: left;
+  border-radius: var(--radius);
   cursor: pointer;
+  text-align: center;
+  min-width: 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+
+.ingredient-catalog-tile:hover {
+  border-color: rgba(45, 90, 39, 0.35);
+  box-shadow: 0 2px 8px rgba(45, 90, 39, 0.08);
+}
+
+.ingredient-catalog-tile__name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
 
 .shopping-search-fixed {
   position: fixed;
@@ -1048,6 +1231,36 @@ body {
 
 .app-bottom-nav {
   display: block;
+}
+
+@media (min-width: 768px) {
+  .shopping-title,
+  .account-page__title,
+  .cal-header__title,
+  .category-recipes-title {
+    font-size: clamp(1.35rem, 1.15rem + 0.55vw, 1.85rem);
+  }
+
+  .shopping-hint,
+  .shopping-error,
+  .cal-hint {
+    font-size: clamp(0.88rem, 0.85rem + 0.12vw, 0.98rem);
+  }
+
+  .bottom-nav__link--sidebar {
+    font-size: clamp(0.72rem, 0.68rem + 0.12vw, 0.82rem);
+  }
+
+  .bottom-nav__icon {
+    width: clamp(28px, 26px + 0.35vw, 32px);
+    height: clamp(28px, 26px + 0.35vw, 32px);
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --page-padding-x: clamp(1.25rem, 2vw, 2.5rem);
+  }
 }
 
 /* Tablet/Desktop styles */
@@ -1237,6 +1450,14 @@ body {
     gap: 0.75rem;
     align-content: start;
     padding-right: 0.2rem;
+  }
+
+  /* Hints/loading: full panel width, not a narrow grid cell */
+  .shopping-panel--list .shopping-top-strip > .shopping-hint {
+    grid-column: 1 / -1;
+    margin-top: 0;
+    max-width: none;
+    text-wrap: pretty;
   }
 
   .shopping-layout__right {
@@ -1711,26 +1932,39 @@ body {
 
 .recipe-detail__header {
   margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-  row-gap: 0.5rem;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.65rem;
+  flex-wrap: nowrap;
+}
+
+.recipe-detail__header .category-recipes-back {
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .recipe-detail__header-title {
-  flex: 1 1 auto;
+  grid-column: 2;
+  grid-row: 1;
   min-width: 0;
+  margin: 0;
   font-size: clamp(1.1rem, 2.2vw, 1.35rem);
   font-weight: 700;
   line-height: 1.25;
 }
 
 .recipe-detail__header-actions {
+  grid-column: 3;
+  grid-row: 1;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 0.45rem;
   flex-shrink: 0;
   position: relative;
+  align-self: start;
 }
 
 .recipe-detail__menu-trigger {
@@ -2011,6 +2245,20 @@ body {
   object-fit: contain;
   object-position: center;
   display: block;
+}
+
+.ingredient-thumb__avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(45, 90, 39, 0.08);
+  font-size: clamp(1.1rem, 4vw, 1.65rem);
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1;
+  user-select: none;
 }
 
 /* Legacy aliases (recipe-detail cards) */
@@ -3821,6 +4069,11 @@ body {
   min-height: calc(100dvh - 2.5rem);
 }
 
+/* Week/month: height comes from flex parent, not a forced viewport min */
+.cal-page--fit {
+  min-height: 0;
+}
+
 .cal-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -4826,13 +5079,31 @@ body {
 
 /* Month + week: fill viewport on desktop (no page scroll); mobile may still scroll */
 @media (min-width: 768px) {
-  .app-content:has(.cal-page--fit) {
-    display: flex;
-    flex-direction: column;
+  .app-shell:has(.cal-page--fit) {
     height: 100dvh;
     max-height: 100dvh;
     overflow: hidden;
+  }
+
+  .app-content:has(.cal-page--fit) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
     box-sizing: border-box;
+  }
+
+  /* .app-page wrapper must pass flex height to .cal-page--fit (regression fix) */
+  .app-content:has(.cal-page--fit) .app-page {
+    flex: 1;
+    min-height: 0;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    width: 100%;
   }
 
   .cal-page--fit {
@@ -4890,10 +5161,6 @@ body {
 }
 
 @media (min-width: 768px) {
-  .cal-page--fit {
-    min-height: 0;
-  }
-
   .cal-page--fit .cal-content-panel {
     min-height: 0;
   }
@@ -5347,20 +5614,8 @@ body {
   background: rgba(255, 255, 255, 0.94);
 }
 
-.account-edit-ingredient-preview {
-  display: flex;
-  justify-content: center;
+.create-recipe-dialog .ingredient-dialog__image-block {
   margin-bottom: var(--space-md);
-}
-
-.account-edit-ingredient-preview .ingredient-thumb {
-  width: 120px;
-  aspect-ratio: 1;
-}
-
-.account-edit-ingredient-preview .ingredient-thumb--card {
-  height: auto;
-  min-height: 0;
 }
 
 /* Recipe import: pick one recipe from a list page */

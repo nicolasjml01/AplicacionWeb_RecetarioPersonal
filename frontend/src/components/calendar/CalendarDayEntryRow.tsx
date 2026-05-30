@@ -114,7 +114,12 @@ export function CalendarDayEntryRow({
                   className="recipe-detail__ingredient-card cal-day-ingredient-card"
                   role="listitem"
                 >
-                  <IngredientThumb imageUrl={row.ingredient.imageUrl} size="compact" />
+                  <IngredientThumb
+                    name={row.ingredient.name}
+                    imageUrl={row.ingredient.imageUrl}
+                    size="compact"
+                    alt={row.ingredient.name}
+                  />
                   <p className="recipe-detail__ingredient-name">{row.ingredient.name}</p>
                   <div className="recipe-detail__ingredient-pills">
                     <span>{formatIngredientQuantity(row.quantity)}</span>

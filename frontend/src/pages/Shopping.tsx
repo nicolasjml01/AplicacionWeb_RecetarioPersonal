@@ -17,6 +17,7 @@ import {
   uploadOwnedIngredientImage,
 } from "../api/shopping";
 import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryDialog";
+import { IngredientCatalogTile } from "../components/ingredient/IngredientCatalogTile";
 import { IngredientThumb } from "../components/ingredient/IngredientThumb";
 import {
   defaultIngredientCategoryId,
@@ -366,16 +367,16 @@ export function Shopping() {
                               <div className="shopping-hint">Categoría vacía.</div>
                             )
                           ) : (
-                            cat.ingredients.map((ing) => (
-                              <button
-                                key={ing.ingredientId}
-                                type="button"
-                                className="shopping-accordion__ingredient"
-                                onClick={() => openAddModal(ing.name, false)}
-                              >
-                                {ing.name}
-                              </button>
-                            ))
+                            <div className="shopping-catalog-grid">
+                              {cat.ingredients.map((ing) => (
+                                <IngredientCatalogTile
+                                  key={ing.ingredientId}
+                                  name={ing.name}
+                                  imageUrl={ing.imageUrl}
+                                  onClick={() => openAddModal(ing.name, false)}
+                                />
+                              ))}
+                            </div>
                           )}
                         </div>
                       )}
@@ -412,7 +413,12 @@ export function Shopping() {
                         onClick={() => handleMarkBought(item.shoppingListItemId)}
                         aria-label={`Marcar ${item.ingredient.name} como comprado`}
                       >
-                        <IngredientThumb imageUrl={item.ingredient.imageUrl} size="card" />
+                        <IngredientThumb
+                          name={item.ingredient.name}
+                          imageUrl={item.ingredient.imageUrl}
+                          size="card"
+                          alt={item.ingredient.name}
+                        />
                       </button>
 
                       <div className="shopping-top-card__name">{item.ingredient.name}</div>
@@ -484,7 +490,13 @@ export function Shopping() {
                         closeSearchDropdown();
                       }}
                     >
-                      {ing.name}
+                      <IngredientThumb
+                        name={ing.name}
+                        imageUrl={ing.imageUrl}
+                        size="compact"
+                        alt={ing.name}
+                      />
+                      <span className="shopping-search__result-label">{ing.name}</span>
                     </button>
                   ))}
                   {search.trim() &&

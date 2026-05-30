@@ -8,6 +8,7 @@ import {
   getIngredientsCatalog,
   getOwnedIngredients,
   patchOwnedIngredient,
+  uploadOwnedIngredientImage,
 } from "../api/shopping";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { AccountPanelHeader } from "../components/account/AccountPanelHeader";
@@ -172,15 +173,26 @@ export function Account() {
     return customMealTypes.filter((mt) => mt.name.toLowerCase().includes(searchKey));
   }, [customMealTypes, searchKey]);
 
-  const handleSaveIngredient = async (name: string, categoryId: number | null) => {
+  const handleSaveIngredient = async (
+    name: string,
+    categoryId: number | null,
+    imageFile: File | null,
+  ) => {
     if (userId == null || editingIngredient == null) return;
     setSavingIngredient(true);
     setIngredientEditError("");
     try {
-      const updated = await patchOwnedIngredient(userId, editingIngredient.ingredientId, {
+      let updated = await patchOwnedIngredient(userId, editingIngredient.ingredientId, {
         name,
         ingredientCategoryId: categoryId,
       });
+      if (imageFile) {
+        updated = await uploadOwnedIngredientImage(
+          userId,
+          editingIngredient.ingredientId,
+          imageFile,
+        );
+      }
       setOwnedIngredients((prev) =>
         prev
           .map((i) => (i.ingredientId === updated.ingredientId ? updated : i))
@@ -307,10 +319,6 @@ export function Account() {
               </span>
             </button>
           </div>
-
-          <p className="account-page__hint account-page__hint--footer">
-            El catálogo general (Desayuno, Comida, Cena, tomate, etc.) no se puede modificar desde aquí.
-          </p>
         </>
       ) : (
         <>
@@ -374,9 +382,10 @@ export function Account() {
                           variant="tile"
                           leading={
                             <IngredientThumb
+                              name={ing.name}
                               imageUrl={ing.imageUrl}
                               size="card"
-                              alt=""
+                              alt={ing.name}
                             />
                           }
                           openMenuId={openMenuId}
@@ -449,7 +458,9 @@ export function Account() {
         saving={savingIngredient}
         error={ingredientEditError}
         onClose={() => !savingIngredient && setEditingIngredient(null)}
-        onSave={(name, categoryId) => void handleSaveIngredient(name, categoryId)}
+        onSave={(name, categoryId, imageFile) =>
+          void handleSaveIngredient(name, categoryId, imageFile)
+        }
       />
 
       <EditMealTypeModal

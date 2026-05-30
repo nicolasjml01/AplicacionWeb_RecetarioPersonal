@@ -32,7 +32,7 @@ export function ImportShoppingIngredientCard({
         onClick={onRemove}
         aria-label={`Quitar ${name} de la compra (ya lo tengo)`}
       >
-        <IngredientThumb imageUrl={ingredientImageUrl} size="card" />
+        <IngredientThumb name={name} imageUrl={ingredientImageUrl} size="card" alt={name} />
       </button>
       <p className="recipe-detail__ingredient-name">{name}</p>
       <div className="recipe-detail__ingredient-pills import-ingredients-dialog__pills">

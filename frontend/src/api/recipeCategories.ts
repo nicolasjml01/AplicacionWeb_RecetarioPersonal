@@ -53,3 +53,20 @@ export async function updateRecipeCategory(
 
   return res.json() as Promise<RecipeCategoryDto>;
 }
+
+export async function deleteRecipeCategory(userId: number, categoryId: number): Promise<void> {
+  const res = await apiFetch(`/api/users/${userId}/recipe-categories/${categoryId}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    let message = "No se pudo eliminar la categoría.";
+    try {
+      const body = (await res.json()) as { message?: string };
+      if (body.message) message = body.message;
+    } catch {
+      // Keep fallback message.
+    }
+    throw new Error(message);
+  }
+}
