@@ -72,6 +72,13 @@ export function Calendar() {
     [viewMode, selectedIso],
   );
 
+  const dayCalendarEntryIds = useMemo(() => {
+    if (!dayPlan) return [];
+    return dayPlan.mealBlocks.flatMap((block) =>
+      block.entries.map((entry) => entry.calendarEntryId),
+    );
+  }, [dayPlan]);
+
   useEffect(() => {
     const view = searchParams.get("view");
     const date = searchParams.get("date");
@@ -167,8 +174,12 @@ export function Calendar() {
     setViewMode("day");
   };
 
-  const persistMealOrder = async (blocks: DayPlanDto["mealBlocks"]) => {
+  const persistMealOrder = async (
+    blocks: DayPlanDto["mealBlocks"],
+    previousBlocks: DayPlanDto["mealBlocks"],
+  ) => {
     if (!userId) return;
+    setDayPlan((prev) => (prev ? { ...prev, mealBlocks: blocks } : prev));
     setBusy(true);
     try {
       await reorderDayMeals(
@@ -176,8 +187,8 @@ export function Calendar() {
         selectedIso,
         blocks.map((b, i) => ({ mealTypeId: b.mealType.mealTypeId, sortOrder: i })),
       );
-      await loadDay();
     } catch (e) {
+      setDayPlan((prev) => (prev ? { ...prev, mealBlocks: previousBlocks } : prev));
       setError(e instanceof Error ? e.message : "No se pudo reordenar.");
     } finally {
       setBusy(false);
@@ -186,21 +197,27 @@ export function Calendar() {
 
   const handleReorderMealBlocks = (fromIndex: number, toIndex: number) => {
     if (!dayPlan || fromIndex === toIndex) return;
-    const next = [...dayPlan.mealBlocks];
+    const previousBlocks = dayPlan.mealBlocks;
+    const next = [...previousBlocks];
     const [moved] = next.splice(fromIndex, 1);
     if (!moved) return;
     next.splice(toIndex, 0, moved);
-    void persistMealOrder(next);
+    void persistMealOrder(next, previousBlocks);
   };
 
   const handleReorderEntries = async (blockIndex: number, fromIndex: number, toIndex: number) => {
     if (!userId || !dayPlan || fromIndex === toIndex) return;
     const block = dayPlan.mealBlocks[blockIndex];
     if (!block) return;
+    const previousBlocks = dayPlan.mealBlocks;
     const entries = [...block.entries];
     const [moved] = entries.splice(fromIndex, 1);
     if (!moved) return;
     entries.splice(toIndex, 0, moved);
+    const nextBlocks = previousBlocks.map((b, i) =>
+      i === blockIndex ? { ...b, entries } : b,
+    );
+    setDayPlan((prev) => (prev ? { ...prev, mealBlocks: nextBlocks } : prev));
     setBusy(true);
     try {
       await reorderCalendarEntries(
@@ -208,8 +225,8 @@ export function Calendar() {
         selectedIso,
         entries.map((e, i) => ({ calendarEntryId: e.calendarEntryId, sortOrder: i })),
       );
-      await loadDay();
     } catch (e) {
+      setDayPlan((prev) => (prev ? { ...prev, mealBlocks: previousBlocks } : prev));
       setError(e instanceof Error ? e.message : "No se pudo reordenar.");
     } finally {
       setBusy(false);
@@ -285,13 +302,33 @@ export function Calendar() {
       </div>
 
       <section className="cal-date-panel" aria-label="Navegación de fecha">
-        <CalendarDateNavigator
-          viewMode={viewMode}
-          selectedIso={selectedIso}
-          onSelectIso={setSelectedIso}
-          onPrev={goPrev}
-          onNext={goNext}
-        />
+        <div className="cal-date-panel__inner">
+          <CalendarDateNavigator
+            viewMode={viewMode}
+            selectedIso={selectedIso}
+            onSelectIso={setSelectedIso}
+            onPrev={goPrev}
+            onNext={goNext}
+          />
+          {viewMode === "day" && (
+            <button
+              type="button"
+              className="btn btn--secondary cal-day-import-btn"
+              disabled={loading || busy || dayCalendarEntryIds.length === 0}
+              title={
+                dayCalendarEntryIds.length === 0
+                  ? "Añade recetas al día para importar ingredientes"
+                  : "Sumar ingredientes de todas las comidas del día"
+              }
+              onClick={() => {
+                setShoppingImportEntryIds(dayCalendarEntryIds);
+                setShoppingImportOpen(true);
+              }}
+            >
+              Añadir día a la cesta
+            </button>
+          )}
+        </div>
       </section>
 
       {toast && <p className="cal-toast">{toast}</p>}

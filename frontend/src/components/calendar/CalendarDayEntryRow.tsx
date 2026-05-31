@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { RECIPE_DEFAULT_COVER_PATH } from "../../constants/recipeAssets";
 import type { CalendarEntryDto } from "../../types/calendar";
@@ -6,6 +7,8 @@ import { appendRecipeReturnNav, type RecipeReturnNav } from "../../utils/recipeR
 import { IngredientThumb } from "../ingredient/IngredientThumb";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { formatIngredientQuantity, formatIngredientUnit } from "./formatIngredientLine";
+import { CalendarEntryViewToggle, type CalendarEntryMobilePanel } from "./CalendarEntryViewToggle";
+import { ReorderButtons } from "./ReorderButtons";
 
 type Props = {
   entry: CalendarEntryDto;
@@ -15,6 +18,10 @@ type Props = {
   busy?: boolean;
   isDragging?: boolean;
   isDropTarget?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -31,6 +38,10 @@ export function CalendarDayEntryRow({
   busy,
   isDragging,
   isDropTarget,
+  canMoveUp = false,
+  canMoveDown = false,
+  onMoveUp,
+  onMoveDown,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -38,6 +49,7 @@ export function CalendarDayEntryRow({
   onRemove,
   onImportToBasket,
 }: Props) {
+  const [mobilePanel, setMobilePanel] = useState<CalendarEntryMobilePanel>("recipe");
   const imgSrc = entry.coverImageUrl
     ? resolveMediaUrl(entry.coverImageUrl)
     : RECIPE_DEFAULT_COVER_PATH;
@@ -49,6 +61,7 @@ export function CalendarDayEntryRow({
     <div
       className={[
         "cal-day-entry-row",
+        `cal-day-entry-row--panel-${mobilePanel}`,
         isDragging ? "cal-day-entry-row--dragging" : "",
         isDropTarget ? "cal-day-entry-row--drop-target" : "",
       ]
@@ -57,10 +70,24 @@ export function CalendarDayEntryRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
+      <div className="cal-day-entry-row__mobile-toolbar">
+        {onMoveUp && onMoveDown && (
+          <ReorderButtons
+            label={entry.recipeTitle}
+            onUp={onMoveUp}
+            onDown={onMoveDown}
+            canMoveUp={canMoveUp}
+            canMoveDown={canMoveDown}
+            disabled={busy}
+          />
+        )}
+        <CalendarEntryViewToggle value={mobilePanel} onChange={setMobilePanel} />
+      </div>
+
       <div className="cal-day-entry-row__recipe">
         <button
           type="button"
-          className="cal-drag-handle cal-day-entry-row__handle"
+          className="cal-drag-handle cal-day-entry-row__handle cal-drag-handle--desktop-only"
           draggable={!busy}
           disabled={busy}
           aria-label={`Arrastrar ${entry.recipeTitle}`}
@@ -109,23 +136,23 @@ export function CalendarDayEntryRow({
         {!ingredientsLoading && sorted.length > 0 && (
           <div className="cal-day-entry-row__ingredients-grid" role="list" aria-label="Ingredientes">
             {sorted.map((row) => (
-                <article
-                  key={row.recipeIngredientId}
-                  className="recipe-detail__ingredient-card cal-day-ingredient-card"
-                  role="listitem"
-                >
-                  <IngredientThumb
-                    name={row.ingredient.name}
-                    imageUrl={row.ingredient.imageUrl}
-                    size="compact"
-                    alt={row.ingredient.name}
-                  />
-                  <p className="recipe-detail__ingredient-name">{row.ingredient.name}</p>
-                  <div className="recipe-detail__ingredient-pills">
-                    <span>{formatIngredientQuantity(row.quantity)}</span>
-                    <span>{formatIngredientUnit(row)}</span>
-                  </div>
-                </article>
+              <article
+                key={row.recipeIngredientId}
+                className="recipe-detail__ingredient-card cal-day-ingredient-card"
+                role="listitem"
+              >
+                <IngredientThumb
+                  name={row.ingredient.name}
+                  imageUrl={row.ingredient.imageUrl}
+                  size="compact"
+                  alt={row.ingredient.name}
+                />
+                <p className="recipe-detail__ingredient-name">{row.ingredient.name}</p>
+                <div className="recipe-detail__ingredient-pills">
+                  <span>{formatIngredientQuantity(row.quantity)}</span>
+                  <span>{formatIngredientUnit(row)}</span>
+                </div>
+              </article>
             ))}
           </div>
         )}

@@ -4,6 +4,7 @@ import type { DayPlanDto, MealBlockDto } from "../../types/calendar";
 import type { RecipeIngredientDto } from "../../types/recipes";
 import type { RecipeReturnNav } from "../../utils/recipeReturnNav";
 import { CalendarDayEntryRow } from "./CalendarDayEntryRow";
+import { ReorderButtons } from "./ReorderButtons";
 
 type Props = {
   userId: number;
@@ -114,6 +115,7 @@ export function CalendarDayView({
           key={block.mealType.mealTypeId}
           block={block}
           blockIndex={blockIndex}
+          blocksCount={blocks.length}
           busy={busy}
           ingredientsLoading={ingredientsLoading}
           ingredientsByRecipeId={ingredientsMap}
@@ -140,6 +142,8 @@ export function CalendarDayView({
           onRemoveEntry={onRemoveEntry}
           onImportRecipe={onImportRecipe}
           onImportBlock={onImportBlock}
+          onReorderMealBlocks={onReorderMealBlocks}
+          onReorderEntries={onReorderEntries}
         />
       ))}
     </div>
@@ -149,6 +153,7 @@ export function CalendarDayView({
 function MealBlockSection({
   block,
   blockIndex,
+  blocksCount,
   busy,
   ingredientsLoading,
   ingredientsByRecipeId,
@@ -165,9 +170,12 @@ function MealBlockSection({
   onRemoveEntry,
   onImportRecipe,
   onImportBlock,
+  onReorderMealBlocks,
+  onReorderEntries,
 }: {
   block: MealBlockDto;
   blockIndex: number;
+  blocksCount: number;
   busy: boolean;
   ingredientsLoading: boolean;
   ingredientsByRecipeId: Record<number, RecipeIngredientDto[]>;
@@ -184,6 +192,8 @@ function MealBlockSection({
   onRemoveEntry: (calendarEntryId: number) => void;
   onImportRecipe: (recipeId: number, recipeTitle: string) => void;
   onImportBlock: (calendarEntryIds: number[]) => void;
+  onReorderMealBlocks: (fromIndex: number, toIndex: number) => void;
+  onReorderEntries: (blockIndex: number, fromIndex: number, toIndex: number) => void;
 }) {
   const entries = block.entries;
   const isBlockDragging = dragBlockIndex === blockIndex;
@@ -205,9 +215,17 @@ function MealBlockSection({
     >
       <header className="cal-meal-block__header">
         <div className="cal-meal-block__title-row">
+          <ReorderButtons
+            label={block.mealType.name}
+            onUp={() => onReorderMealBlocks(blockIndex, blockIndex - 1)}
+            onDown={() => onReorderMealBlocks(blockIndex, blockIndex + 1)}
+            canMoveUp={blockIndex > 0}
+            canMoveDown={blockIndex < blocksCount - 1}
+            disabled={busy}
+          />
           <button
             type="button"
-            className="cal-drag-handle"
+            className="cal-drag-handle cal-drag-handle--desktop-only"
             draggable={!busy}
             disabled={busy}
             aria-label={`Arrastrar ${block.mealType.name}`}
@@ -252,6 +270,10 @@ function MealBlockSection({
               busy={busy}
               isDragging={isEntryDragging}
               isDropTarget={isEntryDropTarget}
+              canMoveUp={entryIndex > 0}
+              canMoveDown={entryIndex < entries.length - 1}
+              onMoveUp={() => onReorderEntries(blockIndex, entryIndex, entryIndex - 1)}
+              onMoveDown={() => onReorderEntries(blockIndex, entryIndex, entryIndex + 1)}
               onDragStart={() => onDragEntryStart(entryIndex)}
               onDragEnd={onDragEntryEnd}
               onDragOver={onAllowDrop}

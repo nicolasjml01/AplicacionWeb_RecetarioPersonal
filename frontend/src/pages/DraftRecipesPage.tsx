@@ -84,9 +84,11 @@ export function DraftRecipesPage() {
 
       <div className="home-grid" style={{ marginTop: "1rem" }}>
         {loading ? (
-          <p className="home-category-card__empty">Cargando…</p>
+          <p className="home-category-card__empty home-category-card__empty--full-row">Cargando…</p>
         ) : drafts.length === 0 ? (
-          <p className="home-category-card__empty">No tienes borradores. Crea una receta desde el botón +.</p>
+          <p className="home-category-card__empty home-category-card__empty--full-row">
+            No tienes borradores. Crea una receta desde el botón +.
+          </p>
         ) : (
           drafts.map((r) => (
             <article
