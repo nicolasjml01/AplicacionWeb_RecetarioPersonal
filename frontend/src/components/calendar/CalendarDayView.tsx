@@ -92,7 +92,7 @@ export function CalendarDayView({
     e.dataTransfer.dropEffect = "move";
   }, []);
 
-  if (loading) {
+  if (loading && !dayPlan) {
     return <p className="cal-hint">Cargando día…</p>;
   }
 
@@ -229,7 +229,7 @@ function MealBlockSection({
             draggable={!busy}
             disabled={busy}
             aria-label={`Arrastrar ${block.mealType.name}`}
-            title="Arrastrar para reordenar categoría"
+            title="Arrastrar para reordenar tipo de comida"
             onDragStart={(e) => {
               e.dataTransfer.effectAllowed = "move";
               onDragBlockStart();

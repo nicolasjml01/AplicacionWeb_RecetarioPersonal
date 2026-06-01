@@ -17,7 +17,7 @@ function CreateCategoryForm({
   loading,
   onClose,
   onSubmit,
-  title = "Nueva categoría",
+  title = "Nueva etiqueta",
   submitLabel = "Guardar",
   initialName = "",
 }: FormProps) {
@@ -34,7 +34,7 @@ function CreateCategoryForm({
       setName("");
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear categoría.");
+      setError(err instanceof Error ? err.message : "Error al crear etiqueta.");
     }
   };
 

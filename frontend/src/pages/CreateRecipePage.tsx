@@ -23,6 +23,7 @@ import {
 } from "../api/recipes";
 import {
   deleteRecipeMedia,
+  importRecipeMediaFromUrls,
   replaceRecipeMediaContent,
   reorderRecipeMedia,
   uploadRecipeMedia,
@@ -51,7 +52,7 @@ import {
 import { parseImportedIngredientLine } from "../utils/parseImportedIngredientLine";
 import { formatImportQuantityForInput } from "../components/recipe/importQuantity";
 
-const DEFAULT_CATEGORY = "Sin categoría";
+import { DEFAULT_RECIPE_TAG, isDefaultRecipeTag } from "../constants/recipeTags";
 const DRAFT_INIT_TITLE = "Receta nueva";
 const RESERVED_TITLES = new Set(["receta nueva", "borrador", "sin título", "nueva receta"]);
 
@@ -89,8 +90,8 @@ function isValidPublishTitle(t: string): boolean {
 function sortCategories(items: RecipeCategoryDto[]): RecipeCategoryDto[] {
   const copy = [...items];
   copy.sort((a, b) => {
-    const aDefault = a.name.trim().toLowerCase() === DEFAULT_CATEGORY.toLowerCase();
-    const bDefault = b.name.trim().toLowerCase() === DEFAULT_CATEGORY.toLowerCase();
+    const aDefault = isDefaultRecipeTag(a.name);
+    const bDefault = isDefaultRecipeTag(b.name);
     if (aDefault && !bDefault) return -1;
     if (!aDefault && bDefault) return 1;
     return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
@@ -110,7 +111,7 @@ function buildCategoryPayload(
     ...new Set(
       pendingNewNames
         .map((n) => (n == null ? "" : n.trim()))
-        .filter((n) => n.length > 0 && n.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase()),
+        .filter((n) => n.length > 0 && !isDefaultRecipeTag(n)),
     ),
   ];
 
@@ -137,7 +138,7 @@ function effectivePendingCategoryNames(
   allCategories: RecipeCategoryDto[],
 ): string[] {
   const q = categoryQuery.trim();
-  if (!q || q.toLowerCase() === DEFAULT_CATEGORY.toLowerCase()) return [...pending];
+  if (!q || isDefaultRecipeTag(q)) return [...pending];
   const qLower = q.toLowerCase();
   if (pending.some((n) => n.trim().toLowerCase() === qLower)) return [...pending];
   const matchesSelected = selectedIds.some((id) => {
@@ -248,6 +249,13 @@ export function CreateRecipePage() {
 
   const globalFileRef = useRef<HTMLInputElement>(null);
   const stepFileRef = useRef<HTMLInputElement>(null);
+  const pendingImportCoverUrlsRef = useRef<string[] | null>(null);
+  const importCoverStartedRef = useRef(false);
+  const importCoverDoneRef = useRef(false);
+  const importCoverInFlightRef = useRef<Promise<void> | null>(null);
+  const draftEnsurePromiseRef = useRef<Promise<number> | null>(null);
+  const recipeIdRef = useRef<number | null>(null);
+  const [importingCoverImage, setImportingCoverImage] = useState(false);
   const categoryWrapRef = useRef<HTMLDivElement | null>(null);
   const ingredientsWrapRef = useRef<HTMLDivElement | null>(null);
 
@@ -319,7 +327,7 @@ export function CreateRecipePage() {
     const hasCategory =
       selectedCategoryIds.length > 0 ||
       pendingNewCategoryNames.length > 0 ||
-      (q.length > 0 && q.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase());
+      (q.length > 0 && !isDefaultRecipeTag(q));
     const hasIngredients = ingredients.some(
       (i) => i.ingredientName.trim().length > 0 || i.quantity.trim().length > 0 || i.measurementUnit.trim().length > 0,
     );
@@ -373,7 +381,7 @@ export function CreateRecipePage() {
     getRecipeCategories(userId)
       .then((cats) => setCategories(sortCategories(cats)))
       .catch((e) =>
-        setLoadError(e instanceof Error ? e.message : "No se pudieron cargar las categorías."),
+        setLoadError(e instanceof Error ? e.message : "No se pudieron cargar las etiquetas."),
       )
       .finally(() => setLoadingCats(false));
   }, [userId]);
@@ -436,7 +444,7 @@ export function CreateRecipePage() {
     setTitle(r.title);
     setGlobalMedia([...r.recipeLevelMedia].sort((a, b) => a.displayOrder - b.displayOrder));
     const nonDefaultIds = r.categories
-      .filter((c) => c.name.trim().toLowerCase() !== DEFAULT_CATEGORY.toLowerCase())
+      .filter((c) => !isDefaultRecipeTag(c.name))
       .map((c) => c.categoryId);
     setSelectedCategoryIds(nonDefaultIds);
     setPendingNewCategoryNames([]);
@@ -451,17 +459,26 @@ export function CreateRecipePage() {
     setIsPublishedEditMode(r.publicationState === "PUBLISHED");
   }, []);
 
+  const reloadRecipeState = useCallback(
+    async (id: number) => {
+      if (!userId) return;
+      const r = await getRecipe(userId, id);
+      applyRecipe(r);
+      try {
+        const cats = await getRecipeCategories(userId);
+        setCategories(sortCategories(cats));
+      } catch {
+        // La receta ya está actualizada; el listado de categorías puede refrescarse al volver a home.
+      }
+    },
+    [userId, applyRecipe],
+  );
+
   const refreshRecipe = useCallback(async () => {
-    if (!userId || recipeId == null) return;
-    const r = await getRecipe(userId, recipeId);
-    applyRecipe(r);
-    try {
-      const cats = await getRecipeCategories(userId);
-      setCategories(sortCategories(cats));
-    } catch {
-      // La receta ya está actualizada; el listado de categorías puede refrescarse al volver a home.
-    }
-  }, [userId, recipeId, applyRecipe]);
+    const id = recipeIdRef.current ?? recipeId;
+    if (id == null) return;
+    await reloadRecipeState(id);
+  }, [recipeId, reloadRecipeState]);
 
   // Refresh "surgical" after uploading/deleting/reordering media: only updates the global gallery
   // and the media of each step, without touching the title, category, ingredients or text
@@ -554,7 +571,22 @@ export function CreateRecipePage() {
       setIngredients(importedIngredients.length > 0 ? importedIngredients : [makeLocalIngredient()]);
       const importedSteps = applyStepsFromImport(importPreview.steps ?? []);
       setSteps(importedSteps.length > 0 ? importedSteps : [makeLocalStep(1)]);
+      importCoverStartedRef.current = false;
+      importCoverDoneRef.current = false;
+      const seen = new Set<string>();
+      const coverCandidates: string[] = [];
+      const add = (raw?: string | null) => {
+        const u = raw?.trim();
+        if (!u || seen.has(u)) return;
+        seen.add(u);
+        coverCandidates.push(u);
+      };
+      add(importPreview.imageUrl);
+      for (const u of importPreview.imageUrls ?? []) add(u);
+      pendingImportCoverUrlsRef.current =
+        coverCandidates.length > 0 ? coverCandidates.slice(0, 3) : null;
     } else {
+      pendingImportCoverUrlsRef.current = null;
       setSteps([makeLocalStep(1)]);
     }
     setInitialIngredientIds([]);
@@ -625,32 +657,100 @@ export function CreateRecipePage() {
     }
   }, [steps]);
 
+  useEffect(() => {
+    recipeIdRef.current = recipeId;
+  }, [recipeId]);
+
   const ensureDraftId = useCallback(async (): Promise<number> => {
     if (!userId) throw new Error("No hay usuario en sesión.");
-    if (recipeId != null) return recipeId;
-    const draftTitle =
-      title.trim().length > 0 && !isGenericDraftTitle(title) ? title.trim() : DRAFT_INIT_TITLE;
-    const cat = buildCategoryPayload(
-      selectedCategoryIds,
-      effectivePendingCategoryNames(pendingNewCategoryNames, categoryQuery, selectedCategoryIds, categories),
-      categories,
-    );
-    const created = await createRecipe(userId, {
-      title: draftTitle,
-      categoryIds: cat.categoryIds,
-      newCategoryNames: cat.newCategoryNames,
-      draft: true,
-    });
-    setCreatedDraftThisSession(true);
-    setRecipeId(created.recipeId);
+    if (recipeIdRef.current != null) return recipeIdRef.current;
+    if (draftEnsurePromiseRef.current) return draftEnsurePromiseRef.current;
+
+    const promise = (async () => {
+      const draftTitle =
+        title.trim().length > 0 && !isGenericDraftTitle(title) ? title.trim() : DRAFT_INIT_TITLE;
+      const cat = buildCategoryPayload(
+        selectedCategoryIds,
+        effectivePendingCategoryNames(pendingNewCategoryNames, categoryQuery, selectedCategoryIds, categories),
+        categories,
+      );
+      const created = await createRecipe(userId, {
+        title: draftTitle,
+        categoryIds: cat.categoryIds,
+        newCategoryNames: cat.newCategoryNames,
+        draft: true,
+      });
+      setCreatedDraftThisSession(true);
+      recipeIdRef.current = created.recipeId;
+      setRecipeId(created.recipeId);
+      try {
+        const cats = await getRecipeCategories(userId);
+        setCategories(sortCategories(cats));
+      } catch {
+        // ignorar
+      }
+      return created.recipeId;
+    })();
+
+    draftEnsurePromiseRef.current = promise;
     try {
-      const cats = await getRecipeCategories(userId);
-      setCategories(sortCategories(cats));
-    } catch {
-      // ignorar
+      return await promise;
+    } finally {
+      if (draftEnsurePromiseRef.current === promise) {
+        draftEnsurePromiseRef.current = null;
+      }
     }
-    return created.recipeId;
-  }, [userId, recipeId, title, selectedCategoryIds, pendingNewCategoryNames, categoryQuery, categories]);
+  }, [userId, title, selectedCategoryIds, pendingNewCategoryNames, categoryQuery, categories]);
+
+  const importPendingCover = useCallback(
+    async (rid: number, urls: string[]) => {
+      if (!userId || urls.length === 0) return null;
+      const result = await importRecipeMediaFromUrls(userId, rid, urls);
+      if (result.media.length > 0) {
+        importCoverDoneRef.current = true;
+        pendingImportCoverUrlsRef.current = null;
+        setGlobalMedia((prev) => {
+          const byId = new Map(prev.map((m) => [m.mediaId, m]));
+          for (const m of result.media) byId.set(m.mediaId, m);
+          return [...byId.values()].sort((a, b) => a.displayOrder - b.displayOrder);
+        });
+      }
+      return result;
+    },
+    [userId],
+  );
+
+  useEffect(() => {
+    if (booting || !userId || importCoverStartedRef.current) return;
+    const coverUrls = pendingImportCoverUrlsRef.current;
+    if (!coverUrls || coverUrls.length === 0) return;
+    importCoverStartedRef.current = true;
+
+    const run = (async () => {
+      setImportingCoverImage(true);
+      setSubmitError("");
+      try {
+        const rid = await ensureDraftId();
+        const result = await importPendingCover(rid, coverUrls);
+        if (result && result.media.length === 0 && result.warnings.length > 0) {
+          setSubmitError(result.warnings[0] ?? "No se pudo importar la portada.");
+        }
+      } catch (e) {
+        setSubmitError(
+          e instanceof Error ? e.message : "No se pudo importar la portada de la receta.",
+        );
+      } finally {
+        setImportingCoverImage(false);
+      }
+    })();
+
+    importCoverInFlightRef.current = run;
+    void run.finally(() => {
+      if (importCoverInFlightRef.current === run) {
+        importCoverInFlightRef.current = null;
+      }
+    });
+  }, [booting, userId, ensureDraftId, importPendingCover]);
 
   const parseQuantity = (raw: string): number => {
     const value = Number(raw.replace(",", "."));
@@ -744,7 +844,16 @@ export function CreateRecipePage() {
       }
     }
 
-    await refreshRecipe();
+    if (importCoverInFlightRef.current) {
+      await importCoverInFlightRef.current;
+    } else if (!importCoverDoneRef.current) {
+      const pendingCover = pendingImportCoverUrlsRef.current;
+      if (pendingCover && pendingCover.length > 0) {
+        await importPendingCover(rid, pendingCover);
+      }
+    }
+
+    await reloadRecipeState(rid);
     setBaselineKey(
       JSON.stringify({
         title: finalTitle,
@@ -773,7 +882,8 @@ export function CreateRecipePage() {
     categories,
     ingredients,
     steps,
-    refreshRecipe,
+    reloadRecipeState,
+    importPendingCover,
     syncIngredients,
   ]);
 
@@ -863,7 +973,7 @@ export function CreateRecipePage() {
   }, [userId, recipeId, createdDraftThisSession, openedExistingDraft, hasMeaningfulChanges]);
 
   const selectableCategories = useMemo(
-    () => categories.filter((c) => c.name.trim().toLowerCase() !== DEFAULT_CATEGORY.toLowerCase()),
+    () => categories.filter((c) => !isDefaultRecipeTag(c.name)),
     [categories],
   );
 
@@ -884,7 +994,7 @@ export function CreateRecipePage() {
   const canOfferNewCategory =
     trimmedCategoryQuery.length > 0 &&
     !categoryExactMatch &&
-    trimmedCategoryQuery.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase() &&
+    !isDefaultRecipeTag(trimmedCategoryQuery) &&
     !pendingNewCategoryNames.some((n) => n.trim().toLowerCase() === trimmedCategoryQuery.toLowerCase()) &&
     !selectedCategoryIds.some(
       (id) =>
@@ -1375,17 +1485,23 @@ export function CreateRecipePage() {
           <div className="create-recipe-card create-recipe-card--gallery">
             <span className="create-recipe-label">Galería de la receta</span>
             <p className="create-recipe-hint">
-              Sube fotos o vídeos y ordénalas arrastrando. La primera será la portada en listados.
+              Sube fotos o vídeos y ordénalas arrastrando. La primera será la portada en listados. Al importar desde
+              un enlace, se intenta traer solo la portada de la página.
             </p>
             <MediaStripEditor
               media={[...globalMedia].sort((a, b) => a.displayOrder - b.displayOrder)}
-              disabled={uploadingGlobal}
+              disabled={uploadingGlobal || importingCoverImage}
               onAdd={() => globalFileRef.current?.click()}
               onRemove={handleGlobalRemove}
               onReorder={handleGlobalReorder}
               onEdit={(id) => void handleEditExistingMedia(id)}
             />
-            {uploadingGlobal && <p className="create-recipe-hint">Subiendo archivos…</p>}
+            {importingCoverImage && (
+              <p className="create-recipe-hint">Importando portada desde el enlace…</p>
+            )}
+            {uploadingGlobal && !importingCoverImage && (
+              <p className="create-recipe-hint">Subiendo archivos…</p>
+            )}
           </div>
 
           <div className="create-recipe-card">
@@ -1411,10 +1527,10 @@ export function CreateRecipePage() {
           </div>
 
           <div className="create-recipe-card">
-            <span className="create-recipe-label">Categorías</span>
+            <span className="create-recipe-label">Etiquetas</span>
             <p className="create-recipe-hint">
-              Opcional. Puedes marcar varias categorías o escribir nombres nuevos (se crearán al guardar). Si lo dejas
-              vacío, se usará «{DEFAULT_CATEGORY}».
+              Opcional. Puedes marcar varias etiquetas o escribir nombres nuevos (se crearán al guardar). Si lo dejas
+              vacío, se usará «{DEFAULT_RECIPE_TAG}».
             </p>
 
             {(selectedCategoryIds.length > 0 || pendingNewCategoryNames.length > 0) && (
@@ -1464,12 +1580,12 @@ export function CreateRecipePage() {
                   setCategoryDropdownOpen(true);
                 }}
                 onFocus={() => setCategoryDropdownOpen(true)}
-                placeholder={loadingCats ? "Cargando categorías…" : "Buscar o añadir categoría…"}
+                placeholder={loadingCats ? "Cargando etiquetas…" : "Buscar o añadir etiqueta…"}
                 disabled={loadingCats || !!loadError}
                 autoComplete="off"
               />
               {categoryDropdownOpen && !loadError && (
-                <div className="create-recipe-category-dropdown" role="listbox" aria-label="Categorías">
+                <div className="create-recipe-category-dropdown" role="listbox" aria-label="Etiquetas">
                   {canOfferNewCategory && (
                     <button
                       type="button"
@@ -1483,7 +1599,7 @@ export function CreateRecipePage() {
                         setCategoryDropdownOpen(false);
                       }}
                     >
-                      Usar «{trimmedCategoryQuery}» (nueva categoría)
+                      Usar «{trimmedCategoryQuery}» (nueva etiqueta)
                     </button>
                   )}
                   {categoryResults.length === 0 && !canOfferNewCategory ? (

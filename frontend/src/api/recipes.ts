@@ -22,7 +22,7 @@ export type GetRecipesOptions = {
 
 export type CreateRecipePayload = {
   title: string;
-  /** null or empty → backend assigns "Sin categoría". */
+  /** null or empty → backend assigns "Sin etiqueta". */
   categoryIds: number[] | null;
   /** New category names; the backend creates them and associates them with the recipe. */
   newCategoryNames?: string[] | null;
@@ -326,6 +326,7 @@ export type RecipeImportPreviewDto = {
   title: string;
   sourceUrl: string;
   imageUrl: string | null;
+  imageUrls?: string[];
   ingredients: ImportedIngredientLineDto[];
   steps: ImportedStepLineDto[];
   warnings: string[];

@@ -19,7 +19,7 @@ import java.util.Optional;
  */
 @Service
 public class AuthService {
-    private static final String DEFAULT_CATEGORY_NAME = "Sin categoría";
+    private static final String DEFAULT_TAG_NAME = "Sin etiqueta";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -64,7 +64,7 @@ public class AuthService {
     }
 
     /**
-     * Creates account, default recipe category "Sin categoría", and returns profile data.
+     * Creates account, default recipe tag "Sin etiqueta", and returns profile data.
      * Throws {@link IllegalArgumentException} with a Spanish message for the client on validation errors.
      */
     public UserDto register(RegisterRequest request) {
@@ -90,7 +90,7 @@ public class AuthService {
 
         RecipeCategory defaultCategory = new RecipeCategory();
         defaultCategory.setOwner(saved);
-        defaultCategory.setName(DEFAULT_CATEGORY_NAME);
+        defaultCategory.setName(DEFAULT_TAG_NAME);
         recipeCategoryRepository.save(defaultCategory);
 
         return toDto(saved);

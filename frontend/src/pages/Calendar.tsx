@@ -89,34 +89,34 @@ export function Calendar() {
     setSearchParams(p, { replace: true });
   }, [viewMode, selectedIso, searchParams, setSearchParams]);
 
-  const loadDay = useCallback(async () => {
+  const loadDay = useCallback(async (options?: { silent?: boolean }) => {
     if (!userId) return;
-    setLoading(true);
+    if (!options?.silent) setLoading(true);
     setError("");
     try {
       const plan = await getDayPlan(userId, selectedIso);
       setDayPlan(plan);
     } catch (e) {
-      setDayPlan(null);
+      if (!options?.silent) setDayPlan(null);
       setError(e instanceof Error ? e.message : "Error cargando el día.");
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   }, [userId, selectedIso]);
 
   const loadRange = useCallback(
-    async (from: string, to: string) => {
+    async (from: string, to: string, options?: { silent?: boolean }) => {
       if (!userId) return;
-      setLoading(true);
+      if (!options?.silent) setLoading(true);
       setError("");
       try {
         const data = await getCalendarRange(userId, from, to);
         setRange(data);
       } catch (e) {
-        setRange(null);
+        if (!options?.silent) setRange(null);
         setError(e instanceof Error ? e.message : "Error cargando el calendario.");
       } finally {
-        setLoading(false);
+        if (!options?.silent) setLoading(false);
       }
     },
     [userId],
@@ -143,14 +143,17 @@ export function Calendar() {
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  const refresh = useCallback(() => {
-    if (viewMode === "day") void loadDay();
-    else if (viewMode === "week") {
-      void loadRange(toIsoDate(weekMonday), toIsoDate(endOfWeekSunday(weekMonday)));
-    } else {
-      void loadRange(toIsoDate(startOfMonth(monthAnchor)), toIsoDate(endOfMonth(monthAnchor)));
-    }
-  }, [viewMode, loadDay, loadRange, weekMonday, monthAnchor]);
+  const refresh = useCallback(
+    (options?: { silent?: boolean }) => {
+      if (viewMode === "day") void loadDay(options);
+      else if (viewMode === "week") {
+        void loadRange(toIsoDate(weekMonday), toIsoDate(endOfWeekSunday(weekMonday)), options);
+      } else {
+        void loadRange(toIsoDate(startOfMonth(monthAnchor)), toIsoDate(endOfMonth(monthAnchor)), options);
+      }
+    },
+    [viewMode, loadDay, loadRange, weekMonday, monthAnchor],
+  );
 
   const goPrev = () => {
     if (viewMode === "day") setSelectedIso(toIsoDate(addDays(selectedDate, -1)));
@@ -295,7 +298,7 @@ export function Calendar() {
               className="btn btn--secondary"
               onClick={() => setMealTypeModalOpen(true)}
             >
-              + Categoría
+              + Tipo de comida
             </button>
           </div>
         )}
@@ -382,7 +385,7 @@ export function Calendar() {
           setToast(
             count === 1 ? "1 receta añadida al calendario." : `${count} recetas añadidas al calendario.`,
           );
-          refresh();
+          refresh({ silent: true });
         }}
       />
 

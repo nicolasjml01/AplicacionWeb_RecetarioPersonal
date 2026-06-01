@@ -5,10 +5,13 @@ import backend.recetarioPersonal.view.ImportedStepLineDto;
 import backend.recetarioPersonal.view.RecipeImportPreviewDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -21,6 +24,9 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class SchemaOrgRecipeExtractor implements RecipeExtractor {
+
+    /** Cover candidates for import (server stops after the first successful download). */
+    private static final int MAX_IMAGE_URLS = 3;
 
     private final ObjectMapper objectMapper;
 
@@ -52,7 +58,7 @@ public class SchemaOrgRecipeExtractor implements RecipeExtractor {
         }
 
         JsonNode best = pickBestRecipeNode(recipeNodes, sourceUrl);
-        return Optional.of(toPreview(best, sourceUrl));
+        return Optional.of(toPreview(best, sourceUrl, document));
     }
 
     private JsonNode pickBestRecipeNode(List<JsonNode> candidates, String sourceUrl) {
@@ -150,7 +156,7 @@ public class SchemaOrgRecipeExtractor implements RecipeExtractor {
         return false;
     }
 
-    private RecipeImportPreviewDto toPreview(JsonNode recipe, String sourceUrl) {
+    private RecipeImportPreviewDto toPreview(JsonNode recipe, String sourceUrl, Document document) {
         List<String> warnings = new ArrayList<>();
 
         String title = textOrNull(recipe.get("name"));
@@ -169,15 +175,75 @@ public class SchemaOrgRecipeExtractor implements RecipeExtractor {
             warnings.add("No se encontraron pasos de elaboración en la página.");
         }
 
-        String imageUrl = parseImage(recipe.get("image"));
+        List<String> imageUrls = collectImageUrls(recipe.get("image"), document, sourceUrl);
+        String imageUrl = imageUrls.isEmpty() ? null : imageUrls.get(0);
+        if (imageUrls.isEmpty()) {
+            warnings.add("No se encontraron imágenes de la receta en la página.");
+        }
 
         return new RecipeImportPreviewDto(
                 title.trim(),
                 sourceUrl,
                 imageUrl,
+                imageUrls,
                 ingredients,
                 steps,
                 warnings);
+    }
+
+    private List<String> collectImageUrls(JsonNode imageNode, Document document, String sourceUrl) {
+        Set<String> seen = new LinkedHashSet<>();
+        List<String> ordered = new ArrayList<>();
+
+        // Open Graph / Twitter usually point at the recipe hero (best cover).
+        for (String raw : collectMetaImageUrls(document)) {
+            addImageUrl(ordered, seen, resolveUrl(raw, sourceUrl));
+            if (ordered.size() >= MAX_IMAGE_URLS) {
+                return ordered;
+            }
+        }
+        for (String raw : parseImageUrls(imageNode)) {
+            addImageUrl(ordered, seen, resolveUrl(raw, sourceUrl));
+            if (ordered.size() >= MAX_IMAGE_URLS) {
+                break;
+            }
+        }
+        return ordered;
+    }
+
+    private void addImageUrl(List<String> ordered, Set<String> seen, String url) {
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        String lower = url.toLowerCase(Locale.ROOT);
+        if (!ImportImageFetcher.isLikelyRecipeImageUrl(lower)) {
+            return;
+        }
+        if (seen.add(url)) {
+            ordered.add(url);
+        }
+    }
+
+    private List<String> collectMetaImageUrls(Document document) {
+        List<String> urls = new ArrayList<>();
+        for (Element meta : document.select("meta[property=og:image], meta[property=og:image:url], meta[name=twitter:image]")) {
+            String content = meta.attr("content");
+            if (content != null && !content.isBlank()) {
+                urls.add(content.trim());
+            }
+        }
+        return urls;
+    }
+
+    private String resolveUrl(String url, String baseUrl) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        try {
+            return URI.create(baseUrl).resolve(url.trim()).toString();
+        } catch (Exception ex) {
+            return url.trim();
+        }
     }
 
     private List<ImportedIngredientLineDto> parseIngredients(JsonNode node) {
@@ -277,26 +343,44 @@ public class SchemaOrgRecipeExtractor implements RecipeExtractor {
         }
     }
 
-    private String parseImage(JsonNode imageNode) {
+    private List<String> parseImageUrls(JsonNode imageNode) {
+        List<String> urls = new ArrayList<>();
         if (imageNode == null || imageNode.isNull()) {
-            return null;
+            return urls;
         }
         if (imageNode.isTextual()) {
-            return imageNode.asText();
+            urls.add(imageNode.asText());
+            return urls;
         }
-        if (imageNode.isArray() && imageNode.size() > 0) {
-            JsonNode first = imageNode.get(0);
-            if (first.isTextual()) {
-                return first.asText();
+        if (imageNode.isArray()) {
+            for (JsonNode item : imageNode) {
+                collectImageUrlFromNode(item, urls);
             }
-            if (first.isObject()) {
-                return textOrNull(first.get("url"));
-            }
+            return urls;
         }
         if (imageNode.isObject()) {
-            return textOrNull(imageNode.get("url"));
+            collectImageUrlFromNode(imageNode, urls);
         }
-        return null;
+        return urls;
+    }
+
+    private void collectImageUrlFromNode(JsonNode node, List<String> urls) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+        if (node.isTextual()) {
+            urls.add(node.asText());
+            return;
+        }
+        if (node.isObject()) {
+            String url = firstNonBlank(
+                    textOrNull(node.get("url")),
+                    textOrNull(node.get("contentUrl")),
+                    textOrNull(node.get("@id")));
+            if (url != null) {
+                urls.add(url);
+            }
+        }
     }
 
     private String textOrNull(JsonNode node) {

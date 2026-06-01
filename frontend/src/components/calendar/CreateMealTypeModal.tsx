@@ -20,7 +20,7 @@ export function CreateMealTypeModal({ open, userId, onClose, onCreated }: Props)
     e?.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Escribe un nombre para la categoría.");
+      setError("Escribe un nombre para el tipo de comida.");
       return;
     }
     setSubmitting(true);
@@ -28,10 +28,10 @@ export function CreateMealTypeModal({ open, userId, onClose, onCreated }: Props)
     try {
       await createMealType(userId, { name: trimmed });
       setName("");
-      onCreated(`Categoría "${trimmed}" creada.`);
+      onCreated(`Tipo de comida «${trimmed}» creado.`);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo crear la categoría.");
+      setError(err instanceof Error ? err.message : "No se pudo crear el tipo de comida.");
     } finally {
       setSubmitting(false);
     }
@@ -42,7 +42,7 @@ export function CreateMealTypeModal({ open, userId, onClose, onCreated }: Props)
       <ModalPanel className="create-recipe-dialog cal-modal" aria-labelledby="create-meal-type-title">
         <form onSubmit={(e) => void handleSubmit(e)}>
           <h2 id="create-meal-type-title" className="create-recipe-dialog__title">
-            Nueva categoría de comida
+            Nuevo tipo de comida
           </h2>
           <p className="create-recipe-dialog__msg">
             Por ejemplo: Merienda, Tentempié, Brunch… Los tipos Desayuno, Comida y Cena son del sistema.

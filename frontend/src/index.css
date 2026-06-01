@@ -1511,6 +1511,23 @@ body {
 }
 .home-search__dropdown button:hover { background: rgba(45,90,39,.08); }
 
+.home-search__import-error {
+  margin: 0.35rem 0.55rem 0.5rem;
+  padding: 0.5rem 0.55rem;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: #a33;
+  background: #fff5f5;
+  border: 1px solid #e8b4b4;
+  border-radius: 6px;
+}
+
+.home-search__empty {
+  padding: 0.55rem;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
 .home-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 158px), 1fr));
@@ -4993,12 +5010,14 @@ body {
   overflow: hidden;
 }
 
-.cal-week-column .cal-day-previews {
+.cal-week-column .cal-day-previews,
+.cal-week-column .cal-day-previews--week {
   margin-top: 0;
   min-height: 4.25rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: minmax(4rem, 1fr);
   gap: 0.3rem;
+  width: 100%;
+  max-width: none;
 }
 
 @media (min-width: 768px) {
@@ -5018,11 +5037,11 @@ body {
     min-height: 5.5rem;
   }
 
-  .cal-week-column .cal-day-previews {
+  .cal-week-column .cal-day-previews,
+  .cal-week-column .cal-day-previews--week {
     min-height: 4.5rem;
     grid-template-rows: minmax(4.25rem, 1fr);
     gap: 0.35rem;
-    max-width: 32rem;
   }
 }
 
@@ -5468,6 +5487,13 @@ body {
   max-width: 420px;
   max-height: min(90vh, 38rem);
   overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  .cal-add-dialog {
+    max-width: min(36rem, 92vw);
+    max-height: min(90vh, 44rem);
+  }
 }
 
 .cal-add-dialog__count {

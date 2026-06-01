@@ -10,10 +10,11 @@ import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { ImportRecipeIngredientsDialog } from "../components/recipe/ImportRecipeIngredientsDialog";
 import { CreateCategoryModal } from "../components/home/CreateCategoryModal";
 import { appendRecipeReturnNav, mergeSearchWithReturnNav } from "../utils/recipeReturnNav";
+import { isDefaultRecipeTag } from "../constants/recipeTags";
 
 /**
- * Lists recipes for one category. Search is debounced and updates results without unmounting the input
- * (full-page loading only on first load for this category).
+ * Lists recipes for one tag (etiqueta). Search is debounced and updates results without unmounting the input
+ * (full-page loading only on first load for this tag).
  */
 export function CategoryRecipesPage() {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ export function CategoryRecipesPage() {
   const [updatingCategory, setUpdatingCategory] = useState(false);
 
   const bootstrapDoneRef = useRef(false);
-  const isDefaultCategory = categoryName.trim().toLowerCase() === "sin categoría";
+  const isDefaultCategory = isDefaultRecipeTag(categoryName);
 
   useEffect(() => {
     bootstrapDoneRef.current = false;
@@ -77,13 +78,13 @@ export function CategoryRecipesPage() {
           ]);
           if (cancelled) return;
           const cat = cats.find((c) => c.categoryId === categoryId);
-          setCategoryName(cat?.name ?? "Categoría");
+          setCategoryName(cat?.name ?? "Etiqueta");
           setRecipes(recs);
           bootstrapDoneRef.current = true;
         } catch (e) {
           if (!cancelled) {
             setError(
-              e instanceof Error ? e.message : "Error al cargar la categoría."
+              e instanceof Error ? e.message : "Error al cargar la etiqueta."
             );
           }
         } finally {
@@ -131,7 +132,7 @@ export function CategoryRecipesPage() {
       const updated = await updateRecipeCategory(userId, categoryId, name);
       setCategoryName(updated.name);
       setEditCategoryOpen(false);
-      setActionNotice("Categoría actualizada.");
+      setActionNotice("Etiqueta actualizada.");
     } finally {
       setUpdatingCategory(false);
     }
@@ -144,7 +145,7 @@ export function CategoryRecipesPage() {
 
   if (!userId) return <p className="home-error">No hay usuario en sesión.</p>;
   if (!Number.isFinite(categoryId))
-    return <p className="home-error">Categoría no válida.</p>;
+    return <p className="home-error">Etiqueta no válida.</p>;
 
   return (
     <section className="category-recipes-page" onClick={() => setOpenMenuRecipeId(null)}>
@@ -194,8 +195,8 @@ export function CategoryRecipesPage() {
           className="form-input"
           value={recipeSearch}
           onChange={(e) => setRecipeSearch(e.target.value)}
-          placeholder="Buscar recetas en esta categoría"
-          aria-label="Buscar recetas en esta categoría"
+          placeholder="Buscar recetas en esta etiqueta"
+          aria-label="Buscar recetas en esta etiqueta"
           autoComplete="off"
         />
         {searchRefreshing && (
@@ -217,7 +218,7 @@ export function CategoryRecipesPage() {
           <p className="home-category-card__empty">Cargando recetas…</p>
         ) : recipes.length === 0 ? (
           <p className="home-category-card__empty">
-            No hay recetas en esta categoría.
+            No hay recetas en esta etiqueta.
           </p>
         ) : (
           recipes.map((r) => (
@@ -312,7 +313,7 @@ export function CategoryRecipesPage() {
         <CreateCategoryModal
           open={editCategoryOpen}
           loading={updatingCategory}
-          title="Editar categoría"
+          title="Editar etiqueta"
           submitLabel="Guardar cambios"
           initialName={categoryName}
           onClose={() => setEditCategoryOpen(false)}

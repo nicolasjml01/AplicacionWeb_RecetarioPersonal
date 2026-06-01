@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 @Service
 public class RecipeService {
 
-    private static final String DEFAULT_CATEGORY_NAME = "Sin categoría";
+    private static final String DEFAULT_TAG_NAME = "Sin etiqueta";
     private final RecipeStepRepository recipeStepRepository;
     private final RecipeMediaRepository recipeMediaRepository;
     private final RecipeIngredientRepository recipeIngredientRepository;
@@ -185,8 +185,8 @@ public class RecipeService {
                     continue;
                 }
     
-                if (DEFAULT_CATEGORY_NAME.equalsIgnoreCase(normalized)) {
-                    throw new IllegalArgumentException("El nombre 'Sin categoría' está reservado.");
+                if (isReservedDefaultTagName(normalized)) {
+                    throw new IllegalArgumentException("El nombre 'Sin etiqueta' está reservado.");
                 }
     
                 RecipeCategory category = recipeCategoryRepository
@@ -202,22 +202,29 @@ public class RecipeService {
             }
         }
     
-        // If there are no categories, assign "Sin categoría"
+        // If there are no categories, assign default tag
         if (result.isEmpty()) {
-            RecipeCategory defaultCategory = recipeCategoryRepository
-                    .findByOwner_UserIdAndNameIgnoreCase(userId, DEFAULT_CATEGORY_NAME)
-                    .orElseGet(() -> createDefaultCategory(userId));
-            result.add(defaultCategory);
+            result.add(resolveDefaultCategory(userId));
         }
     
         return result;
+    }
+
+    private boolean isReservedDefaultTagName(String normalized) {
+        return DEFAULT_TAG_NAME.equalsIgnoreCase(normalized);
+    }
+
+    private RecipeCategory resolveDefaultCategory(long userId) {
+        return recipeCategoryRepository
+                .findByOwner_UserIdAndNameIgnoreCase(userId, DEFAULT_TAG_NAME)
+                .orElseGet(() -> createDefaultCategory(userId));
     }
 
     private RecipeCategory createDefaultCategory(long userId) {
         User ownerRef = userRepository.getReferenceById(userId);
         RecipeCategory c = new RecipeCategory();
         c.setOwner(ownerRef);
-        c.setName(DEFAULT_CATEGORY_NAME);
+        c.setName(DEFAULT_TAG_NAME);
         return recipeCategoryRepository.save(c);
     }
 

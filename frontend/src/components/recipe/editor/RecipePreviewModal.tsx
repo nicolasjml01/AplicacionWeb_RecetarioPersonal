@@ -46,7 +46,7 @@ export function RecipePreviewModal({
 
         {categories.length > 0 && (
           <div className="create-recipe-preview__block">
-            <h3 className="create-recipe-preview__label">Categorías</h3>
+            <h3 className="create-recipe-preview__label">Etiquetas</h3>
             <ul className="recipe-detail__chips">
               {categories.map((c) => (
                 <li key={c.categoryId}>{c.name}</li>

@@ -1,6 +1,8 @@
 package backend.recetarioPersonal.service;
 
 import backend.recetarioPersonal.exception.FileStorageException;
+import backend.recetarioPersonal.recipeimport.ImportImageFetcher;
+import backend.recetarioPersonal.recipeimport.ImportImageFetcher.DownloadedImage;
 import backend.recetarioPersonal.model.Recipe;
 import backend.recetarioPersonal.model.RecipeMedia;
 import backend.recetarioPersonal.model.RecipeStep;
@@ -14,8 +16,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import backend.recetarioPersonal.view.ImportRecipeMediaFromUrlsResponse;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Map;
 import java.util.List;
 import java.util.Objects;
@@ -32,19 +38,22 @@ public class RecipeMediaService {
     private final RecipeMediaRepository recipeMediaRepository;
     private final UserRepository userRepository;
     private final MediaStorageService mediaStorageService;
+    private final ImportImageFetcher importImageFetcher;
 
     public RecipeMediaService(
             RecipeRepository recipeRepository,
             RecipeStepRepository recipeStepRepository,
             RecipeMediaRepository recipeMediaRepository,
             UserRepository userRepository,
-            MediaStorageService mediaStorageService
+            MediaStorageService mediaStorageService,
+            ImportImageFetcher importImageFetcher
     ) {
         this.recipeRepository = recipeRepository;
         this.recipeStepRepository = recipeStepRepository;
         this.recipeMediaRepository = recipeMediaRepository;
         this.userRepository = userRepository;
         this.mediaStorageService = mediaStorageService;
+        this.importImageFetcher = importImageFetcher;
     }
 
     /**
@@ -123,6 +132,58 @@ public class RecipeMediaService {
         }
 
         return toDto(saved);
+    }
+
+    /**
+     * Downloads images from public URLs (recipe import) and attaches them to the recipe gallery.
+     */
+    @Transactional
+    public ImportRecipeMediaFromUrlsResponse importFromUrls(long userId, long recipeId, List<String> urls) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + userId));
+        Recipe recipe = recipeRepository.findByRecipeIdAndOwner_UserId(recipeId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Receta no encontrada: " + recipeId));
+
+        List<RecipeMediaDto> imported = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+
+        if (urls == null || urls.isEmpty()) {
+            return new ImportRecipeMediaFromUrlsResponse(imported, warnings);
+        }
+
+        int nextOrder = recipeMediaRepository.maxDisplayOrderGlobal(recipeId) + 1;
+        for (String raw : urls) {
+            if (imported.size() >= 1) {
+                break;
+            }
+            Optional<DownloadedImage> downloaded = importImageFetcher.fetch(raw);
+            if (downloaded.isEmpty()) {
+                continue;
+            }
+            DownloadedImage image = downloaded.get();
+            try {
+                String relative = mediaStorageService.storeBytes(
+                        userId, recipeId, image.data(), image.contentType(), image.filename());
+
+                RecipeMedia entity = new RecipeMedia();
+                entity.setRecipe(recipe);
+                entity.setStep(null);
+                entity.setRelativePath(relative);
+                entity.setContentType(image.contentType());
+                entity.setOriginalFilename(image.filename());
+                entity.setDisplayOrder(nextOrder);
+
+                imported.add(toDto(recipeMediaRepository.save(entity)));
+            } catch (IOException e) {
+                warnings.add("No se pudo guardar la portada importada.");
+            }
+        }
+
+        if (imported.isEmpty()) {
+            warnings.add("No se pudo importar la portada desde el enlace (el sitio puede bloquear la descarga).");
+        }
+
+        return new ImportRecipeMediaFromUrlsResponse(imported, warnings);
     }
 
     @Transactional

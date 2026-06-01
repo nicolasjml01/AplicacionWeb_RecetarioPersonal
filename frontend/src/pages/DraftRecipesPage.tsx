@@ -75,7 +75,7 @@ export function DraftRecipesPage() {
       </header>
 
       <p className="create-recipe-hint" style={{ marginTop: "0.5rem" }}>
-        Las recetas en borrador no aparecen en el inicio ni en las categorías hasta que pulses{" "}
+        Las recetas en borrador no aparecen en el inicio ni en las etiquetas hasta que pulses{" "}
         <strong>Publicar</strong> al editarlas.
       </p>
 

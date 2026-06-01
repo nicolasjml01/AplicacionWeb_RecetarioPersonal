@@ -1,6 +1,5 @@
-import type { CalendarEntryDto, CalendarRangeDto } from "../../types/calendar";
-import { DayRecipePreviews } from "./DayRecipePreviews";
-import { collectDayEntries } from "./collectDayEntries";
+import type { CalendarRangeDto, MealBlockDto } from "../../types/calendar";
+import { WeekDayRecipePreviews } from "./WeekDayRecipePreviews";
 import { toIsoDate, WEEKDAY_LABELS, weekdayDates } from "../../utils/calendarDates";
 
 type Props = {
@@ -14,7 +13,7 @@ export function CalendarWeekView({ range, weekMonday, loading, onSelectDay }: Pr
   const days = weekdayDates(weekMonday);
   const dayMap = new Map(range?.days.map((d) => [d.date, d]) ?? []);
 
-  if (loading) {
+  if (loading && !range) {
     return <p className="cal-hint">Cargando semana…</p>;
   }
 
@@ -26,7 +25,7 @@ export function CalendarWeekView({ range, weekMonday, loading, onSelectDay }: Pr
           const isToday = iso === toIsoDate(new Date());
           const dayData = dayMap.get(iso);
           const dowIndex = d.getDay() === 0 ? 6 : d.getDay() - 1;
-          const entries = collectDayEntries(dayData);
+          const mealBlocks = dayData?.mealBlocks ?? [];
 
           return (
             <WeekDayColumn
@@ -35,7 +34,7 @@ export function CalendarWeekView({ range, weekMonday, loading, onSelectDay }: Pr
               dowLabel={WEEKDAY_LABELS[dowIndex]}
               dayNum={d.getDate()}
               isToday={isToday}
-              entries={entries}
+              mealBlocks={mealBlocks}
               onSelectDay={onSelectDay}
             />
           );
@@ -51,16 +50,17 @@ function WeekDayColumn({
   dowLabel,
   dayNum,
   isToday,
-  entries,
+  mealBlocks,
   onSelectDay,
 }: {
   iso: string;
   dowLabel: string;
   dayNum: number;
   isToday: boolean;
-  entries: CalendarEntryDto[];
+  mealBlocks: MealBlockDto[];
   onSelectDay: (iso: string) => void;
 }) {
+  const hasEntries = mealBlocks.some((b) => b.entries.length > 0);
   return (
     <button
       type="button"
@@ -75,12 +75,12 @@ function WeekDayColumn({
       </header>
 
       <div className="cal-week-column__body">
-        {entries.length === 0 ? (
+        {!hasEntries ? (
           <div className="cal-week-column__empty" aria-hidden>
             <span className="cal-week-column__add-icon">+</span>
           </div>
         ) : (
-          <DayRecipePreviews entries={entries} />
+          <WeekDayRecipePreviews mealBlocks={mealBlocks} />
         )}
       </div>
     </button>

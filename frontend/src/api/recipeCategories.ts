@@ -4,7 +4,7 @@ import { apiFetch } from "./http";
 
 export async function getRecipeCategories(userId: number): Promise<RecipeCategoryDto[]> {
   const res = await apiFetch(`/api/users/${userId}/recipe-categories`);
-  if (!res.ok) throw new Error("No se pudieron cargar las categorías.");
+  if (!res.ok) throw new Error("No se pudieron cargar las etiquetas.");
   return res.json() as Promise<RecipeCategoryDto[]>;
 }
 
@@ -16,7 +16,7 @@ export async function createRecipeCategory(userId: number, name: string): Promis
   });
 
   if (!res.ok) {
-    let message = "No se pudo crear la categoría.";
+    let message = "No se pudo crear la etiqueta.";
     try {
       const body = (await res.json()) as { message?: string };
       if (body.message) message = body.message;
@@ -41,7 +41,7 @@ export async function updateRecipeCategory(
   });
 
   if (!res.ok) {
-    let message = "No se pudo actualizar la categoría.";
+    let message = "No se pudo actualizar la etiqueta.";
     try {
       const body = (await res.json()) as { message?: string };
       if (body.message) message = body.message;
@@ -60,7 +60,7 @@ export async function deleteRecipeCategory(userId: number, categoryId: number): 
   });
 
   if (!res.ok) {
-    let message = "No se pudo eliminar la categoría.";
+    let message = "No se pudo eliminar la etiqueta.";
     try {
       const body = (await res.json()) as { message?: string };
       if (body.message) message = body.message;

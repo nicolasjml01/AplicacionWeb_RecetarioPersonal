@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useOverlayDismiss } from "../../hooks/useOverlayDismiss";
+import { isDefaultRecipeTag } from "../../constants/recipeTags";
 import type { RecipeDto, RecipeCategoryDto } from "../../types/recipes";
 import { RecipeMiniTile } from "../recipe/RecipeMiniTile";
 
@@ -22,7 +23,7 @@ export function CategoryCard({
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuWrapRef = useRef<HTMLDivElement | null>(null);
-  const isDefaultCategory = category.name.trim().toLowerCase() === "sin categoría";
+  const isDefaultCategory = isDefaultRecipeTag(category.name);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
@@ -79,7 +80,7 @@ export function CategoryCard({
                   onEditCategory(category);
                 }}
               >
-                Editar categoría
+                Editar etiqueta
               </button>
               <button
                 type="button"
@@ -90,7 +91,7 @@ export function CategoryCard({
                   onDeleteCategory(category);
                 }}
               >
-                Eliminar categoría
+                Eliminar etiqueta
               </button>
             </div>
           )}

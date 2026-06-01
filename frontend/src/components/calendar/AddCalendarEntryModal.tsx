@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { assignCalendarEntry } from "../../api/calendar";
 import { searchMealTypes } from "../../api/mealTypes";
+import { getRecipeCategories } from "../../api/recipeCategories";
 import { getRecipes } from "../../api/recipes";
+import { buildRecipeSearchOptions } from "../../utils/buildRecipeSearchOptions";
 import type { MealTypeDto } from "../../types/calendar";
 import type { RecipeDto } from "../../types/recipes";
 import { RECIPE_DEFAULT_COVER_PATH } from "../../constants/recipeAssets";
@@ -25,6 +27,7 @@ export function AddCalendarEntryModal({ open, userId, planDate, onClose, onAdded
   const [customMealName, setCustomMealName] = useState("");
 
   const [recipeQuery, setRecipeQuery] = useState("");
+  const [recipeTags, setRecipeTags] = useState<{ categoryId: number; name: string }[]>([]);
   const [recipes, setRecipes] = useState<RecipeDto[]>([]);
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<number[]>([]);
 
@@ -46,6 +49,7 @@ export function AddCalendarEntryModal({ open, userId, planDate, onClose, onAdded
       setSelectedMeal(null);
       setCustomMealName("");
       setRecipeQuery("");
+      setRecipeTags([]);
       setRecipes([]);
       setSelectedRecipeIds([]);
       setError("");
@@ -62,6 +66,13 @@ export function AddCalendarEntryModal({ open, userId, planDate, onClose, onAdded
       })
       .finally(() => {
         if (!cancelled) setLoadingMeals(false);
+      });
+    void getRecipeCategories(userId)
+      .then((list) => {
+        if (!cancelled) setRecipeTags(list);
+      })
+      .catch(() => {
+        if (!cancelled) setRecipeTags([]);
       });
     return () => {
       cancelled = true;
@@ -84,13 +95,14 @@ export function AddCalendarEntryModal({ open, userId, planDate, onClose, onAdded
     if (!open) return;
     const t = window.setTimeout(() => {
       setLoadingRecipes(true);
-      void getRecipes(userId, { recipeSearch: recipeQuery.trim() || undefined })
+      const searchOpts = buildRecipeSearchOptions(recipeQuery, recipeTags);
+      void getRecipes(userId, searchOpts)
         .then(setRecipes)
         .catch(() => setRecipes([]))
         .finally(() => setLoadingRecipes(false));
     }, 300);
     return () => window.clearTimeout(t);
-  }, [open, userId, recipeQuery]);
+  }, [open, userId, recipeQuery, recipeTags]);
 
   const mealLabel = useMemo(() => {
     if (selectedMeal) return selectedMeal.name;
@@ -241,7 +253,11 @@ export function AddCalendarEntryModal({ open, userId, planDate, onClose, onAdded
               value={recipeQuery}
               disabled={!hasMealType}
               onChange={(e) => setRecipeQuery(e.target.value)}
-              placeholder={hasMealType ? "Buscar en tu recetario…" : "Primero elige tipo de comida"}
+              placeholder={
+                hasMealType
+                  ? "Buscar receta o etiqueta (p. ej. Pastas)…"
+                  : "Primero elige tipo de comida"
+              }
             />
           </div>
           {!hasMealType && (

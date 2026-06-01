@@ -53,6 +53,26 @@ export async function replaceRecipeMediaContent(
   return res.json() as Promise<RecipeMediaDto>;
 }
 
+export type ImportRecipeMediaFromUrlsResponse = {
+  media: RecipeMediaDto[];
+  warnings: string[];
+};
+
+export async function importRecipeMediaFromUrls(
+  userId: number,
+  recipeId: number,
+  urls: string[],
+): Promise<ImportRecipeMediaFromUrlsResponse> {
+  const url = `/api/users/${userId}/recipes/${recipeId}/media/import-from-urls`;
+  const res = await apiFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ urls }),
+  });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return res.json() as Promise<ImportRecipeMediaFromUrlsResponse>;
+}
+
 export async function reorderRecipeMedia(
   userId: number,
   recipeId: number,

@@ -16,12 +16,11 @@ import { CreateCategoryModal } from "../components/home/CreateCategoryModal";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { appendRecipeReturnNav, type RecipeReturnNav } from "../utils/recipeReturnNav";
+import { isDefaultRecipeTag } from "../constants/recipeTags";
 
 type SearchResult =
   | { type: "category"; id: number; label: string }
   | { type: "recipe"; id: number; label: string };
-
-const DEFAULT_CATEGORY = "Sin categoría";
 
 export function Home() {
   const navigate = useNavigate();
@@ -169,7 +168,7 @@ export function Home() {
       );
       setPendingDeleteCategory(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo eliminar la categoría.");
+      setError(e instanceof Error ? e.message : "No se pudo eliminar la etiqueta.");
       setPendingDeleteCategory(null);
     } finally {
       setDeletingCategory(false);
@@ -195,6 +194,7 @@ export function Home() {
       });
     } catch (e) {
       setImportError(e instanceof Error ? e.message : "No se pudo importar la receta.");
+      setIsSearchOpen(true);
     } finally {
       setImportingFromUrl(false);
     }
@@ -211,6 +211,7 @@ export function Home() {
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
+              setImportError("");
               setIsSearchOpen(true);
             }}
             onFocus={() => setIsSearchOpen(true)}
@@ -229,17 +230,24 @@ export function Home() {
                 handleOpenRecipe(first.id);
               }
             }}
-            placeholder="Buscar categoría / receta / Importar receta desde enlace"
-            aria-label="Buscar categoría / receta / Importar receta desde enlace"
+            placeholder="Buscar etiqueta / receta / Importar receta desde enlace"
+            aria-label="Buscar etiqueta / receta / Importar receta desde enlace"
           />
           {search.trim() && isSearchOpen && (
             <div className="home-search__dropdown" role="listbox" aria-label="Resultados de búsqueda">
+              {importError && (
+                <p className="home-search__import-error" role="alert">
+                  {importError}
+                </p>
+              )}
               {isSearchUrl && (
                 <button type="button" onClick={handleImportFromSearchUrl} disabled={importingFromUrl}>
                   {importingFromUrl ? "⏳ Importando receta..." : "🌐 Importar receta desde este enlace"}
                 </button>
               )}
-              {searchResults.length === 0 && <div className="home-search__empty">Sin coincidencias</div>}
+              {!isSearchUrl && searchResults.length === 0 && (
+                <div className="home-search__empty">Sin coincidencias</div>
+              )}
               {searchResults.map((r) =>
                 r.type === "category" ? (
                   <button type="button" key={`c-${r.id}`} onClick={() => handleOpenCategory(r.id)}>
@@ -276,7 +284,7 @@ export function Home() {
       </div>
 
       {error && <p className="home-error">{error}</p>}
-      {importError && <p className="home-error">{importError}</p>}
+      {importError && !isSearchOpen && <p className="home-error">{importError}</p>}
 
       <div className="home-grid">
         {categories.map((c) => (
@@ -308,7 +316,7 @@ export function Home() {
       <CreateCategoryModal
         open={editingCategory != null}
         loading={updatingCategory}
-        title="Editar categoría"
+        title="Editar etiqueta"
         submitLabel="Guardar cambios"
         initialName={editingCategory?.name ?? ""}
         onClose={() => setEditingCategory(null)}
@@ -317,15 +325,15 @@ export function Home() {
 
       <ConfirmDialog
         open={pendingDeleteCategory != null}
-        title="¿Eliminar esta categoría?"
+        title="¿Eliminar esta etiqueta?"
         message={
           pendingDeleteCategory
             ? (() => {
                 const count = recipesByCategoryId.get(pendingDeleteCategory.categoryId)?.length ?? 0;
                 if (count > 0) {
-                  return `Se eliminará "${pendingDeleteCategory.name}". Las ${count} receta${count === 1 ? "" : "s"} de esta categoría no se borrarán; solo dejarán de estar agrupadas aquí.`;
+                  return `Se eliminará "${pendingDeleteCategory.name}". Las ${count} receta${count === 1 ? "" : "s"} de esta etiqueta no se borrarán; solo dejarán de estar agrupadas aquí.`;
                 }
-                return `Se eliminará la categoría "${pendingDeleteCategory.name}". Esta acción no se puede deshacer.`;
+                return `Se eliminará la etiqueta "${pendingDeleteCategory.name}". Esta acción no se puede deshacer.`;
               })()
             : ""
         }
@@ -344,8 +352,8 @@ export function Home() {
 function sortCategories(items: RecipeCategoryDto[]): RecipeCategoryDto[] {
   const copy = [...items];
   copy.sort((a, b) => {
-    const aDefault = a.name.trim().toLowerCase() === DEFAULT_CATEGORY.toLowerCase();
-    const bDefault = b.name.trim().toLowerCase() === DEFAULT_CATEGORY.toLowerCase();
+    const aDefault = isDefaultRecipeTag(a.name);
+    const bDefault = isDefaultRecipeTag(b.name);
     if (aDefault && !bDefault) return -1;
     if (!aDefault && bDefault) return 1;
     return a.name.localeCompare(b.name, "es", { sensitivity: "base" });

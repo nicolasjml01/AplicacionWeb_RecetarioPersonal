@@ -1,6 +1,8 @@
 package backend.recetarioPersonal.controller;
 
 import backend.recetarioPersonal.service.RecipeMediaService;
+import backend.recetarioPersonal.view.ImportRecipeMediaFromUrlsRequest;
+import backend.recetarioPersonal.view.ImportRecipeMediaFromUrlsResponse;
 import backend.recetarioPersonal.view.RecipeMediaDto;
 import backend.recetarioPersonal.view.UpdateRecipeMediaOrderRequest;
 import jakarta.validation.Valid;
@@ -28,6 +30,16 @@ public class RecipeMediaController {
     /**
      * multipart: field "file". Optional: stepId (query) to attach to the step; without stepId = global recipe media.
      */
+    @PostMapping(value = "/import-from-urls", consumes = "application/json")
+    public ResponseEntity<ImportRecipeMediaFromUrlsResponse> importFromUrls(
+            @PathVariable long userId,
+            @PathVariable long recipeId,
+            @RequestBody @Valid ImportRecipeMediaFromUrlsRequest request) {
+        ImportRecipeMediaFromUrlsResponse response =
+                recipeMediaService.importFromUrls(userId, recipeId, request.urls());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<RecipeMediaDto> upload(
             @PathVariable long userId,

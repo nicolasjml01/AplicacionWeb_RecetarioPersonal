@@ -18,7 +18,7 @@ export function CalendarMonthView({ range, monthAnchor, loading, selectedIso, on
   const todayIso = toIsoDate(new Date());
   const dayMap = new Map(range?.days.map((d) => [d.date, d]) ?? []);
 
-  if (loading) {
+  if (loading && !range) {
     return <p className="cal-hint">Cargando mes…</p>;
   }
 

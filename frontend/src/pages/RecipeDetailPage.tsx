@@ -308,7 +308,7 @@ export function RecipeDetailPage() {
         {!loading && !error && recipe && recipe.publicationState === "DRAFT" && (
           <div className="recipe-detail__draft-banner" role="status">
             <p>
-              Esta receta es un <strong>borrador</strong>: no aparece en el inicio ni en las categorías hasta
+              Esta receta es un <strong>borrador</strong>: no aparece en el inicio ni en las etiquetas hasta
               que la publiques desde el editor.
             </p>
             <Link
@@ -323,7 +323,7 @@ export function RecipeDetailPage() {
         {!loading && !error && recipe && (
           <div className="recipe-detail__content recipe-detail__content--editorial">
             {recipe.categories.length > 0 && (
-              <div className="recipe-detail__meta" aria-label="Categorías">
+              <div className="recipe-detail__meta" aria-label="Etiquetas">
                 <ul className="recipe-detail__chips">
                   {recipe.categories.map((c) => (
                     <li key={c.categoryId}>{c.name}</li>
