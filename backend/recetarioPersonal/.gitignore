@@ -1,4 +1,3 @@
-HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -37,11 +36,8 @@ build/
 *.tmp
 logs/
 
-### Config local / secretos (no subir) ###
-application-local.properties
-application-*.local.properties
+### Secretos (no subir) ###
 .env
-.env.local
 
 ### Windows ###
 Thumbs.db

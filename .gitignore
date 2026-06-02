@@ -20,11 +20,9 @@ out/
 
 # Entornos y secretos
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 *.pem
-application-*.local.properties
-application-local.properties
 
 # Logs y temporales en raíz
 *.log

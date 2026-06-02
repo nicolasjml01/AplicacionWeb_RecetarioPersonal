@@ -1,6 +1,5 @@
 /**
- * API root URL.
- * - Empty string: same origin (Vite proxy in dev, nginx in Docker/VM).
- * - Set VITE_API_URL only when the browser must call the backend on another host (e.g. phone → LAN IP:8080).
+ * API root URL. Leave empty in .env so nginx proxies /api and /media (Docker / VM).
+ * Set VITE_API_URL only if the browser must call another host explicitly.
  */
 export const API_BASE = import.meta.env.VITE_API_URL ?? "";

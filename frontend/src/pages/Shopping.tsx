@@ -148,13 +148,11 @@ export function Shopping() {
   useEffect(() => {
     if (userId == null) return;
     loadCatalog();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   useEffect(() => {
     if (userId == null) return;
     loadList();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   // Debounced ingredient search
