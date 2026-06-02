@@ -1,5 +1,7 @@
 # Despliegue con Docker
 
+Para preparar una **VM Alpine Linux** desde cero (paquetes, usuario, firewall, clonado y `.env`), ver [DESPLIEGUE-ALPINE-VM.md](DESPLIEGUE-ALPINE-VM.md).
+
 Stack: **PostgreSQL 16** + **Spring Boot (Java 21)** + **React (Vite 7) + nginx 1.27**.
 
 Solo se expone el puerto **80** (frontend). nginx sirve la SPA y hace proxy de `/api` y `/media` al backend.
