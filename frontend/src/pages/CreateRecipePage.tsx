@@ -289,6 +289,7 @@ export function CreateRecipePage() {
   const [ingredientModalSaving, setIngredientModalSaving] = useState(false);
   const [ingredientModalError, setIngredientModalError] = useState("");
   const [steps, setSteps] = useState<StepRow[]>([makeLocalStep(1)]);
+  const [showStepKeyboardHint, setShowStepKeyboardHint] = useState(false);
 
   const [submitError, setSubmitError] = useState("");
   const [publishing, setPublishing] = useState(false);
@@ -395,6 +396,14 @@ export function CreateRecipePage() {
         setUnits([]);
       })
       .finally(() => setLoadingUnits(false));
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: fine)");
+    const sync = () => setShowStepKeyboardHint(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   useEffect(() => {
@@ -1774,7 +1783,7 @@ export function CreateRecipePage() {
                     onInput={(e) => autoGrowTextarea(e.currentTarget)}
                     onKeyDown={(e) => handleStepKeyDown(e, index === steps.length - 1)}
                     placeholder={
-                      index === steps.length - 1
+                      index === steps.length - 1 && showStepKeyboardHint
                         ? "Describe este paso… (Ctrl+Enter para añadir otro)"
                         : "Describe este paso…"
                     }
@@ -1787,7 +1796,7 @@ export function CreateRecipePage() {
               type="button"
               className="create-recipe-add-step create-recipe-add-step--bottom"
               onClick={() => void addStepRowAndFocus()}
-              title="También puedes pulsar Ctrl+Enter en el último paso"
+              title={showStepKeyboardHint ? "También puedes pulsar Ctrl+Enter en el último paso" : undefined}
             >
               + Añadir paso
             </button>

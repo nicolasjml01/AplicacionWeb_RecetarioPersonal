@@ -1168,7 +1168,7 @@ body {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   width: 100%;
   max-width: none;
   transform: none;
@@ -1176,7 +1176,7 @@ body {
   background: var(--color-bg);
   border-top: 1px solid var(--color-border);
   box-sizing: border-box;
-  z-index: 110;
+  z-index: 95;
 }
 
 .shopping-search-overlay {
@@ -1384,19 +1384,6 @@ body {
 .shopping-top-strip {
   max-height: none;
   overflow: visible;
-}
-
-.shopping-search-fixed {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-  width: 100%;
-  max-width: none;
-  transform: none;
-  padding: 0.6rem var(--page-padding-x);
-  box-sizing: border-box;
-  z-index: 95;
 }
 
 @media (min-width: 768px) {
@@ -3293,7 +3280,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  z-index: 90;
+  z-index: 1400;
 }
 
 .upload-staging-dialog {
@@ -3449,7 +3436,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0.5rem;
-  z-index: 100;
+  z-index: 1400;
 }
 
 .image-editor-dialog {
@@ -4036,7 +4023,7 @@ body {
   }
 
   .create-recipe-page {
-    padding-bottom: 5.25rem;
+    padding-bottom: calc(var(--app-bottom-nav-height) + 4.5rem + env(safe-area-inset-bottom, 0px));
   }
 
   .create-recipe-card {
@@ -4051,14 +4038,19 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .create-recipe-category-dropdown,
+  .create-recipe-ingredient-suggest {
+    z-index: 110;
+  }
+
   .create-recipe-actions {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
-    z-index: 25;
+    bottom: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    z-index: 95;
     margin: 0;
-    padding: 0.75rem 0.85rem calc(0.75rem + env(safe-area-inset-bottom));
+    padding: 0.75rem 0.85rem;
     background: rgba(250, 247, 242, 0.97);
     border-top: 1px solid var(--color-border);
     backdrop-filter: blur(6px);
