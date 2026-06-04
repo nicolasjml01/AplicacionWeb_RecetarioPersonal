@@ -103,10 +103,11 @@ export function Shopping() {
   }
 
   async function loadUnits() {
+    if (userId == null) return;
     setLoadingUnits(true);
     setUnitsError("");
     try {
-      const data = await getUnits();
+      const data = await getUnits(userId);
       setUnits(data);
     } catch (e) {
       setUnitsError(e instanceof Error ? e.message : "No se pudieron cargar las unidades.");

@@ -6,5 +6,6 @@ package backend.recetarioPersonal.view;
 public record UnitOfMeasureDto(
     Long unitId,
     String name,
-    String symbol
+    String symbol,
+    boolean userOwned
 ) {}

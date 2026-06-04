@@ -176,7 +176,11 @@ public class CalendarShoppingImportService {
         if (unit == null) {
             return null;
         }
-        return new UnitOfMeasureDto(unit.getUnitId(), unit.getName(), unit.getSymbol());
+        return new UnitOfMeasureDto(
+                unit.getUnitId(),
+                unit.getName(),
+                unit.getSymbol(),
+                unit.getOwner() != null);
     }
 
     private static final class AggregatedLine {

@@ -52,7 +52,7 @@ export function ImportRecipeIngredientsDialog({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const { units, loadingUnits } = useShoppingUnits(open);
+  const { units, loadingUnits } = useShoppingUnits(userId, open);
 
   useEffect(() => {
     if (!open || !userId || recipeId == null || !Number.isFinite(recipeId)) {

@@ -66,7 +66,7 @@ public class RecipeIngredientService {
 
         UnitOfMeasure unit = null;
         if (request.measurementUnit() != null && !request.measurementUnit().isBlank()) {
-            unit = unitOfMeasureService.findOrCreateByName(request.measurementUnit().trim());
+            unit = unitOfMeasureService.findOrCreateByName(request.measurementUnit().trim(), userId);
         }
 
         int nextOrder = recipeIngredientRepository.findByRecipe_RecipeIdOrderByDisplayOrderAsc(recipeId)
@@ -107,7 +107,7 @@ public class RecipeIngredientService {
             if (request.measurementUnit().isBlank()) {
                 row.setUnitOfMeasure(null);
             } else {
-                row.setUnitOfMeasure(unitOfMeasureService.findOrCreateByName(request.measurementUnit().trim()));
+                row.setUnitOfMeasure(unitOfMeasureService.findOrCreateByName(request.measurementUnit().trim(), userId));
             }
         }
         return toDto(recipeIngredientRepository.save(row));
@@ -205,11 +205,9 @@ public class RecipeIngredientService {
         Ingredient i = row.getIngredient();
         IngredientDto ingredientDto = ingredientService.toDto(i);
 
-        UnitOfMeasureDto unitDto = row.getUnitOfMeasure() == null ? null : new UnitOfMeasureDto(
-                row.getUnitOfMeasure().getUnitId(),
-                row.getUnitOfMeasure().getName(),
-                row.getUnitOfMeasure().getSymbol()
-        );
+        UnitOfMeasureDto unitDto = row.getUnitOfMeasure() == null
+                ? null
+                : unitOfMeasureService.toDto(row.getUnitOfMeasure());
 
         return new RecipeIngredientDto(
                 row.getRecipeIngredientId(),

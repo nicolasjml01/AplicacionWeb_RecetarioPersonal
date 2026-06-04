@@ -6,7 +6,6 @@ import type {
   ShoppingListItemDto,
   UpdateOwnedIngredientRequest,
   UpdateShoppingListItemRequest,
-  UnitOfMeasureDto,
 } from "../types/shopping";
 
 import { apiFetch } from "./http";
@@ -35,11 +34,8 @@ export async function searchIngredients(
   return (await res.json()) as IngredientDto[];
 }
 
-export async function getUnits(): Promise<UnitOfMeasureDto[]> {
-  const res = await apiFetch(`/api/units-of-measure`);
-  if (!res.ok) throw new Error(await readErrorMessage(res));
-  return (await res.json()) as UnitOfMeasureDto[];
-}
+export { getUnits, getOwnedUnits, updateOwnedUnit, deleteOwnedUnit } from "./units";
+export type { UpdateOwnedUnitRequest, DeleteOwnedUnitResponse } from "../types/shopping";
 
 export async function getShoppingList(
   userId: number,

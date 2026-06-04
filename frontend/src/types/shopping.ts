@@ -2,6 +2,19 @@ export interface UnitOfMeasureDto {
   unitId: number;
   name: string;
   symbol: string | null;
+  /** True when created by the current user (editable in Account). */
+  userOwned: boolean;
+}
+
+export interface UpdateOwnedUnitRequest {
+  name: string;
+  symbol?: string | null;
+}
+
+export interface DeleteOwnedUnitResponse {
+  message: string;
+  recipeIngredientLinesCleared: number;
+  shoppingListItemsCleared: number;
 }
 
 export interface IngredientDto {

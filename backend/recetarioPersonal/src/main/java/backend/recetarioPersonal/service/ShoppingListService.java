@@ -93,7 +93,7 @@ public class ShoppingListService {
 
         UnitOfMeasure unit = null;
         if (measurementUnit != null && !measurementUnit.isBlank()) {
-            unit = unitOfMeasureService.findOrCreateByName(measurementUnit.trim());
+            unit = unitOfMeasureService.findOrCreateByName(measurementUnit.trim(), userId);
         }
 
         Long unitId = unit != null ? unit.getUnitId() : null;
@@ -149,7 +149,7 @@ public class ShoppingListService {
             if (request.measurementUnit().isBlank()) {
                 item.setUnitOfMeasure(null);
             } else {
-                item.setUnitOfMeasure(unitOfMeasureService.findOrCreateByName(request.measurementUnit()));
+                item.setUnitOfMeasure(unitOfMeasureService.findOrCreateByName(request.measurementUnit(), userId));
             }
         }
 
@@ -173,11 +173,7 @@ public class ShoppingListService {
         IngredientDto ingredientDto = ingredientToDto(item.getIngredient());
 
         UnitOfMeasureDto unitDto = item.getUnitOfMeasure() != null
-                ? new UnitOfMeasureDto(
-                item.getUnitOfMeasure().getUnitId(),
-                item.getUnitOfMeasure().getName(),
-                item.getUnitOfMeasure().getSymbol()
-        )
+                ? unitOfMeasureService.toDto(item.getUnitOfMeasure())
                 : null;
 
         return new ShoppingListItemDto(

@@ -1,3 +1,11 @@
+import {
+  buildGluedUnitPattern,
+  buildSpacedUnitPattern,
+  isKnownUnitToken,
+  resolveUnitToken,
+} from "./unitParsing";
+import type { UnitOfMeasureDto } from "../types/shopping";
+
 export type ParsedImportedIngredient = {
   rawText: string;
   ingredientName: string;
@@ -7,59 +15,6 @@ export type ParsedImportedIngredient = {
 
 const NUMBER_TOKEN =
   "(\\d+(?:[.,]\\d+)?|\\d+\\s*/\\s*\\d+|[½¼¾⅓⅔])";
-
-/** Units that may appear glued to the number: 100g, 20ml, 2count */
-const GLUED_UNIT =
-  "g|gr|gram|grams|gramo|gramos|kg|kilogramo|kilogramos|ml|mililitro|mililitros|l|litro|litros|count|unit|units|ud|uds|unidad|unidades";
-
-const RE_QTY_GLUED_UNIT_NAME = new RegExp(
-  `^${NUMBER_TOKEN}\\s*(${GLUED_UNIT})\\s+(.+)$`,
-  "iu",
-);
-
-const RE_QTY_UNIT_NAME = new RegExp(
-  `^${NUMBER_TOKEN}\\s+(${GLUED_UNIT}|cucharada|cucharadas|cucharadita|cucharaditas|pizca|pizcas|vaso|vasos|taza|tazas|bolsa|bolsas|manojo|manojos|diente|dientes|ramita|ramitas|hoja|hojas)\\s+(?:de\\s+|del\\s+)?(.+)$`,
-  "iu",
-);
-
-const RE_QTY_NAME = new RegExp(`^${NUMBER_TOKEN}\\s+(.+)$`, "iu");
-
-const RE_UNIT_NAME = new RegExp(
-  `^(${GLUED_UNIT}|cucharada|cucharadas|cucharadita|cucharaditas|pizca|pizcas|vaso|vasos|taza|tazas|bolsa|bolsas|manojo|manojos|diente|dientes|ramita|ramitas|hoja|hojas)\\s+(.+)$`,
-  "iu",
-);
-
-const UNIT_TO_CATALOG: Record<string, string> = {
-  g: "Gramo",
-  gr: "Gramo",
-  gram: "Gramo",
-  grams: "Gramo",
-  gramo: "Gramo",
-  gramos: "Gramo",
-  kg: "Kilogramo",
-  kilogramo: "Kilogramo",
-  kilogramos: "Kilogramo",
-  ml: "Mililitro",
-  mililitro: "Mililitro",
-  mililitros: "Mililitro",
-  l: "Litro",
-  litro: "Litro",
-  litros: "Litro",
-  unidad: "Unidad",
-  unidades: "Unidad",
-  ud: "Unidad",
-  uds: "Unidad",
-  count: "Unidad",
-  unit: "Unidad",
-  units: "Unidad",
-  piece: "Unidad",
-  pieces: "Unidad",
-};
-
-function normalizeUnit(token: string): string {
-  const key = token.toLowerCase().replace(/\.$/, "");
-  return UNIT_TO_CATALOG[key] ?? token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
-}
 
 function parseQuantityToken(token: string): number | null {
   const t = token.trim();
@@ -103,11 +58,33 @@ function build(
 function tryQtyUnitName(
   trimmed: string,
   re: RegExp,
+  units: UnitOfMeasureDto[],
 ): ParsedImportedIngredient | null {
   const m = re.exec(trimmed);
   if (!m) return null;
   const quantity = parseQuantityToken(m[1]);
-  const unit = normalizeUnit(m[2]);
+  const unitToken = m[2];
+  if (!isKnownUnitToken(unitToken, units)) return null;
+  const unit = resolveUnitToken(unitToken, units);
+  const name = m[3].trim();
+  if (!name) return null;
+  return build(trimmed, name, quantity, unit);
+}
+
+function tryQtyGenericUnitName(
+  trimmed: string,
+  units: UnitOfMeasureDto[],
+): ParsedImportedIngredient | null {
+  const re = new RegExp(
+    `^${NUMBER_TOKEN}\\s+(\\S+)\\s+(?:de\\s+|del\\s+)?(.+)$`,
+    "iu",
+  );
+  const m = re.exec(trimmed);
+  if (!m) return null;
+  const unitToken = m[2];
+  if (!isKnownUnitToken(unitToken, units)) return null;
+  const quantity = parseQuantityToken(m[1]);
+  const unit = resolveUnitToken(unitToken, units);
   const name = m[3].trim();
   if (!name) return null;
   return build(trimmed, name, quantity, unit);
@@ -115,6 +92,7 @@ function tryQtyUnitName(
 
 /**
  * Best-effort parse of a single ingredient line from external recipe sites (ES/EN).
+ * Pass {@code units} from the user catalog so custom abbreviations (e.g. chrd) resolve correctly.
  */
 export function parseImportedIngredientLine(
   rawText: string,
@@ -123,6 +101,7 @@ export function parseImportedIngredientLine(
     quantity?: number | null;
     measurementUnit?: string | null;
   },
+  units: UnitOfMeasureDto[] = [],
 ): ParsedImportedIngredient {
   const trimmed = rawText.trim();
   if (!trimmed) {
@@ -147,13 +126,27 @@ export function parseImportedIngredientLine(
     return build(trimmed, trimmed, null, null);
   }
 
-  const glued = tryQtyUnitName(trimmed, RE_QTY_GLUED_UNIT_NAME);
+  const gluedPattern = buildGluedUnitPattern(units);
+  const spacedPattern = buildSpacedUnitPattern(units);
+
+  const reGlued = new RegExp(`^${NUMBER_TOKEN}\\s*(${gluedPattern})\\s+(.+)$`, "iu");
+  const reSpaced = new RegExp(
+    `^${NUMBER_TOKEN}\\s+(${spacedPattern})\\s+(?:de\\s+|del\\s+)?(.+)$`,
+    "iu",
+  );
+  const reUnitName = new RegExp(`^(${spacedPattern})\\s+(.+)$`, "iu");
+
+  const glued = tryQtyUnitName(trimmed, reGlued, units);
   if (glued) return glued;
 
-  const spaced = tryQtyUnitName(trimmed, RE_QTY_UNIT_NAME);
+  const spaced = tryQtyUnitName(trimmed, reSpaced, units);
   if (spaced) return spaced;
 
-  const mQtyName = RE_QTY_NAME.exec(trimmed);
+  const generic = tryQtyGenericUnitName(trimmed, units);
+  if (generic) return generic;
+
+  const reQtyName = new RegExp(`^${NUMBER_TOKEN}\\s+(.+)$`, "iu");
+  const mQtyName = reQtyName.exec(trimmed);
   if (mQtyName) {
     const quantity = parseQuantityToken(mQtyName[1]);
     const name = mQtyName[2].trim();
@@ -162,12 +155,15 @@ export function parseImportedIngredientLine(
     }
   }
 
-  const mUnitName = RE_UNIT_NAME.exec(trimmed);
+  const mUnitName = reUnitName.exec(trimmed);
   if (mUnitName) {
-    const unit = normalizeUnit(mUnitName[1]);
-    const name = mUnitName[2].trim();
-    if (name) {
-      return build(trimmed, name, null, unit);
+    const unitToken = mUnitName[1];
+    if (isKnownUnitToken(unitToken, units)) {
+      const unit = resolveUnitToken(unitToken, units);
+      const name = mUnitName[2].trim();
+      if (name) {
+        return build(trimmed, name, null, unit);
+      }
     }
   }
 

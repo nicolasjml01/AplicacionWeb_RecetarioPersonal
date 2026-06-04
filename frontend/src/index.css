@@ -5575,6 +5575,11 @@ body {
   margin: -0.35rem 0 var(--space-md);
 }
 
+.account-page__hint--inline {
+  margin: 0.25rem 0 var(--space-sm);
+  font-size: 0.82rem;
+}
+
 .account-page__hint--footer {
   margin-top: var(--space-lg);
 }
@@ -5642,6 +5647,20 @@ body {
   font-size: 0.88rem;
   line-height: 1.4;
   color: var(--color-text-secondary);
+}
+
+.account-page__action-card--logout .account-page__action-card-title {
+  color: #b91c1c;
+}
+
+.account-page__action-card--logout:hover {
+  border-color: rgba(185, 28, 28, 0.4);
+}
+
+@media (min-width: 640px) {
+  .account-page__action-card--logout {
+    grid-column: 1 / -1;
+  }
 }
 
 .account-page__toolbar {

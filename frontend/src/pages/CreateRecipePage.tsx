@@ -170,15 +170,22 @@ function applyIngredientsFromRecipe(sortedIngredients: RecipeIngredientDto[]): I
   }));
 }
 
-function applyIngredientsFromImport(imported: RecipeImportPreviewDto["ingredients"]): IngredientRow[] {
+function applyIngredientsFromImport(
+  imported: RecipeImportPreviewDto["ingredients"],
+  catalogUnits: UnitOfMeasureDto[],
+): IngredientRow[] {
   return imported
     .map((i, idx) => {
       const raw = (i.rawText ?? i.ingredientName ?? "").trim();
-      const parsed = parseImportedIngredientLine(raw, {
-        ingredientName: i.ingredientName,
-        quantity: i.quantity,
-        measurementUnit: i.measurementUnit,
-      });
+      const parsed = parseImportedIngredientLine(
+        raw,
+        {
+          ingredientName: i.ingredientName,
+          quantity: i.quantity,
+          measurementUnit: i.measurementUnit,
+        },
+        catalogUnits,
+      );
       const quantity =
         parsed.quantity != null && Number.isFinite(parsed.quantity)
           ? formatImportQuantityForInput(parsed.quantity)
@@ -388,7 +395,8 @@ export function CreateRecipePage() {
   }, [userId]);
 
   useEffect(() => {
-    void getUnits()
+    if (userId == null) return;
+    void getUnits(userId)
       .then((list) =>
         setUnits([...list].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))),
       )
@@ -396,7 +404,7 @@ export function CreateRecipePage() {
         setUnits([]);
       })
       .finally(() => setLoadingUnits(false));
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     const mq = window.matchMedia("(pointer: fine)");
@@ -576,7 +584,20 @@ export function CreateRecipePage() {
     if (importPreview != null) {
       const importedTitle = importPreview.title?.trim() ?? "";
       setTitle(importedTitle);
-      const importedIngredients = applyIngredientsFromImport(importPreview.ingredients ?? []);
+      let catalogUnits: UnitOfMeasureDto[] = [];
+      try {
+        catalogUnits = await getUnits(userId);
+        setUnits(
+          [...catalogUnits].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" })),
+        );
+        setLoadingUnits(false);
+      } catch {
+        catalogUnits = [];
+      }
+      const importedIngredients = applyIngredientsFromImport(
+        importPreview.ingredients ?? [],
+        catalogUnits,
+      );
       setIngredients(importedIngredients.length > 0 ? importedIngredients : [makeLocalIngredient()]);
       const importedSteps = applyStepsFromImport(importPreview.steps ?? []);
       setSteps(importedSteps.length > 0 ? importedSteps : [makeLocalStep(1)]);

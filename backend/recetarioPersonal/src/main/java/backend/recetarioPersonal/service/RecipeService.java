@@ -320,7 +320,8 @@ public class RecipeService {
                     UnitOfMeasureDto unitDto = ri.getUnitOfMeasure() == null ? null : new UnitOfMeasureDto(
                             ri.getUnitOfMeasure().getUnitId(),
                             ri.getUnitOfMeasure().getName(),
-                            ri.getUnitOfMeasure().getSymbol()
+                            ri.getUnitOfMeasure().getSymbol(),
+                            ri.getUnitOfMeasure().getOwner() != null
                     );
 
                     return new RecipeIngredientDto(

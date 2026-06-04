@@ -5,9 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { deleteMealType, getMealTypes, updateMealType } from "../api/mealTypes";
 import {
   deleteOwnedIngredient,
+  deleteOwnedUnit,
   getIngredientsCatalog,
   getOwnedIngredients,
+  getOwnedUnits,
   patchOwnedIngredient,
+  updateOwnedUnit,
   uploadOwnedIngredientImage,
 } from "../api/shopping";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
@@ -15,15 +18,16 @@ import { AccountPanelHeader } from "../components/account/AccountPanelHeader";
 import { ManageableItemCard } from "../components/account/ManageableItemCard";
 import { EditOwnedIngredientModal } from "../components/account/EditOwnedIngredientModal";
 import { EditMealTypeModal } from "../components/account/EditMealTypeModal";
+import { EditUnitModal } from "../components/account/EditUnitModal";
 import { IngredientThumb } from "../components/ingredient/IngredientThumb";
 import type { MealTypeDto } from "../types/calendar";
-import type { IngredientDto } from "../types/shopping";
+import type { IngredientDto, UnitOfMeasureDto } from "../types/shopping";
 import {
   ingredientCategoriesForSelect,
   type IngredientCategoryOption,
 } from "../utils/ingredientCatalogUi";
 
-type Panel = "main" | "ingredients" | "mealTypes";
+type Panel = "main" | "ingredients" | "mealTypes" | "units";
 
 function groupIngredientsByCategory(
   items: IngredientDto[],
@@ -56,20 +60,28 @@ export function Account() {
 
   const [ownedIngredients, setOwnedIngredients] = useState<IngredientDto[]>([]);
   const [customMealTypes, setCustomMealTypes] = useState<MealTypeDto[]>([]);
+  const [ownedUnits, setOwnedUnits] = useState<UnitOfMeasureDto[]>([]);
   const [categoryOptions, setCategoryOptions] = useState<IngredientCategoryOption[]>([]);
   const [loadingIngredients, setLoadingIngredients] = useState(false);
   const [loadingMealTypes, setLoadingMealTypes] = useState(false);
+  const [loadingUnits, setLoadingUnits] = useState(false);
 
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [editingIngredient, setEditingIngredient] = useState<IngredientDto | null>(null);
   const [editingMealType, setEditingMealType] = useState<MealTypeDto | null>(null);
+  const [editingUnit, setEditingUnit] = useState<UnitOfMeasureDto | null>(null);
   const [ingredientEditError, setIngredientEditError] = useState("");
   const [mealTypeEditError, setMealTypeEditError] = useState("");
+  const [unitEditError, setUnitEditError] = useState("");
   const [savingIngredient, setSavingIngredient] = useState(false);
   const [savingMealType, setSavingMealType] = useState(false);
+  const [savingUnit, setSavingUnit] = useState(false);
 
   const [pendingDeleteIngredient, setPendingDeleteIngredient] = useState<IngredientDto | null>(null);
   const [pendingDeleteMealType, setPendingDeleteMealType] = useState<MealTypeDto | null>(null);
+  const [pendingDeleteUnit, setPendingDeleteUnit] = useState<UnitOfMeasureDto | null>(null);
+  const [pendingLogout, setPendingLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [listSearch, setListSearch] = useState("");
 
@@ -107,6 +119,20 @@ export function Account() {
     }
   }, [userId]);
 
+  const loadOwnedUnits = useCallback(async () => {
+    if (userId == null) return;
+    setLoadingUnits(true);
+    setError("");
+    try {
+      const data = await getOwnedUnits(userId);
+      setOwnedUnits(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudieron cargar las unidades de medida.");
+    } finally {
+      setLoadingUnits(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
     if (userId == null) return;
     void loadCategoryOptions();
@@ -123,6 +149,12 @@ export function Account() {
       void loadCustomMealTypes();
     }
   }, [panel, userId, loadCustomMealTypes]);
+
+  useEffect(() => {
+    if (panel === "units" && userId != null) {
+      void loadOwnedUnits();
+    }
+  }, [panel, userId, loadOwnedUnits]);
 
   const displayName = useMemo(() => {
     if (!user) return "Tu cuenta";
@@ -153,6 +185,14 @@ export function Account() {
     setListSearch("");
   };
 
+  const openUnitsPanel = () => {
+    setPanel("units");
+    setNotice("");
+    setError("");
+    setOpenMenuId(null);
+    setListSearch("");
+  };
+
   const searchKey = listSearch.trim().toLowerCase();
 
   const filteredIngredients = useMemo(() => {
@@ -172,6 +212,14 @@ export function Account() {
     if (!searchKey) return customMealTypes;
     return customMealTypes.filter((mt) => mt.name.toLowerCase().includes(searchKey));
   }, [customMealTypes, searchKey]);
+
+  const filteredUnits = useMemo(() => {
+    if (!searchKey) return ownedUnits;
+    return ownedUnits.filter((u) => {
+      const haystack = `${u.name} ${u.symbol ?? ""}`.toLowerCase();
+      return haystack.includes(searchKey);
+    });
+  }, [ownedUnits, searchKey]);
 
   const handleSaveIngredient = async (
     name: string,
@@ -246,6 +294,56 @@ export function Account() {
     }
   };
 
+  const handleSaveUnit = async (name: string, symbol: string) => {
+    if (userId == null || editingUnit == null) return;
+    setSavingUnit(true);
+    setUnitEditError("");
+    try {
+      const updated = await updateOwnedUnit(userId, editingUnit.unitId, { name, symbol });
+      setOwnedUnits((prev) =>
+        prev
+          .map((u) => (u.unitId === updated.unitId ? updated : u))
+          .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" })),
+      );
+      setEditingUnit(null);
+      setNotice(`Unidad "${updated.name}" actualizada.`);
+    } catch (e) {
+      setUnitEditError(e instanceof Error ? e.message : "No se pudo guardar la unidad.");
+    } finally {
+      setSavingUnit(false);
+    }
+  };
+
+  const handleConfirmDeleteUnit = async () => {
+    if (userId == null || pendingDeleteUnit == null) return;
+    setDeleting(true);
+    setError("");
+    try {
+      const res = await deleteOwnedUnit(userId, pendingDeleteUnit.unitId);
+      setOwnedUnits((prev) => prev.filter((u) => u.unitId !== pendingDeleteUnit.unitId));
+      setPendingDeleteUnit(null);
+      setNotice(res.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo eliminar la unidad.");
+      setPendingDeleteUnit(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleConfirmLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+      navigate("/login", { replace: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo cerrar la sesión.");
+      setPendingLogout(false);
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   const handleConfirmDeleteMealType = async () => {
     if (userId == null || pendingDeleteMealType == null) return;
     setDeleting(true);
@@ -287,19 +385,6 @@ export function Account() {
           <div className="account-page__action-grid">
             <button
               type="button"
-              className="account-page__action-card account-page__action-card--muted"
-              onClick={async () => {
-                await logout();
-                navigate("/login", { replace: true });
-              }}
-            >
-              <span className="account-page__action-card-title">Cerrar sesión</span>
-              <span className="account-page__action-card-desc">
-                Salir de la cuenta en este dispositivo
-              </span>
-            </button>
-            <button
-              type="button"
               className="account-page__action-card"
               onClick={openMealTypesPanel}
             >
@@ -318,18 +403,46 @@ export function Account() {
                 Renombra, reclasifica o borra ingredientes que hayas creado tú.
               </span>
             </button>
+            <button
+              type="button"
+              className="account-page__action-card"
+              onClick={openUnitsPanel}
+            >
+              <span className="account-page__action-card-title">Unidades de medida</span>
+              <span className="account-page__action-card-desc">
+                Edita o elimina unidades personalizadas y sus abreviaturas (chrd, ml…).
+              </span>
+            </button>
+            <button
+              type="button"
+              className="account-page__action-card account-page__action-card--logout"
+              onClick={() => setPendingLogout(true)}
+            >
+              <span className="account-page__action-card-title">Cerrar sesión</span>
+              <span className="account-page__action-card-desc">
+                Salir de la cuenta en este dispositivo
+              </span>
+            </button>
           </div>
         </>
       ) : (
         <>
           <AccountPanelHeader
-            title={panel === "ingredients" ? "Mis ingredientes" : "Tipos de comida"}
+            title={
+              panel === "ingredients"
+                ? "Mis ingredientes"
+                : panel === "mealTypes"
+                  ? "Tipos de comida"
+                  : "Unidades de medida"
+            }
             onBack={goToMainPanel}
           />
           <p className="account-page__hint account-page__hint--panel">
             {panel === "ingredients"
               ? "Solo ingredientes creados por ti, agrupados por categoría."
-              : "Solo tipos personalizados (no Desayuno, Comida ni Cena)."}
+              : panel === "mealTypes"
+                ? "Solo tipos personalizados (no Desayuno, Comida ni Cena)."
+                : "Solo unidades que hayas creado al escribir recetas o la cesta (Gramo, ml… son del sistema)."}
           </p>
 
           {notice && <p className="account-page__notice">{notice}</p>}
@@ -340,7 +453,11 @@ export function Account() {
               type="search"
               className="form-input account-page__search"
               placeholder={
-                panel === "ingredients" ? "Buscar ingrediente o categoría…" : "Buscar tipo de comida…"
+                panel === "ingredients"
+                  ? "Buscar ingrediente o categoría…"
+                  : panel === "mealTypes"
+                    ? "Buscar tipo de comida…"
+                    : "Buscar unidad o abreviatura…"
               }
               value={listSearch}
               onChange={(e) => setListSearch(e.target.value)}
@@ -354,6 +471,11 @@ export function Account() {
             {panel === "mealTypes" && customMealTypes.length > 0 && (
               <span className="account-page__count">
                 {filteredMealTypes.length} de {customMealTypes.length}
+              </span>
+            )}
+            {panel === "units" && ownedUnits.length > 0 && (
+              <span className="account-page__count">
+                {filteredUnits.length} de {ownedUnits.length}
               </span>
             )}
           </div>
@@ -406,6 +528,47 @@ export function Account() {
                     </div>
                   </section>
                 ))
+              )}
+            </div>
+          )}
+
+          {panel === "units" && (
+            <div className="account-manage-panel">
+              {loadingUnits && ownedUnits.length === 0 ? (
+                <p className="account-page__hint">Cargando unidades…</p>
+              ) : ownedUnits.length === 0 ? (
+                <p className="account-page__hint">
+                  Aún no has creado unidades propias. Al escribir una unidad nueva en una receta o en la
+                  cesta, aparecerá aquí para que puedas ponerle abreviatura.
+                </p>
+              ) : filteredUnits.length === 0 ? (
+                <p className="account-page__hint">Ninguna unidad coincide con la búsqueda.</p>
+              ) : (
+                <div className="account-manage-grid">
+                  {filteredUnits.map((u) => (
+                    <ManageableItemCard
+                      key={u.unitId}
+                      id={u.unitId}
+                      title={u.name}
+                      subtitle={u.symbol ? `Abrev.: ${u.symbol}` : undefined}
+                      variant="tile"
+                      avatarLetter={u.name.charAt(0).toUpperCase()}
+                      openMenuId={openMenuId}
+                      onToggleMenu={(id) => setOpenMenuId((prev) => (prev === id ? null : id))}
+                      onCloseMenu={() => setOpenMenuId(null)}
+                      onEdit={() => {
+                        setOpenMenuId(null);
+                        setUnitEditError("");
+                        setEditingUnit(u);
+                      }}
+                      onDelete={() => {
+                        setOpenMenuId(null);
+                        setPendingDeleteUnit(u);
+                      }}
+                      disabled={deleting}
+                    />
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -472,6 +635,15 @@ export function Account() {
         onSave={(name) => void handleSaveMealType(name)}
       />
 
+      <EditUnitModal
+        open={editingUnit != null}
+        unit={editingUnit}
+        saving={savingUnit}
+        error={unitEditError}
+        onClose={() => !savingUnit && setEditingUnit(null)}
+        onSave={(name, symbol) => void handleSaveUnit(name, symbol)}
+      />
+
       <ConfirmDialog
         open={pendingDeleteIngredient != null}
         title="¿Eliminar este ingrediente?"
@@ -490,6 +662,23 @@ export function Account() {
       />
 
       <ConfirmDialog
+        open={pendingDeleteUnit != null}
+        title="¿Eliminar esta unidad de medida?"
+        message={
+          pendingDeleteUnit
+            ? `Se borrará "${pendingDeleteUnit.name}" y las líneas de recetas y la cesta que la usen quedarán sin unidad. Esta acción no se puede deshacer.`
+            : ""
+        }
+        cancelLabel="Cancelar"
+        confirmLabel={deleting ? "Eliminando…" : "Sí, eliminar"}
+        confirmVariant="danger"
+        onCancel={() => {
+          if (!deleting) setPendingDeleteUnit(null);
+        }}
+        onConfirm={() => void handleConfirmDeleteUnit()}
+      />
+
+      <ConfirmDialog
         open={pendingDeleteMealType != null}
         title="¿Eliminar este tipo de comida?"
         message={
@@ -504,6 +693,19 @@ export function Account() {
           if (!deleting) setPendingDeleteMealType(null);
         }}
         onConfirm={() => void handleConfirmDeleteMealType()}
+      />
+
+      <ConfirmDialog
+        open={pendingLogout}
+        title="¿Cerrar sesión?"
+        message="Saldrás de tu cuenta en este dispositivo. Tendrás que volver a iniciar sesión para acceder."
+        cancelLabel="Cancelar"
+        confirmLabel={loggingOut ? "Cerrando…" : "Sí, cerrar sesión"}
+        confirmVariant="danger"
+        onCancel={() => {
+          if (!loggingOut) setPendingLogout(false);
+        }}
+        onConfirm={() => void handleConfirmLogout()}
       />
     </div>
   );

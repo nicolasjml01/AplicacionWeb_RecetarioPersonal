@@ -2,19 +2,19 @@ import { useEffect, useState } from "react";
 import { getUnits } from "../../api/shopping";
 import type { UnitOfMeasureDto } from "../../types/shopping";
 
-export function useShoppingUnits(enabled: boolean) {
+export function useShoppingUnits(userId: number | null, enabled: boolean) {
   const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
   const [pendingVersion, setPendingVersion] = useState(0);
   const [settledVersion, setSettledVersion] = useState(0);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || userId == null) return;
 
     let cancelled = false;
     queueMicrotask(() => {
       if (!cancelled) setPendingVersion((v) => v + 1);
     });
-    void getUnits()
+    void getUnits(userId)
       .then((list) => {
         if (!cancelled) setUnits(list);
       })
@@ -27,7 +27,7 @@ export function useShoppingUnits(enabled: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, userId]);
 
   return {
     units: enabled ? units : [],
