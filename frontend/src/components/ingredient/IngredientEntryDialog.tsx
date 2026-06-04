@@ -82,11 +82,20 @@ export function IngredientEntryDialog({
   onCreateImageFileChange,
   createExtrasLabels = {},
 }: IngredientEntryDialogProps) {
+  const trimmedUnitText = unitText.trim();
+  const normalizedUnitText = trimmedUnitText.toLowerCase();
+
+  const selectedUnit = useMemo(
+    () => units.find((u) => u.name.toLowerCase() === normalizedUnitText) ?? null,
+    [normalizedUnitText, units],
+  );
+
   const filteredUnits = useMemo(() => {
-    const q = unitText.trim().toLowerCase();
-    if (!q) return units;
-    return units.filter((u) => u.name.toLowerCase().includes(q));
-  }, [unitText, units]);
+    if (!normalizedUnitText) return units;
+    return units.filter((u) => u.name.toLowerCase().includes(normalizedUnitText));
+  }, [normalizedUnitText, units]);
+
+  const clearSelectedUnit = () => onUnitChange("");
 
   const lx = {
     category: createExtrasLabels.category ?? "Categoría en tu despensa",
@@ -210,6 +219,23 @@ export function IngredientEntryDialog({
           <div className="ingredient-dialog__units-list">
             {loadingUnits ? (
               <div className="ingredient-dialog__hint">Cargando unidades...</div>
+            ) : selectedUnit ? (
+              <div className="ingredient-dialog__unit-selected">
+                <span className="ingredient-dialog__unit-selected-label">
+                  {selectedUnit.symbol
+                    ? `${selectedUnit.name} (${selectedUnit.symbol})`
+                    : selectedUnit.name}
+                </span>
+                <button
+                  type="button"
+                  className="ingredient-dialog__unit-selected-clear"
+                  onClick={clearSelectedUnit}
+                  aria-label="Quitar unidad seleccionada"
+                  disabled={saving}
+                >
+                  ×
+                </button>
+              </div>
             ) : filteredUnits.length === 0 ? (
               <div className="ingredient-dialog__hint">No hay coincidencias para "{unitText}".</div>
             ) : (
