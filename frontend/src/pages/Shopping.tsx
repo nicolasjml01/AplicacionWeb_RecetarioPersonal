@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDropdownPlacement } from "../hooks/useDropdownPlacement";
 import { useOverlayDismiss } from "../hooks/useOverlayDismiss";
 import { getCurrentUserId } from "../auth/session";
 import type {
@@ -195,6 +196,9 @@ export function Shopping() {
   const showSearchDropdown =
     ingredientResults.length > 0 ||
     (search.trim() !== "" && !searchLoading && !searchError);
+
+  const { placement: searchDropdownPlacement, maxHeight: searchDropdownMaxHeight } =
+    useDropdownPlacement(searchWrapRef, showSearchDropdown);
 
   const closeSearchDropdown = useCallback(() => {
     setSearch("");
@@ -475,9 +479,10 @@ export function Shopping() {
 
               {showSearchDropdown && (
                 <div
-                  className="shopping-search__dropdown"
+                  className={`shopping-search__dropdown shopping-search__dropdown--${searchDropdownPlacement}`}
                   role="listbox"
                   aria-label="Resultados de ingredientes"
+                  style={{ maxHeight: searchDropdownMaxHeight }}
                 >
                   {ingredientResults.map((ing) => (
                     <button
