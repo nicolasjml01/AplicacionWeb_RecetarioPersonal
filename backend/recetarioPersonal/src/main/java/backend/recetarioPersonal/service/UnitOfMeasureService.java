@@ -1,7 +1,6 @@
 package backend.recetarioPersonal.service;
 
 import backend.recetarioPersonal.model.UnitOfMeasure;
-import backend.recetarioPersonal.model.User;
 import backend.recetarioPersonal.repository.RecipeIngredientRepository;
 import backend.recetarioPersonal.repository.ShoppingListItemRepository;
 import backend.recetarioPersonal.repository.UnitOfMeasureRepository;
