@@ -71,6 +71,7 @@ public class IngredientService {
         }
         return ingredientRepository.searchVisibleToUserByNormalizedKey(key, userId)
                 .stream()
+                .filter(this::isVisibleInPicker)
                 .map(this::toDto)
                 .toList();
     }
@@ -237,6 +238,7 @@ public class IngredientService {
 
     /**
      * Catalog for one user: global categories, but only catalog + that user's ingredients listed.
+     * System catalog rows without an image are hidden; empty categories are omitted.
      */
     @Transactional(readOnly = true)
     public List<IngredientCategoryCatalogDto> getCatalogGroupedByCategory(long userId) {
@@ -244,19 +246,15 @@ public class IngredientService {
         var visible = ingredientRepository.findAllVisibleToUser(userId);
 
         Map<Long, List<IngredientDto>> ingredientsByCategoryId = visible.stream()
+                .filter(this::isVisibleInPicker)
                 .map(this::toDto)
                 .collect(Collectors.groupingBy(dto -> dto.categoryId() != null ? dto.categoryId() : -1L));
 
         List<IngredientDto> recentDtos = recentIngredientService.getRecentIngredients(userId)
                 .stream()
+                .filter(this::isVisibleInPicker)
                 .map(this::toDto)
                 .toList();
-
-        IngredientCategoryCatalogDto recentCategory = new IngredientCategoryCatalogDto(
-                -999L,
-                "Recientes",
-                recentDtos
-        );
 
         List<IngredientCategoryCatalogDto> result = new ArrayList<>();
 
@@ -267,6 +265,10 @@ public class IngredientService {
             ).stream()
                     .sorted(Comparator.comparing(IngredientDto::name, String.CASE_INSENSITIVE_ORDER))
                     .toList();
+
+            if (ingredients.isEmpty()) {
+                continue;
+            }
 
             result.add(new IngredientCategoryCatalogDto(
                     category.getCategoryId(),
@@ -286,9 +288,26 @@ public class IngredientService {
                 .toList();
 
         List<IngredientCategoryCatalogDto> finalResult = new ArrayList<>();
-        finalResult.add(recentCategory);
+        if (!recentDtos.isEmpty()) {
+            finalResult.add(new IngredientCategoryCatalogDto(
+                    -999L,
+                    "Recientes",
+                    recentDtos
+            ));
+        }
         finalResult.addAll(result);
         return finalResult;
+    }
+
+    /**
+     * System catalog ingredients need a linked image; user-owned rows are always shown.
+     */
+    private boolean isVisibleInPicker(Ingredient ingredient) {
+        if (ingredient.getOwner() != null) {
+            return true;
+        }
+        String path = ingredient.getImageRelativePath();
+        return path != null && !path.isBlank();
     }
 
     private boolean isOwnCategory(String name) {

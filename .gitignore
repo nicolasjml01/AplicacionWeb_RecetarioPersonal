@@ -24,7 +24,8 @@ out/
 !.env.example
 *.pem
 
-# Logs y temporales en raíz
-*.log
+# Medios generados en local (copia de catálogo + subidas de usuario)
+media/
+backend/recetarioPersonal/media/
 tmp/
 temp/

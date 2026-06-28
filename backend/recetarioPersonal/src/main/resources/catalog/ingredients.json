@@ -1,1279 +1,1598 @@
 [
   {
     "category": "Frutas & vegetales",
-    "name": "Bayas de asaí"
+    "name": "Bayas de asaí",
+    "imageFile": "Bayas_Acai.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Berro"
+    "name": "Berro",
+    "imageFile": "Berros.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Berenjena"
+    "name": "Berenjena",
+    "imageFile": "Berenjena.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Calabacín"
+    "name": "Calabacín",
+    "imageFile": "Calabacin.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Brócoli"
+    "name": "Brócoli",
+    "imageFile": "Brocoli.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Brotes de trigo"
+    "name": "Brotes de trigo",
+    "imageFile": "Brotes_de_trigo.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Calabaza"
+    "name": "Calabaza",
+    "imageFile": "Calabaza.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Carambola"
+    "name": "Carambola",
+    "imageFile": "Carambola.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Canónigo"
+    "name": "Canónigo",
+    "imageFile": "canonigo.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Castañas"
+    "name": "Castañas",
+    "imageFile": "Castañas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Cebolletas"
+    "name": "Cebolletas",
+    "imageFile": "cebolletas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Cebollas"
+    "name": "Cebollas",
+    "imageFile": "cebollas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Cebollino"
+    "name": "Cebollino",
+    "imageFile": "cebollino.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Cerezas"
+    "name": "Cerezas",
+    "imageFile": "cerezas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Champiñones"
+    "name": "Champiñones",
+    "imageFile": "champinones.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Chiles"
+    "name": "Chiles",
+    "imageFile": "chiles.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Chirivías"
+    "name": "Chirivías",
+    "imageFile": "chirivias.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Cilantro"
+    "name": "Cilantro",
+    "imageFile": "cilantro.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Ciruela mirabel"
+    "name": "Ciruela mirabel",
+    "imageFile": "ciruela-mirabel.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Ciruelas"
+    "name": "Ciruelas",
+    "imageFile": "ciruelas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Citronela"
+    "name": "Citronela",
+    "imageFile": "citronela.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Coco"
+    "name": "Coco",
+    "imageFile": "coco.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Col china"
+    "name": "Col china",
+    "imageFile": "col-china.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Coles de Bruseselas"
+    "name": "Coles de Bruseselas",
+    "imageFile": "coles-de-bruseselas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Dátiles"
+    "name": "Dátiles",
+    "imageFile": "datiles.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Coliflor"
+    "name": "Coliflor",
+    "imageFile": "coliflor.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Eneldo"
+    "name": "Eneldo",
+    "imageFile": "eneldo.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Ensalada"
+    "name": "Ensalada",
+    "imageFile": "ensalada.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Espárragos"
+    "name": "Espárragos",
+    "imageFile": "esparragos.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Fresas"
+    "name": "Fresas",
+    "imageFile": "fresas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Frambuesas"
+    "name": "Frambuesas",
+    "imageFile": "frambuesas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Espinacas"
+    "name": "Espinacas",
+    "imageFile": "espinacas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Fruta"
+    "name": "Fruta",
+    "imageFile": "fruta.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Fruta del dragón"
+    "name": "Fruta del dragón",
+    "imageFile": "fruta-del-dragon.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Frutos rojos"
+    "name": "Frutos rojos",
+    "imageFile": "frutos-rojos.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Guayaba"
+    "name": "Guayaba",
+    "imageFile": "guayaba.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Aceite de canola"
+    "name": "Aceite de canola",
+    "imageFile": "aceite-de-canola.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Aceite de coco"
+    "name": "Aceite de coco",
+    "imageFile": "aceite-de-coco.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Aceitunas"
+    "name": "Aceitunas",
+    "imageFile": "aceitunas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Achicoria"
+    "name": "Achicoria",
+    "imageFile": "achicoria.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Aguacate"
+    "name": "Aguacate",
+    "imageFile": "aguacate.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Acelga"
+    "name": "Acelga",
+    "imageFile": "acelga.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Albahaca"
+    "name": "Albahaca",
+    "imageFile": "albahaca.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Ajo"
+    "name": "Ajo",
+    "imageFile": "ajo.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Alcachofa"
+    "name": "Alcachofa",
+    "imageFile": "alcachofa.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Albaricoque"
+    "name": "Albaricoque",
+    "imageFile": "albaricoque.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Apio"
+    "name": "Apio",
+    "imageFile": "apio.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Mandarinas"
+    "name": "Mandarinas",
+    "imageFile": "mandarinas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Manzanas"
+    "name": "Manzanas",
+    "imageFile": "manzanas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Mango"
+    "name": "Mango",
+    "imageFile": "mango.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Mazorca de maíz"
+    "name": "Mazorca de maíz",
+    "imageFile": "mazorca-de-maiz.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Maracuyá"
+    "name": "Maracuyá",
+    "imageFile": "maracuya.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Melocotón"
+    "name": "Melocotón",
+    "imageFile": "melocoton.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Melón"
+    "name": "Melón",
+    "imageFile": "melon.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Membrillos"
+    "name": "Membrillos",
+    "imageFile": "membrillos.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Menta"
+    "name": "Menta",
+    "imageFile": "menta.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Moras"
+    "name": "Moras",
+    "imageFile": "moras.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Nectarina"
+    "name": "Nectarina",
+    "imageFile": "nectarina.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Naranja"
+    "name": "Naranja",
+    "imageFile": "naranja.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Pimientos de Padrón"
+    "name": "Pimientos de Padrón",
+    "imageFile": "pimientos-de-padron.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Piña"
+    "name": "Piña",
+    "imageFile": "pina.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Plátanos"
+    "name": "Plátanos",
+    "imageFile": "platanos.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Pomelo"
+    "name": "Pomelo",
+    "imageFile": "pomelo.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Rabanito"
+    "name": "Rabanito",
+    "imageFile": "rabanito.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Puerro"
+    "name": "Puerro",
+    "imageFile": "puerro.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Remolacha"
+    "name": "Remolacha",
+    "imageFile": "remolacha.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Rábano"
+    "name": "Rábano",
+    "imageFile": "rabano.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Rúcula"
+    "name": "Rúcula",
+    "imageFile": "rucula.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Ruibarbo"
+    "name": "Ruibarbo",
+    "imageFile": "ruibarbo.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Salvia"
+    "name": "Salvia",
+    "imageFile": "salvia.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Sandía"
+    "name": "Sandía",
+    "imageFile": "sandia.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Salsifí negro"
+    "name": "Salsifí negro",
+    "imageFile": "salsifi-negro.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Semillas de lino"
+    "name": "Semillas de lino",
+    "imageFile": "semillas-de-lino.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Tomates"
+    "name": "Tomates",
+    "imageFile": "Tomates.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Tomates cherry"
+    "name": "Tomates cherry",
+    "imageFile": "tomates-cherry.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Tomillo"
+    "name": "Tomillo",
+    "imageFile": "tomillo.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Uvas"
+    "name": "Uvas",
+    "imageFile": "uvas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Verduras"
+    "name": "Verduras",
+    "imageFile": "verduras.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Zanahorias"
+    "name": "Zanahorias",
+    "imageFile": "Zanahorias.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Hierbas"
+    "name": "Hierbas",
+    "imageFile": "hierbas.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Guisantes"
+    "name": "Guisantes",
+    "imageFile": "guisantes.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Higos"
+    "name": "Higos",
+    "imageFile": "higos.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Kiwi"
+    "name": "Kiwi",
+    "imageFile": "kiwi.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Hinojo"
+    "name": "Hinojo",
+    "imageFile": "hinojo.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Jengibre"
+    "name": "Jengibre",
+    "imageFile": "jengibre.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Lichi"
+    "name": "Lichi",
+    "imageFile": "lichi.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Lima"
+    "name": "Lima",
+    "imageFile": "lima.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Lechuga"
+    "name": "Lechuga",
+    "imageFile": "Lechuga.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Maíz dulce"
+    "name": "Maíz dulce",
+    "imageFile": "maiz-dulce.png"
   },
   {
     "category": "Frutas & vegetales",
-    "name": "Limón"
+    "name": "Limón",
+    "imageFile": "limon.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Bollos"
+    "name": "Bollos",
+    "imageFile": "bollos.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Croissant"
+    "name": "Croissant",
+    "imageFile": "croissant.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Donuts"
+    "name": "Donuts",
+    "imageFile": "donuts.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Gofres"
+    "name": "Gofres",
+    "imageFile": "gofres.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Hojaldre"
+    "name": "Hojaldre",
+    "imageFile": "hojaldre.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Empanadas"
+    "name": "Empanadas",
+    "imageFile": "empanadas.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "PIZZA"
+    "name": "PIZZA",
+    "imageFile": "pizza.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Mezcla para tortitas"
+    "name": "Mezcla para tortitas",
+    "imageFile": "mezcla-para-tortitas.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Magdalenas"
+    "name": "Magdalenas",
+    "imageFile": "magdalenas.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Masa para pizza"
+    "name": "Masa para pizza",
+    "imageFile": "masa-para-pizza.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Pan"
+    "name": "Pan",
+    "imageFile": "pan.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Pan de molde"
+    "name": "Pan de molde",
+    "imageFile": "pan-de-molde.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Tarta"
+    "name": "Tarta",
+    "imageFile": "tarta.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Tortitas maiz"
+    "name": "Tortitas maiz",
+    "imageFile": "tortitas-maiz.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Tortillas"
+    "name": "Tortillas",
+    "imageFile": "tortillas.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Tostada"
+    "name": "Tostada",
+    "imageFile": "tostada.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Bagels"
+    "name": "Bagels",
+    "imageFile": "bagels.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Pan & Pasteles"
+    "name": "Pan & Pasteles",
+    "imageFile": "pan-pasteles.png"
   },
   {
     "category": "Pan & Pasteles",
-    "name": "Barra de pan"
+    "name": "Barra de pan",
+    "imageFile": "barra-de-pan.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Crema agria"
+    "name": "Crema agria",
+    "imageFile": "crema-agria.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Crema fresca"
+    "name": "Crema fresca",
+    "imageFile": "crema-fresca.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Huevos"
+    "name": "Huevos",
+    "imageFile": "huevos.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Leche"
+    "name": "Leche",
+    "imageFile": "leche.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Gorgonzola"
+    "name": "Gorgonzola",
+    "imageFile": "gorgonzola.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Leche De Soja"
+    "name": "Leche De Soja",
+    "imageFile": "leche-de-soja.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Mantequilla"
+    "name": "Mantequilla",
+    "imageFile": "mantequilla.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Margarina"
+    "name": "Margarina",
+    "imageFile": "margarina.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Mozzarella"
+    "name": "Mozzarella",
+    "imageFile": "mozzarella.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Queso"
+    "name": "Queso",
+    "imageFile": "queso.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Mascarpone"
+    "name": "Mascarpone",
+    "imageFile": "mascarpone.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Queso azul"
+    "name": "Queso azul",
+    "imageFile": "queso-azul.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Queso Cheddar"
+    "name": "Queso Cheddar",
+    "imageFile": "queso-cheddar.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Queso crema"
+    "name": "Queso crema",
+    "imageFile": "queso-crema.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Queso Parmesano"
+    "name": "Queso Parmesano",
+    "imageFile": "queso-parmesano.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Queso Feta"
+    "name": "Queso Feta",
+    "imageFile": "queso-feta.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Queso grillado"
+    "name": "Queso grillado",
+    "imageFile": "queso-grillado.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Queso rallado"
+    "name": "Queso rallado",
+    "imageFile": "queso-rallado.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Requesón"
+    "name": "Requesón",
+    "imageFile": "requeson.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Yogur"
+    "name": "Yogur",
+    "imageFile": "yogur.png"
   },
   {
     "category": "Leche & Queso",
-    "name": "Yogur de soja"
+    "name": "Yogur de soja",
+    "imageFile": "yogur-de-soja.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Anchoas"
+    "name": "Anchoas",
+    "imageFile": "anchoas.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Atún"
+    "name": "Atún",
+    "imageFile": "atun.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Bacón"
+    "name": "Bacón",
+    "imageFile": "bacon.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Carne"
+    "name": "Carne",
+    "imageFile": "carne.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Carne De Vaca"
+    "name": "Carne De Vaca",
+    "imageFile": "carne-de-vaca.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Cerdo"
+    "name": "Cerdo",
+    "imageFile": "cerdo.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Carne picada"
+    "name": "Carne picada",
+    "imageFile": "carne-picada.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Cordero"
+    "name": "Cordero",
+    "imageFile": "cordero.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Embutidos"
+    "name": "Embutidos",
+    "imageFile": "embutidos.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Fiambres"
+    "name": "Fiambres",
+    "imageFile": "fiambres.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Gambas"
+    "name": "Gambas",
+    "imageFile": "gambas.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Filete"
+    "name": "Filete",
+    "imageFile": "filete.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Carne & pescado"
+    "name": "Carne & pescado",
+    "imageFile": "carne.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Jamón"
+    "name": "Jamón",
+    "imageFile": "jamon.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Jamón ibérico"
+    "name": "Jamón ibérico",
+    "imageFile": "jamon-iberico.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Hamburguesa"
+    "name": "Hamburguesa",
+    "imageFile": "hamburguesa.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Muslo de pollo"
+    "name": "Muslo de pollo",
+    "imageFile": "muslo-de-pollo.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Mejillones"
+    "name": "Mejillones",
+    "imageFile": "mejillones.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Pollo"
+    "name": "Pollo",
+    "imageFile": "pollo.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Langosta"
+    "name": "Langosta",
+    "imageFile": "langosta.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Perrito caliente"
+    "name": "Perrito caliente",
+    "imageFile": "perrito-caliente.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Pavo"
+    "name": "Pavo",
+    "imageFile": "pavo.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Ostras"
+    "name": "Ostras",
+    "imageFile": "ostras.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Salami"
+    "name": "Salami",
+    "imageFile": "salami.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Pescado"
+    "name": "Pescado",
+    "imageFile": "pescado.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Salmón"
+    "name": "Salmón",
+    "imageFile": "salmon.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Salchicha"
+    "name": "Salchicha",
+    "imageFile": "salchicha.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Ternera"
+    "name": "Ternera",
+    "imageFile": "ternera.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Aceite"
+    "name": "Aceite",
+    "imageFile": "aceite.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Aceite de oliva"
+    "name": "Aceite de oliva",
+    "imageFile": "aceite-de-oliva.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Aceite girasol"
+    "name": "Aceite girasol",
+    "imageFile": "aceite-girasol.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Adobo"
+    "name": "Adobo",
+    "imageFile": "adobo.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Agua de coco"
+    "name": "Agua de coco",
+    "imageFile": "agua-de-coco.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Alcaparras"
+    "name": "Alcaparras",
+    "imageFile": "alcaparras.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Almendras molidas"
+    "name": "Almendras molidas",
+    "imageFile": "almendras-molidas.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Aliño para ensalada"
+    "name": "Aliño para ensalada",
+    "imageFile": "alino-para-ensalada.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Almendras"
+    "name": "Almendras",
+    "imageFile": "almendras.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Amaranto"
+    "name": "Amaranto",
+    "imageFile": "amaranto.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Avellanas"
+    "name": "Avellanas",
+    "imageFile": "avellanas.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Anís"
+    "name": "Anís",
+    "imageFile": "anis.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Azúcar"
+    "name": "Azúcar",
+    "imageFile": "azucar.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Azucar vainillado"
+    "name": "Azucar vainillado",
+    "imageFile": "azucar-vainillado.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Azúcar glasé"
+    "name": "Azúcar glasé",
+    "imageFile": "azucar-glase.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Bicarbonato de sodio"
+    "name": "Bicarbonato de sodio",
+    "imageFile": "bicarbonato-de-sodio.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Caldo"
+    "name": "Caldo",
+    "imageFile": "caldo.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Caldo de verduras"
+    "name": "Caldo de verduras",
+    "imageFile": "caldo-de-verduras.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Canela"
+    "name": "Canela",
+    "imageFile": "canela.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Castañas de cajú"
+    "name": "Castañas de cajú",
+    "imageFile": "castanas-de-caju.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Condimento para carnes"
+    "name": "Condimento para carnes",
+    "imageFile": "condimento-para-carnes.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Colorante para alimentos"
+    "name": "Colorante para alimentos",
+    "imageFile": "colorante-para-alimentos.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Encurtido"
+    "name": "Encurtido",
+    "imageFile": "encurtido.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Extracto de almejas"
+    "name": "Extracto de almejas",
+    "imageFile": "extracto-de-almejas.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Frijoles"
+    "name": "Frijoles",
+    "imageFile": "frijoles.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Granas de colores"
+    "name": "Granas de colores",
+    "imageFile": "granas-de-colores.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Harina De Maíz"
+    "name": "Harina De Maíz",
+    "imageFile": "harina-de-maiz.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Glaseado"
+    "name": "Glaseado",
+    "imageFile": "glaseado.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Hojas de lima"
+    "name": "Hojas de lima",
+    "imageFile": "hojas-de-lima.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Laurel"
+    "name": "Laurel",
+    "imageFile": "laurel.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Ketchup"
+    "name": "Ketchup",
+    "imageFile": "ketchup.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Kaffir"
+    "name": "Kaffir",
+    "imageFile": "kaffir.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Leche de coco"
+    "name": "Leche de coco",
+    "imageFile": "leche-de-coco.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Levadura"
+    "name": "Levadura",
+    "imageFile": "levadura.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Lentejas"
+    "name": "Lentejas",
+    "imageFile": "lentejas.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Levadura nutricional"
+    "name": "Levadura nutricional",
+    "imageFile": "levadura-nutricional.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Mantequilla de cacahuete"
+    "name": "Mantequilla de cacahuete",
+    "imageFile": "mantequilla-de-cacahuete.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Mostaza"
+    "name": "Mostaza",
+    "imageFile": "mostaza.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Nueces"
+    "name": "Nueces",
+    "imageFile": "nueces.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Mayonesa"
+    "name": "Mayonesa",
+    "imageFile": "mayonesa.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Pan rallado"
+    "name": "Pan rallado",
+    "imageFile": "pan-rallado.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Nuez moscada"
+    "name": "Nuez moscada",
+    "imageFile": "nuez-moscada.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Orégano"
+    "name": "Orégano",
+    "imageFile": "oregano.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Pasta de tamarindo"
+    "name": "Pasta de tamarindo",
+    "imageFile": "pasta-de-tamarindo.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Pesto"
+    "name": "Pesto",
+    "imageFile": "pesto.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Pasta de curry"
+    "name": "Pasta de curry",
+    "imageFile": "pasta-de-curry.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Pimienta en grano"
+    "name": "Pimienta en grano",
+    "imageFile": "pimienta-en-grano.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Pimentón dulce"
+    "name": "Pimentón dulce",
+    "imageFile": "pimenton-dulce.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Pimienta negra"
+    "name": "Pimienta negra",
+    "imageFile": "pimienta-negra.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Piñones"
+    "name": "Piñones",
+    "imageFile": "pinones.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Pistachos"
+    "name": "Pistachos",
+    "imageFile": "pistachos.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Polenta"
+    "name": "Polenta",
+    "imageFile": "polenta.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Pure de tomate"
+    "name": "Pure de tomate",
+    "imageFile": "pure-de-tomate.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Romero"
+    "name": "Romero",
+    "imageFile": "romero.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Sal y aceite en sobres"
+    "name": "Sal y aceite en sobres",
+    "imageFile": "sal-y-aceite-en-sobres.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Sal"
+    "name": "Sal",
+    "imageFile": "sal.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Sal gruesa"
+    "name": "Sal gruesa",
+    "imageFile": "sal-gruesa.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Salsa barbacoa"
+    "name": "Salsa barbacoa",
+    "imageFile": "salsa-barbacoa.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Salsa aperitivos"
+    "name": "Salsa aperitivos",
+    "imageFile": "salsa-aperitivos.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Salsa de manzana"
+    "name": "Salsa de manzana",
+    "imageFile": "salsa-de-manzana.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Salsa de ostras"
+    "name": "Salsa de ostras",
+    "imageFile": "salsa-de-ostras.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Salsa de pescado"
+    "name": "Salsa de pescado",
+    "imageFile": "salsa-de-pescado.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Salsa india chutney"
+    "name": "Salsa india chutney",
+    "imageFile": "salsa-india-chutney.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Salsa de soja"
+    "name": "Salsa de soja",
+    "imageFile": "salsa-de-soja.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Salsa para pasta"
+    "name": "Salsa para pasta",
+    "imageFile": "salsa-para-pasta.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Salsa worcestershire"
+    "name": "Salsa worcestershire",
+    "imageFile": "salsa-worcestershire.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Semillas de calabaza"
+    "name": "Semillas de calabaza",
+    "imageFile": "semillas-de-calabaza.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Salsa picante"
+    "name": "Salsa picante",
+    "imageFile": "salsa-picante.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Semillas de cáñamo"
+    "name": "Semillas de cáñamo",
+    "imageFile": "semillas-de-canamo.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Semillas de girasol"
+    "name": "Semillas de girasol",
+    "imageFile": "semillas-de-girasol.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Sirope de Arce"
+    "name": "Sirope de Arce",
+    "imageFile": "sirope-de-arce.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Tahini"
+    "name": "Tahini",
+    "imageFile": "tahini.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Soja texturizada"
+    "name": "Soja texturizada",
+    "imageFile": "soja-texturizada.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Suero de leche"
+    "name": "Suero de leche",
+    "imageFile": "suero-de-leche.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Tomate frito"
+    "name": "Tomate frito",
+    "imageFile": "tomate-frito.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Tomates en lata"
+    "name": "Tomates en lata",
+    "imageFile": "tomates-en-lata.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Trufas"
+    "name": "Trufas",
+    "imageFile": "trufas.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Vinagre balsámico"
+    "name": "Vinagre balsámico",
+    "imageFile": "vinagre-balsamico.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Vainilla Bourbon"
+    "name": "Vainilla Bourbon",
+    "imageFile": "vainilla-bourbon.png"
   },
   {
     "category": "Ingredientes & Especias",
-    "name": "Vinagre"
+    "name": "Vinagre",
+    "imageFile": "vinagre-balsamico.png"
   },
   {
     "category": "Carne & pescado",
-    "name": "Alitas De Pollo"
+    "name": "Alitas De Pollo",
+    "imageFile": "pollo.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Burritos"
+    "name": "Burritos",
+    "imageFile": "Burritos.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Comida china"
+    "name": "Comida china",
+    "imageFile": "Comida-China.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Comida mexicana"
+    "name": "Comida mexicana",
+    "imageFile": "Comida-mexicana.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Comida italiana"
+    "name": "Comida italiana",
+    "imageFile": "Comida-Italiana.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Comida india"
+    "name": "Comida india",
+    "imageFile": "Comida-india.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Comida tailandesa"
+    "name": "Comida tailandesa",
+    "imageFile": "Comida-Tailandesa.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Helado"
+    "name": "Helado",
+    "imageFile": "Helado.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Croquetas"
+    "name": "Croquetas",
+    "imageFile": "Croquetas.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Palitos de pescado"
+    "name": "Palitos de pescado",
+    "imageFile": "Palitosde-Pescado.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Lasaña"
+    "name": "Lasaña",
+    "imageFile": "Pasta.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Patatas fritas"
+    "name": "Patatas fritas",
+    "imageFile": "Patatas-Fritas.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Verduras Congeladas"
+    "name": "Verduras Congeladas",
+    "imageFile": "Verduras-congeladas.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Pizza"
+    "name": "Pizza",
+    "imageFile": "pizza.png"
   },
   {
     "category": "Congelados & Conveniencia",
-    "name": "Sopa"
+    "name": "Sopa",
+    "imageFile": "Sopa.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Harina"
+    "name": "Harina",
+    "imageFile": "Harina.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Harina de avena"
+    "name": "Harina de avena",
+    "imageFile": "Hariina-de-avena.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Garbanzos"
+    "name": "Garbanzos",
+    "imageFile": "Garbanzos.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Harina de espelta"
+    "name": "Harina de espelta",
+    "imageFile": "Harina.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Maicena"
+    "name": "Maicena",
+    "imageFile": "Maicena.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Muesli"
+    "name": "Muesli",
+    "imageFile": "Muesli.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Pasta"
+    "name": "Pasta",
+    "imageFile": "Pasta.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Penne"
+    "name": "Penne",
+    "imageFile": "Pasta.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Papel de arroz"
+    "name": "Papel de arroz",
+    "imageFile": "Papel-de-Arroz.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Sémola"
+    "name": "Sémola",
+    "imageFile": "Cuscus.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Semillas de chía"
+    "name": "Semillas de chía",
+    "imageFile": "semillas-de-lino.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Tofu"
+    "name": "Tofu",
+    "imageFile": "soja-texturizada.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Tortellini"
+    "name": "Tortellini",
+    "imageFile": "Pasta.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Arroz"
+    "name": "Arroz",
+    "imageFile": "Arroz.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Arroz basmati"
+    "name": "Arroz basmati",
+    "imageFile": "Arroz.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Arroz jazmín"
+    "name": "Arroz jazmín",
+    "imageFile": "Arroz-de-jazmin.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Cereales desayuno"
+    "name": "Cereales desayuno",
+    "imageFile": "Cereales-Desayuno.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Cereal"
+    "name": "Cereal",
+    "imageFile": "Cereales.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Arroz risotto"
+    "name": "Arroz risotto",
+    "imageFile": "Arroz.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Cuscús"
+    "name": "Cuscús",
+    "imageFile": "Cuscus.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Espirulina"
+    "name": "Espirulina",
+    "imageFile": "Espirulina.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Espaguetis"
+    "name": "Espaguetis",
+    "imageFile": "Espaguetis.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Fideos de arroz"
+    "name": "Fideos de arroz",
+    "imageFile": "Fideos-de-arroz.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Fusilli"
+    "name": "Fusilli",
+    "imageFile": "Fusili.png"
   },
   {
     "category": "Cereales & Pasta",
-    "name": "Fideos"
+    "name": "Fideos",
+    "imageFile": "Fideos.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Gelatina"
+    "name": "Gelatina",
+    "imageFile": "gelatina.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Hummus"
+    "name": "Hummus",
+    "imageFile": "hummus.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Miel"
+    "name": "Miel",
+    "imageFile": "miel.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Malvaviscos"
+    "name": "Malvaviscos",
+    "imageFile": "malvaviscos.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Mermelada"
+    "name": "Mermelada",
+    "imageFile": "mermelada.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Natillas"
+    "name": "Natillas",
+    "imageFile": "natillas.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Nachos"
+    "name": "Nachos",
+    "imageFile": "nachos.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Palomitas"
+    "name": "Palomitas",
+    "imageFile": "palomitas.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Pan dulce"
+    "name": "Pan dulce",
+    "imageFile": "pan.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Pastel"
+    "name": "Pastel",
+    "imageFile": "pan-pasteles.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Pan de jengibre"
+    "name": "Pan de jengibre",
+    "imageFile": "pan-de-jengibre.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Patatas"
+    "name": "Patatas",
+    "imageFile": "Patatas-Fritas.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Postre"
+    "name": "Postre",
+    "imageFile": "tarta.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Pepinillos"
+    "name": "Pepinillos",
+    "imageFile": "encurtido.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Patatas chips"
+    "name": "Patatas chips",
+    "imageFile": "Patatas-Fritas.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Turrón"
+    "name": "Turrón",
+    "imageFile": "bombones.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Barra de chocolate"
+    "name": "Barra de chocolate",
+    "imageFile": "barra-de-chocolate.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Barrita de cereales"
+    "name": "Barrita de cereales",
+    "imageFile": "barrita-de-cereales.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Bombones"
+    "name": "Bombones",
+    "imageFile": "bombones.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Budín"
+    "name": "Budín",
+    "imageFile": "budin.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Cacahuetes"
+    "name": "Cacahuetes",
+    "imageFile": "cacahuetes.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Chocolate"
+    "name": "Chocolate",
+    "imageFile": "chocolate.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Chicle"
+    "name": "Chicle",
+    "imageFile": "chicle.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Chupetines"
+    "name": "Chupetines",
+    "imageFile": "chupetines.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Crema de cacao"
+    "name": "Crema de cacao",
+    "imageFile": "crema-de-cacao.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Cracker"
+    "name": "Cracker",
+    "imageFile": "cracker.png"
   },
   {
     "category": "Aperitivos & Dulces",
-    "name": "Fruta disecada"
+    "name": "Fruta disecada",
+    "imageFile": "fruta-disecada.png"
   },
   {
     "category": "Bebidas",
-    "name": "Agua embotellada"
+    "name": "Agua embotellada",
+    "imageFile": "agua-embotellada.png"
   },
   {
     "category": "Bebidas",
-    "name": "Agua Tónica"
+    "name": "Agua Tónica",
+    "imageFile": "Agua-Tonica.png"
   },
   {
     "category": "Bebidas",
-    "name": "Agua"
+    "name": "Agua",
+    "imageFile": "agua.png"
   },
   {
     "category": "Bebidas",
-    "name": "Bebida energética"
+    "name": "Bebida energética",
+    "imageFile": "Bebida-Energetica.png"
   },
   {
     "category": "Bebidas",
-    "name": "Batido de frutas"
+    "name": "Batido de frutas",
+    "imageFile": "Batido-frutas.png"
   },
   {
     "category": "Bebidas",
-    "name": "Bebida isotónica"
+    "name": "Bebida isotónica",
+    "imageFile": "Bebida-Isotonica.png"
   },
   {
     "category": "Bebidas",
-    "name": "Bebidas"
+    "name": "Bebidas",
+    "imageFile": "agua.png"
   },
   {
     "category": "Bebidas",
-    "name": "Café"
+    "name": "Café",
+    "imageFile": "Cafe.png"
   },
   {
     "category": "Bebidas",
-    "name": "Café en grano"
+    "name": "Café en grano",
+    "imageFile": "Cafe-granos.png"
   },
   {
     "category": "Bebidas",
-    "name": "Café en saquitos"
+    "name": "Café en saquitos",
+    "imageFile": "Cafe-saquitos.png"
   },
   {
     "category": "Bebidas",
-    "name": "Cápsulas de café"
+    "name": "Cápsulas de café",
+    "imageFile": "Cafe-Capsulas.png"
   },
   {
     "category": "Bebidas",
-    "name": "Cerveza"
+    "name": "Cerveza",
+    "imageFile": "Cerveza.png"
   },
   {
     "category": "Bebidas",
-    "name": "Cava"
+    "name": "Cava",
+    "imageFile": "Cava.png"
   },
   {
     "category": "Bebidas",
-    "name": "Champán"
+    "name": "Champán",
+    "imageFile": "Champan.png"
   },
   {
     "category": "Hogar",
@@ -1333,55 +1652,68 @@
   },
   {
     "category": "Hogar",
-    "name": "Artículos de limpieza"
+    "name": "Artículos de limpieza",
+    "imageFile": "Articulos-de-limpieza.png"
   },
   {
     "category": "Hogar",
-    "name": "Bastoncillos"
+    "name": "Bastoncillos",
+    "imageFile": "Bastoncillos.png"
   },
   {
     "category": "Hogar",
-    "name": "Árbol de navidad"
+    "name": "Árbol de navidad",
+    "imageFile": "Arbol-de-navidad.png"
   },
   {
     "category": "Hogar",
-    "name": "Batidor"
+    "name": "Batidor",
+    "imageFile": "Batidor.png"
   },
   {
     "category": "Hogar",
-    "name": "Bloc de notas"
+    "name": "Bloc de notas",
+    "imageFile": "Bloc-de-notas.png"
   },
   {
     "category": "Hogar",
-    "name": "Bolígrafo"
+    "name": "Bolígrafo",
+    "imageFile": "Boligrafo.png"
   },
   {
     "category": "Hogar",
-    "name": "Bolsas para aspiradora"
+    "name": "Bolsas para aspiradora",
+    "imageFile": "Bolsas-para-aspiradora.png"
   },
   {
     "category": "Hogar",
-    "name": "Bombillas"
+    "name": "Bombillas",
+    "imageFile": "Bombillas.png"
   },
   {
     "category": "Hogar",
-    "name": "Bolsas de basura"
+    "name": "Bolsas de basura",
+    "imageFile": "Bolsas-de-basura.png"
   },
   {
     "category": "Hogar",
-    "name": "Cepillo para reposteria"
+    "name": "Cepillo para reposteria",
+    "imageFile": "Cepillo-para-reposteria.png"
   },
   {
     "category": "Hogar",
-    "name": "Cinta para regalos"
+    "name": "Cinta para regalos",
+    "imageFile": "Cinta-para-regalos.png"
   },
   {
     "category": "Hogar",
-    "name": "Comida de bebé"
+    "name": "Comida de bebé",
+    "imageFile": "Comida-de-bebe.png"
   },
   {
     "category": "Hogar",
-    "name": "Clips"
+    "name": "Clips",
+    "imageFile": "Clips.png"
   },
   {
     "category": "Hogar",
@@ -1425,15 +1757,18 @@
   },
   {
     "category": "Jardín & Hogar",
-    "name": "Asador"
+    "name": "Asador",
+    "imageFile": "Asador.png"
   },
   {
     "category": "Jardín & Hogar",
-    "name": "Azada"
+    "name": "Azada",
+    "imageFile": "Azada.png"
   },
   {
     "category": "Jardín & Hogar",
-    "name": "Botella de gas"
+    "name": "Botella de gas",
+    "imageFile": "Botella-de-gas.png"
   },
   {
     "category": "Jardín & Hogar",
@@ -1441,11 +1776,13 @@
   },
   {
     "category": "Jardín & Hogar",
-    "name": "Carbón"
+    "name": "Carbón",
+    "imageFile": "Carbon.png"
   },
   {
     "category": "Jardín & Hogar",
-    "name": "Clavos"
+    "name": "Clavos",
+    "imageFile": "Clavos.png"
   },
   {
     "category": "Jardín & Hogar",
@@ -1453,7 +1790,8 @@
   },
   {
     "category": "Jardín & Hogar",
-    "name": "Cortacésped"
+    "name": "Cortacésped",
+    "imageFile": "Cortacesped.png"
   },
   {
     "category": "Jardín & Hogar",
@@ -1533,55 +1871,68 @@
   },
   {
     "category": "Aseo & Salud",
-    "name": "Acondicionador"
+    "name": "Acondicionador",
+    "imageFile": "acondicionador.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Aceite para barba"
+    "name": "Aceite para barba",
+    "imageFile": "aceite-para-barba.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Aceite capilar"
+    "name": "Aceite capilar",
+    "imageFile": "aceite-capilar.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Aerosol desinfectante"
+    "name": "Aerosol desinfectante",
+    "imageFile": "aerosol-desinfectante.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Algodón desmaquillador"
+    "name": "Algodón desmaquillador",
+    "imageFile": "algodon-desmaquillador.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Analgésico"
+    "name": "Analgésico",
+    "imageFile": "analgesico.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Caramelos para la tos"
+    "name": "Caramelos para la tos",
+    "imageFile": "caramelos-para-la-tos.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Bálsamo labial"
+    "name": "Bálsamo labial",
+    "imageFile": "balsamo-labial.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Apósitos"
+    "name": "Apósitos",
+    "imageFile": "apositos.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Cepillo de dientes"
+    "name": "Cepillo de dientes",
+    "imageFile": "cepillo-de-dientes.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Champú"
+    "name": "Champú",
+    "imageFile": "champu.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Compresas"
-  }, 
+    "name": "Compresas",
+    "imageFile": "compresas.png"
+  },
   {
     "category": "Aseo & Salud",
-    "name": "Crema de afeitar"
+    "name": "Crema de afeitar",
+    "imageFile": "crema-de-afeitar.png"
   },
   {
     "category": "Aseo & Salud",
@@ -1630,34 +1981,41 @@
   {
     "category": "Aseo & Salud",
     "name": "Pañales"
-  },  
-  {
-    "category": "Aseo & Salud",
-    "name": "Crema para la cara"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Crema de manos"
+    "name": "Crema para la cara",
+    "imageFile": "crema-para-la-cara.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Crema muscular"
+    "name": "Crema de manos",
+    "imageFile": "crema-de-manos.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Desodorante"
+    "name": "Crema muscular",
+    "imageFile": "crema-muscular.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Desmaquillador"
+    "name": "Desodorante",
+    "imageFile": "desodorante.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Aftersun"
+    "name": "Desmaquillador",
+    "imageFile": "desmaquillador.png"
   },
   {
     "category": "Aseo & Salud",
-    "name": "Discos desmaquillantes"
+    "name": "Aftersun",
+    "imageFile": "aftersun.png"
+  },
+  {
+    "category": "Aseo & Salud",
+    "name": "Discos desmaquillantes",
+    "imageFile": "discos-desmaquillantes.png"
   },
   {
     "category": "Aseo & Salud",
@@ -1737,27 +2095,33 @@
   },
   {
     "category": "Productos para mascotas",
-    "name": "Alimento para gatos"
+    "name": "Alimento para gatos",
+    "imageFile": "Alimento-para-gatos.png"
   },
   {
     "category": "Productos para mascotas",
-    "name": "Arena para gatos"
+    "name": "Arena para gatos",
+    "imageFile": "Arena-para-gatos.png"
   },
   {
     "category": "Productos para mascotas",
-    "name": "Alpiste"
+    "name": "Alpiste",
+    "imageFile": "Alpiste.png"
   },
   {
     "category": "Productos para mascotas",
-    "name": "Comida para perros"
+    "name": "Comida para perros",
+    "imageFile": "Comida-para-perros.png"
   },
   {
     "category": "Productos para mascotas",
-    "name": "Golosinas para perros"
+    "name": "Golosinas para perros",
+    "imageFile": "Golosinas-para-perros.png"
   },
   {
     "category": "Productos para mascotas",
-    "name": "Comida de gato"
+    "name": "Comida de gato",
+    "imageFile": "Comida-para-gatos.png"
   },
   {
     "category": "Aseo & Salud",
@@ -1797,7 +2161,8 @@
   },
   {
     "category": "Jardín & Hogar",
-    "name": "Semilla"
+    "name": "Semilla",
+    "imageFile": "semillas-de-lino.png"
   },
   {
     "category": "Jardín & Hogar",
@@ -1813,7 +2178,8 @@
   },
   {
     "category": "Jardín & Hogar",
-    "name": "Semillas"
+    "name": "Semillas",
+    "imageFile": "semillas-de-lino.png"
   },
   {
     "category": "Jardín & Hogar",
@@ -1873,11 +2239,13 @@
   },
   {
     "category": "Bebidas",
-    "name": "Cocacola"
+    "name": "Cocacola",
+    "imageFile": "Cocacola.png"
   },
   {
     "category": "Bebidas",
-    "name": "Chocolate a la taza"
+    "name": "Chocolate a la taza",
+    "imageFile": "Chocolate-Taza.png"
   },
   {
     "category": "Bebidas",
@@ -1885,70 +2253,87 @@
   },
   {
     "category": "Bebidas",
-    "name": "Ginebra"
+    "name": "Ginebra",
+    "imageFile": "Ginebra.png"
   },
   {
     "category": "Bebidas",
-    "name": "Cola Light"
+    "name": "Cola Light",
+    "imageFile": "Cola-Light.png"
   },
   {
     "category": "Bebidas",
-    "name": "Licores"
+    "name": "Licores",
+    "imageFile": "Licores.png"
   },
   {
     "category": "Bebidas",
-    "name": "Refrescos"
+    "name": "Refrescos",
+    "imageFile": "Cocacola.png"
   },
   {
     "category": "Bebidas",
-    "name": "Ron"
+    "name": "Ron",
+    "imageFile": "Licores.png"
   },
   {
     "category": "Bebidas",
-    "name": "Sidra"
+    "name": "Sidra",
+    "imageFile": "Cerveza.png"
   },
   {
     "category": "Bebidas",
-    "name": "Refrescos Light"
+    "name": "Refrescos Light",
+    "imageFile": "Cola-Light.png"
   },
   {
     "category": "Bebidas",
-    "name": "Té"
+    "name": "Té",
+    "imageFile": "Cafe.png"
   },
   {
     "category": "Bebidas",
-    "name": "Té de hierbas"
+    "name": "Té de hierbas",
+    "imageFile": "hierbas.png"
   },
   {
     "category": "Bebidas",
-    "name": "Te helado"
+    "name": "Te helado",
+    "imageFile": "Batido-frutas.png"
   },
   {
     "category": "Bebidas",
-    "name": "Vino blanco"
+    "name": "Vino blanco",
+    "imageFile": "Cava.png"
   },
   {
     "category": "Bebidas",
-    "name": "Vino tinto"
+    "name": "Vino tinto",
+    "imageFile": "Cava.png"
   },
   {
     "category": "Bebidas",
-    "name": "Vodka"
+    "name": "Vodka",
+    "imageFile": "Licores.png"
   },
   {
     "category": "Bebidas",
-    "name": "Zumo de manzana"
+    "name": "Zumo de manzana",
+    "imageFile": "manzanas.png"
   },
   {
     "category": "Bebidas",
-    "name": "Zumo de frutas"
+    "name": "Zumo de frutas",
+    "imageFile": "fruta.png"
   },
   {
     "category": "Bebidas",
-    "name": "Whisky"
+    "name": "Whisky",
+    "imageFile": "Licores.png"
   },
   {
     "category": "Bebidas",
-    "name": "Zumo de naranja"
+    "name": "Zumo de naranja",
+    "imageFile": "naranja.png"
   }
 ]
