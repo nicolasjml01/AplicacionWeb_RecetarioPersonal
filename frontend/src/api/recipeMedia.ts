@@ -1,6 +1,6 @@
 import type { RecipeMediaDto } from "../types/recipes";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+import { apiFetch } from "./http";
 
 async function readErrorMessage(res: Response): Promise<string> {
   try {
@@ -21,8 +21,8 @@ export async function uploadRecipeMedia(
   const fd = new FormData();
   fd.append("file", file);
   const qs = stepId != null ? `?stepId=${encodeURIComponent(String(stepId))}` : "";
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/media${qs}`;
-  const res = await fetch(url, { method: "POST", body: fd });
+  const url = `/api/users/${userId}/recipes/${recipeId}/media${qs}`;
+  const res = await apiFetch(url, { method: "POST", body: fd });
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return res.json() as Promise<RecipeMediaDto>;
 }
@@ -32,8 +32,8 @@ export async function deleteRecipeMedia(
   recipeId: number,
   mediaId: number
 ): Promise<void> {
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/media/items/${mediaId}`;
-  const res = await fetch(url, { method: "DELETE" });
+  const url = `/api/users/${userId}/recipes/${recipeId}/media/items/${mediaId}`;
+  const res = await apiFetch(url, { method: "DELETE" });
   if (!res.ok) throw new Error(await readErrorMessage(res));
 }
 
@@ -47,10 +47,30 @@ export async function replaceRecipeMediaContent(
 ): Promise<RecipeMediaDto> {
   const fd = new FormData();
   fd.append("file", file);
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/media/items/${mediaId}/content`;
-  const res = await fetch(url, { method: "POST", body: fd });
+  const url = `/api/users/${userId}/recipes/${recipeId}/media/items/${mediaId}/content`;
+  const res = await apiFetch(url, { method: "POST", body: fd });
   if (!res.ok) throw new Error(await readErrorMessage(res));
   return res.json() as Promise<RecipeMediaDto>;
+}
+
+export type ImportRecipeMediaFromUrlsResponse = {
+  media: RecipeMediaDto[];
+  warnings: string[];
+};
+
+export async function importRecipeMediaFromUrls(
+  userId: number,
+  recipeId: number,
+  urls: string[],
+): Promise<ImportRecipeMediaFromUrlsResponse> {
+  const url = `/api/users/${userId}/recipes/${recipeId}/media/import-from-urls`;
+  const res = await apiFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ urls }),
+  });
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return res.json() as Promise<ImportRecipeMediaFromUrlsResponse>;
 }
 
 export async function reorderRecipeMedia(
@@ -60,8 +80,8 @@ export async function reorderRecipeMedia(
   stepId?: number
 ): Promise<void> {
   const qs = stepId != null ? `?stepId=${encodeURIComponent(String(stepId))}` : "";
-  const url = `${API_BASE}/api/users/${userId}/recipes/${recipeId}/media/items/order${qs}`;
-  const res = await fetch(url, {
+  const url = `/api/users/${userId}/recipes/${recipeId}/media/items/order${qs}`;
+  const res = await apiFetch(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mediaIdsInOrder }),

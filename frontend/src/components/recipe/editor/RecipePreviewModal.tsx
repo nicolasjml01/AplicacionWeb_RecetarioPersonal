@@ -1,5 +1,6 @@
 import type { RecipeCategoryDto, RecipeMediaDto } from "../../../types/recipes";
 import { resolveMediaUrl } from "../../../utils/mediaUrl";
+import { ModalBackdrop, ModalPanel } from "../../ui/ModalBackdrop";
 
 type Props = {
   open: boolean;
@@ -29,8 +30,8 @@ export function RecipePreviewModal({
   const sortedGlobal = [...globalMedia].sort((a, b) => a.displayOrder - b.displayOrder);
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="create-recipe-preview" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+    <ModalBackdrop onDismiss={onClose} disabled={publishing}>
+      <ModalPanel className="create-recipe-preview" aria-labelledby="preview-title">
         <h2 id="preview-title" className="create-recipe-preview__title">
           Previsualización
         </h2>
@@ -45,7 +46,7 @@ export function RecipePreviewModal({
 
         {categories.length > 0 && (
           <div className="create-recipe-preview__block">
-            <h3 className="create-recipe-preview__label">Categorías</h3>
+            <h3 className="create-recipe-preview__label">Etiquetas</h3>
             <ul className="recipe-detail__chips">
               {categories.map((c) => (
                 <li key={c.categoryId}>{c.name}</li>
@@ -112,7 +113,7 @@ export function RecipePreviewModal({
             {publishing ? "Publicando…" : "Publicar"}
           </button>
         </div>
-      </div>
-    </div>
+      </ModalPanel>
+    </ModalBackdrop>
   );
 }

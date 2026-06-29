@@ -1,11 +1,19 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useOverlayDismiss } from "../hooks/useOverlayDismiss";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
-import { deleteRecipe, getRecipe, importRecipeIngredientsToShoppingList } from "../api/recipes";
+import { deleteRecipe, getRecipe } from "../api/recipes";
 import type { RecipeDto } from "../types/recipes";
 import { RECIPE_DEFAULT_COVER_PATH } from "../constants/recipeAssets";
+import { IngredientThumb } from "../components/ingredient/IngredientThumb";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
+import { ImportRecipeIngredientsDialog } from "../components/recipe/ImportRecipeIngredientsDialog";
+import {
+  mergeSearchWithReturnNav,
+  navigateBackFromRecipeDetail,
+  parseRecipeReturnNav,
+} from "../utils/recipeReturnNav";
 
 type LocationState = { fromCategoryId?: number } | null;
 
@@ -20,41 +28,63 @@ function MediaCarousel({ media, hero = false }: MediaCarouselProps) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [stepOverflow, setStepOverflow] = useState(false);
 
+  const canMeasureOverflow = !hero && media.length > 1;
+
   useLayoutEffect(() => {
-    if (hero) return;
+    if (!canMeasureOverflow) return;
     const el = scrollerRef.current;
-    if (!el || media.length <= 1) {
-      setStepOverflow(false);
-      return;
-    }
+    if (!el) return;
     const check = () => {
       // Margen por subpíxeles / barras de scroll para no forzar scroll cuando caben todas las miniaturas
-      setStepOverflow(el.scrollWidth > el.clientWidth + 8);
+      setStepOverflow(el.scrollWidth > el.clientWidth + STEP_MEDIA_GAP_PX);
     };
     check();
     const ro = new ResizeObserver(check);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [hero, media]);
+  }, [canMeasureOverflow, media]);
 
   const scrollHero = (direction: "prev" | "next") => {
     const el = scrollerRef.current;
     if (!el) return;
-    el.scrollBy({
-      left: direction === "next" ? el.clientWidth : -el.clientWidth,
-      behavior: "smooth",
-    });
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    const page = el.clientWidth;
+    const eps = 8;
+    if (maxScroll <= eps) return;
+
+    if (direction === "next") {
+      if (el.scrollLeft >= maxScroll - eps) {
+        el.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        el.scrollBy({ left: page, behavior: "smooth" });
+      }
+    } else if (el.scrollLeft <= eps) {
+      el.scrollTo({ left: maxScroll, behavior: "smooth" });
+    } else {
+      el.scrollBy({ left: -page, behavior: "smooth" });
+    }
   };
 
   const scrollStep = (direction: "prev" | "next") => {
     const el = scrollerRef.current;
     if (!el) return;
     const card = el.querySelector<HTMLElement>(".recipe-detail__media-cell");
-    const w = card?.offsetWidth ?? 120;
-    el.scrollBy({
-      left: direction === "next" ? w + STEP_MEDIA_GAP_PX : -(w + STEP_MEDIA_GAP_PX),
-      behavior: "smooth",
-    });
+    const step = (card?.offsetWidth ?? 120) + STEP_MEDIA_GAP_PX;
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    const eps = 8;
+    if (maxScroll <= eps) return;
+
+    if (direction === "next") {
+      if (el.scrollLeft >= maxScroll - eps) {
+        el.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        el.scrollBy({ left: step, behavior: "smooth" });
+      }
+    } else if (el.scrollLeft <= eps) {
+      el.scrollTo({ left: maxScroll, behavior: "smooth" });
+    } else {
+      el.scrollBy({ left: -step, behavior: "smooth" });
+    }
   };
 
   const cells = media.map((m) => (
@@ -67,8 +97,8 @@ function MediaCarousel({ media, hero = false }: MediaCarouselProps) {
     </figure>
   ));
 
-  const showNav = hero ? media.length > 1 : stepOverflow;
-  const inlineNoScroll = !hero && media.length > 1 && !stepOverflow;
+  const showNav = hero ? media.length > 1 : canMeasureOverflow && stepOverflow;
+  const inlineNoScroll = canMeasureOverflow && !stepOverflow;
 
   return (
     <div
@@ -110,6 +140,7 @@ function MediaCarousel({ media, hero = false }: MediaCarouselProps) {
 export function RecipeDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { recipeId: recipeIdParam } = useParams();
   const userId = getCurrentUserId();
 
@@ -120,11 +151,10 @@ export function RecipeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [importConfirmOpen, setImportConfirmOpen] = useState(false);
+  const [importPickerOpen, setImportPickerOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [ingredientsExpanded, setIngredientsExpanded] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [actionNotice, setActionNotice] = useState("");
   const actionsRef = useRef<HTMLDivElement | null>(null);
 
@@ -158,15 +188,13 @@ export function RecipeDetailPage() {
     };
   }, [userId, recipeId]);
 
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (!actionsRef.current?.contains(e.target as Node)) {
-        setActionsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, []);
+  const closeActionsMenu = useCallback(() => setActionsOpen(false), []);
+
+  useOverlayDismiss({
+    enabled: actionsOpen,
+    containerRef: actionsRef,
+    onDismiss: closeActionsMenu,
+  });
 
   useEffect(() => {
     if (!actionNotice) return;
@@ -175,11 +203,7 @@ export function RecipeDetailPage() {
   }, [actionNotice]);
 
   const handleBack = () => {
-    if (state?.fromCategoryId != null) {
-      navigate(`/home/categories/${state.fromCategoryId}`);
-    } else {
-      navigate("/home");
-    }
+    navigateBackFromRecipeDetail(navigate, searchParams, state?.fromCategoryId);
   };
 
   if (!userId) return <p className="home-error">No hay usuario en sesión.</p>;
@@ -188,22 +212,12 @@ export function RecipeDetailPage() {
 
   const handleEdit = () => {
     if (!recipe) return;
-    navigate(`/home/recipes/new?editId=${recipe.recipeId}`);
-  };
-
-  const handleImportToShopping = async () => {
-    if (!userId || !recipe) return;
-    setImporting(true);
-    setActionNotice("");
-    try {
-      await importRecipeIngredientsToShoppingList(userId, recipe.recipeId);
-      setActionNotice("Ingredientes añadidos a la cesta.");
-    } catch (e) {
-      setActionNotice(e instanceof Error ? e.message : "No se pudieron añadir los ingredientes.");
-    } finally {
-      setImporting(false);
-      setActionsOpen(false);
-    }
+    const parsed = parseRecipeReturnNav(searchParams);
+    const ret =
+      parsed ??
+      (state?.fromCategoryId != null ? { kind: "category" as const, categoryId: state.fromCategoryId } : null);
+    const qs = mergeSearchWithReturnNav(`editId=${recipe.recipeId}`, ret);
+    navigate(`/home/recipes/new?${qs}`);
   };
 
   const handleDelete = async () => {
@@ -212,11 +226,7 @@ export function RecipeDetailPage() {
     setError("");
     try {
       await deleteRecipe(userId, recipe.recipeId);
-      if (state?.fromCategoryId != null) {
-        navigate(`/home/categories/${state.fromCategoryId}`);
-      } else {
-        navigate("/home");
-      }
+      navigateBackFromRecipeDetail(navigate, searchParams, state?.fromCategoryId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo eliminar la receta.");
     } finally {
@@ -258,19 +268,19 @@ export function RecipeDetailPage() {
                     role="menuitem"
                     className="recipe-detail__menu-item recipe-detail__menu-item--primary"
                     onClick={() => {
-                      setImportConfirmOpen(true);
+                      setImportPickerOpen(true);
                       setActionsOpen(false);
                     }}
-                    disabled={importing}
+                    disabled={deleting}
                   >
-                    {importing ? "Añadiendo..." : "Añadir a la cesta"}
+                    Añadir a la cesta
                   </button>
                   <button
                     type="button"
                     role="menuitem"
                     className="recipe-detail__menu-item"
                     onClick={handleEdit}
-                    disabled={deleting || importing}
+                    disabled={deleting}
                   >
                     Editar
                   </button>
@@ -282,7 +292,7 @@ export function RecipeDetailPage() {
                       setActionsOpen(false);
                       setDeleteOpen(true);
                     }}
-                    disabled={deleting || importing}
+                    disabled={deleting}
                   >
                     Eliminar
                   </button>
@@ -298,10 +308,13 @@ export function RecipeDetailPage() {
         {!loading && !error && recipe && recipe.publicationState === "DRAFT" && (
           <div className="recipe-detail__draft-banner" role="status">
             <p>
-              Esta receta es un <strong>borrador</strong>: no aparece en el inicio ni en las categorías hasta
+              Esta receta es un <strong>borrador</strong>: no aparece en el inicio ni en las etiquetas hasta
               que la publiques desde el editor.
             </p>
-            <Link className="recipe-detail__draft-link" to={`/home/recipes/new?draftId=${recipe.recipeId}`}>
+            <Link
+              className="recipe-detail__draft-link"
+              to={`/home/recipes/new?${mergeSearchWithReturnNav(`draftId=${recipe.recipeId}`, parseRecipeReturnNav(searchParams))}`}
+            >
               Continuar editando
             </Link>
           </div>
@@ -310,7 +323,7 @@ export function RecipeDetailPage() {
         {!loading && !error && recipe && (
           <div className="recipe-detail__content recipe-detail__content--editorial">
             {recipe.categories.length > 0 && (
-              <div className="recipe-detail__meta" aria-label="Categorías">
+              <div className="recipe-detail__meta" aria-label="Etiquetas">
                 <ul className="recipe-detail__chips">
                   {recipe.categories.map((c) => (
                     <li key={c.categoryId}>{c.name}</li>
@@ -374,9 +387,12 @@ export function RecipeDetailPage() {
                         : "sin unidad";
                       return (
                         <article key={ing.recipeIngredientId} className="recipe-detail__ingredient-card">
-                          <div className="recipe-detail__ingredient-image-wrap">
-                            <img src="/logoShoppingList.png" alt="" className="recipe-detail__ingredient-image" />
-                          </div>
+                          <IngredientThumb
+                            name={ing.ingredient.name}
+                            imageUrl={ing.ingredient.imageUrl}
+                            size="card"
+                            alt={ing.ingredient.name}
+                          />
                           <p className="recipe-detail__ingredient-name">{ing.ingredient.name}</p>
                           <div className="recipe-detail__ingredient-pills">
                             <span>{ing.quantity}</span>
@@ -411,20 +427,16 @@ export function RecipeDetailPage() {
         )}
       </div>
 
-      <ConfirmDialog
-        open={importConfirmOpen}
-        title="¿Añadir ingredientes a la cesta?"
-        message="Se importarán los ingredientes de esta receta a tu lista de la compra."
-        cancelLabel="Cancelar"
-        confirmLabel={importing ? "Añadiendo..." : "Sí, añadir"}
-        onCancel={() => {
-          if (!importing) setImportConfirmOpen(false);
-        }}
-        onConfirm={() => {
-          void handleImportToShopping();
-          setImportConfirmOpen(false);
-        }}
-      />
+      {recipe && (
+        <ImportRecipeIngredientsDialog
+          open={importPickerOpen}
+          userId={userId}
+          recipeId={recipe.recipeId}
+          recipeTitle={recipe.title}
+          onClose={() => setImportPickerOpen(false)}
+          onSuccess={(msg) => setActionNotice(msg)}
+        />
+      )}
       <ConfirmDialog
         open={deleteOpen}
         title="¿Eliminar esta receta?"

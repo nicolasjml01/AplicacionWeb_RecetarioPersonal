@@ -41,7 +41,7 @@ export function FabMenu({
       {open && (
         <div id="home-fab-menu" className="home-fab-menu" role="menu" aria-label="Acciones de creación">
           <button type="button" onClick={onAddCategory} role="menuitem">
-            Añadir categoría
+            Añadir etiqueta
           </button>
           <button type="button" onClick={onAddRecipe} role="menuitem">
             Añadir receta

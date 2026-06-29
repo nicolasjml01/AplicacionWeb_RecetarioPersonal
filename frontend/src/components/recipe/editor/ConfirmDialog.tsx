@@ -1,3 +1,6 @@
+import type { FormEvent } from "react";
+import { ModalBackdrop, ModalPanel } from "../../ui/ModalBackdrop";
+
 type Props = {
   open: boolean;
   title: string;
@@ -21,26 +24,32 @@ export function ConfirmDialog({
 }: Props) {
   if (!open) return null;
 
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    onConfirm();
+  };
+
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="create-recipe-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
-        <h2 id="confirm-dialog-title" className="create-recipe-dialog__title">
-          {title}
-        </h2>
-        <p className="create-recipe-dialog__msg">{message}</p>
-        <div className="create-recipe-dialog__actions">
-          <button type="button" className="btn btn--secondary" onClick={onCancel}>
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            className={`btn ${confirmVariant === "danger" ? "create-recipe-dialog__btn-danger" : "btn--primary"}`}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+    <ModalBackdrop onDismiss={onCancel}>
+      <ModalPanel className="create-recipe-dialog" aria-labelledby="confirm-dialog-title">
+        <form onSubmit={handleSubmit}>
+          <h2 id="confirm-dialog-title" className="create-recipe-dialog__title">
+            {title}
+          </h2>
+          <p className="create-recipe-dialog__msg">{message}</p>
+          <div className="create-recipe-dialog__actions">
+            <button type="button" className="btn btn--secondary" onClick={onCancel}>
+              {cancelLabel}
+            </button>
+            <button
+              type="submit"
+              className={`btn ${confirmVariant === "danger" ? "create-recipe-dialog__btn-danger" : "btn--primary"}`}
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </form>
+      </ModalPanel>
+    </ModalBackdrop>
   );
 }

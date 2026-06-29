@@ -2,6 +2,9 @@ package backend.recetarioPersonal.model;
 
 import jakarta.persistence.*;
 
+/**
+ * Unit row. {@code owner == null} is the shared catalog; {@code owner != null} is user-private.
+ */
 @Entity
 @Table(name = "units_of_measure")
 public class UnitOfMeasure {
@@ -11,11 +14,15 @@ public class UnitOfMeasure {
     @Column(name = "unit_id")
     private Long unitId;
 
-    @Column(name = "name", nullable = false, unique = true)
+    @Column(name = "name", nullable = false)
     private String name;
 
     @Column(name = "symbol", length = 20)
     private String symbol;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_user_id")
+    private User owner;
 
     public UnitOfMeasure() {
     }
@@ -42,5 +49,13 @@ public class UnitOfMeasure {
 
     public void setSymbol(String symbol) {
         this.symbol = symbol;
+    }
+
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        this.owner = owner;
     }
 }

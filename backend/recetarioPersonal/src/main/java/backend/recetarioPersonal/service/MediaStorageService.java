@@ -57,6 +57,64 @@ public class MediaStorageService {
         return relative.replace('\\', '/');
     }
 
+    /**
+     * Stores binary image data (e.g. downloaded during recipe URL import).
+     */
+    public String storeBytes(long userId, long recipeId, byte[] data, String contentType, String suggestedFilename)
+            throws IOException {
+        if (data == null || data.length == 0) {
+            throw new IllegalArgumentException("Es obligatorio adjuntar un archivo.");
+        }
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("Tipo de archivo no permitido: " + contentType);
+        }
+        if (data.length > props.maxFileSizeBytes()) {
+            throw new IllegalArgumentException("El archivo supera el tamaño máximo permitido.");
+        }
+
+        String ext = extensionFrom(suggestedFilename, contentType);
+        String relative = userId + "/" + recipeId + "/" + UUID.randomUUID() + ext;
+
+        Path target = rootPath.resolve(relative).normalize();
+        if (!target.startsWith(rootPath)) {
+            throw new IllegalArgumentException("Ruta de almacenamiento no válida.");
+        }
+
+        Files.createDirectories(target.getParent());
+        Files.write(target, data);
+        return relative.replace('\\', '/');
+    }
+
+    /**
+     * Stores an image for a user-owned ingredients catalog.
+     */
+    public String storeIngredientImage(long userId, long ingredientId, MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Es obligatorio adjuntar un archivo.");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("Tipo de archivo no permitido: " + contentType);
+        }
+        if (file.getSize() > props.maxFileSizeBytes()) {
+            throw new IllegalArgumentException("El archivo supera el tamaño máximo permitido.");
+        }
+
+        String ext = extensionFrom(file.getOriginalFilename(), contentType);
+        String relative = userId + "/ingredients/" + ingredientId + "/" + UUID.randomUUID() + ext;
+
+        Path target = rootPath.resolve(relative).normalize();
+        if (!target.startsWith(rootPath)) {
+            throw new IllegalArgumentException("Ruta de almacenamiento no válida.");
+        }
+
+        Files.createDirectories(target.getParent());
+        try (InputStream in = file.getInputStream()) {
+            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+        return relative.replace('\\', '/');
+    }
+
     public void deleteIfExists(String relativePath) {
         if (relativePath == null || relativePath.isBlank()) {
             return;

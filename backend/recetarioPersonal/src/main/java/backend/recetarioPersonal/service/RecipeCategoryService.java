@@ -17,7 +17,7 @@ public class RecipeCategoryService {
 
     private final RecipeCategoryRepository categoryRepository;
     private final UserRepository userRepository;
-    private static final String DEFAULT_CATEGORY_NAME = "Sin categoría";
+    private static final String DEFAULT_TAG_NAME = "Sin etiqueta";
 
     public RecipeCategoryService(
             RecipeCategoryRepository categoryRepository,
@@ -27,8 +27,8 @@ public class RecipeCategoryService {
         this.userRepository = userRepository;
     }
 
-    private boolean isDefaultCategory(String name) {
-        return name != null && name.trim().equalsIgnoreCase(DEFAULT_CATEGORY_NAME);
+    private boolean isDefaultTag(String name) {
+        return name != null && name.trim().equalsIgnoreCase(DEFAULT_TAG_NAME);
     }
 
     @Transactional(readOnly = true)
@@ -44,7 +44,7 @@ public class RecipeCategoryService {
         if (normalized.isBlank()) {
             throw new IllegalArgumentException("Category name is required.");
         }
-        if (isDefaultCategory(normalized)) {
+        if (isDefaultTag(normalized)) {
             throw new IllegalArgumentException("Default category name is reserved.");
         }
         if (categoryRepository.existsByOwner_UserIdAndNameIgnoreCase(userId, normalized)) {
@@ -71,7 +71,7 @@ public class RecipeCategoryService {
             throw new IllegalArgumentException("Category does not belong to user.");
         }
 
-        if (isDefaultCategory(category.getName())) {
+        if (isDefaultTag(category.getName())) {
             throw new IllegalArgumentException("Default category cannot be renamed.");
         }
 
@@ -80,7 +80,7 @@ public class RecipeCategoryService {
             throw new IllegalArgumentException("Category name is required.");
         }
 
-        if (isDefaultCategory(normalized) && !isDefaultCategory(category.getName())) {
+        if (isDefaultTag(normalized) && !isDefaultTag(category.getName())) {
             throw new IllegalArgumentException("Default category name is reserved.");
         }
 
@@ -104,7 +104,7 @@ public class RecipeCategoryService {
             throw new IllegalArgumentException("Category does not belong to user.");
         }
 
-        if (isDefaultCategory(category.getName())) {
+        if (isDefaultTag(category.getName())) {
             throw new IllegalArgumentException("Default category cannot be deleted.");
         }
 

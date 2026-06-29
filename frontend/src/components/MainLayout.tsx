@@ -9,7 +9,9 @@ export function MainLayout() {
       </aside>
 
       <main className="app-content">
-        <Outlet />
+        <div className="app-page">
+          <Outlet />
+        </div>
       </main>
 
       <div className="app-bottom-nav">

@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from "react";
+import { useModalDismiss } from "../hooks/useModalDismiss";
 import { useNavigate, useParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
 import { getRecipeCategories, updateRecipeCategory } from "../api/recipeCategories";
-import { deleteRecipe, getRecipes, importRecipeIngredientsToShoppingList } from "../api/recipes";
+import { deleteRecipe, getRecipes } from "../api/recipes";
 import type { RecipeDto } from "../types/recipes";
 import { RecipeMiniTile } from "../components/recipe/RecipeMiniTile";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
+import { ImportRecipeIngredientsDialog } from "../components/recipe/ImportRecipeIngredientsDialog";
 import { CreateCategoryModal } from "../components/home/CreateCategoryModal";
+import { appendRecipeReturnNav, mergeSearchWithReturnNav } from "../utils/recipeReturnNav";
+import { isDefaultRecipeTag } from "../constants/recipeTags";
 
 /**
- * Lists recipes for one category. Search is debounced and updates results without unmounting the input
- * (full-page loading only on first load for this category).
+ * Lists recipes for one tag (etiqueta). Search is debounced and updates results without unmounting the input
+ * (full-page loading only on first load for this tag).
  */
 export function CategoryRecipesPage() {
   const navigate = useNavigate();
@@ -28,15 +32,14 @@ export function CategoryRecipesPage() {
   const [error, setError] = useState("");
   const [openMenuRecipeId, setOpenMenuRecipeId] = useState<number | null>(null);
   const [pendingDeleteRecipe, setPendingDeleteRecipe] = useState<RecipeDto | null>(null);
-  const [pendingImportRecipe, setPendingImportRecipe] = useState<RecipeDto | null>(null);
+  const [importPickerRecipe, setImportPickerRecipe] = useState<RecipeDto | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [importingRecipeId, setImportingRecipeId] = useState<number | null>(null);
   const [actionNotice, setActionNotice] = useState("");
   const [editCategoryOpen, setEditCategoryOpen] = useState(false);
   const [updatingCategory, setUpdatingCategory] = useState(false);
 
   const bootstrapDoneRef = useRef(false);
-  const isDefaultCategory = categoryName.trim().toLowerCase() === "sin categoría";
+  const isDefaultCategory = isDefaultRecipeTag(categoryName);
 
   useEffect(() => {
     bootstrapDoneRef.current = false;
@@ -75,13 +78,13 @@ export function CategoryRecipesPage() {
           ]);
           if (cancelled) return;
           const cat = cats.find((c) => c.categoryId === categoryId);
-          setCategoryName(cat?.name ?? "Categoría");
+          setCategoryName(cat?.name ?? "Etiqueta");
           setRecipes(recs);
           bootstrapDoneRef.current = true;
         } catch (e) {
           if (!cancelled) {
             setError(
-              e instanceof Error ? e.message : "Error al cargar la categoría."
+              e instanceof Error ? e.message : "Error al cargar la etiqueta."
             );
           }
         } finally {
@@ -104,21 +107,6 @@ export function CategoryRecipesPage() {
     const t = window.setTimeout(() => setActionNotice(""), 2200);
     return () => window.clearTimeout(t);
   }, [actionNotice]);
-
-  const handleImportToShopping = async (recipe: RecipeDto) => {
-    if (!userId) return;
-    setImportingRecipeId(recipe.recipeId);
-    setActionNotice("");
-    try {
-      await importRecipeIngredientsToShoppingList(userId, recipe.recipeId);
-      setActionNotice(`"${recipe.title}" añadida a la cesta.`);
-    } catch (e) {
-      setActionNotice(e instanceof Error ? e.message : "No se pudieron importar los ingredientes.");
-    } finally {
-      setImportingRecipeId(null);
-      setOpenMenuRecipeId(null);
-    }
-  };
 
   const handleDeleteRecipe = async () => {
     if (!userId || !pendingDeleteRecipe) return;
@@ -144,15 +132,20 @@ export function CategoryRecipesPage() {
       const updated = await updateRecipeCategory(userId, categoryId, name);
       setCategoryName(updated.name);
       setEditCategoryOpen(false);
-      setActionNotice("Categoría actualizada.");
+      setActionNotice("Etiqueta actualizada.");
     } finally {
       setUpdatingCategory(false);
     }
   };
 
+  useModalDismiss({
+    enabled: openMenuRecipeId != null,
+    onDismiss: () => setOpenMenuRecipeId(null),
+  });
+
   if (!userId) return <p className="home-error">No hay usuario en sesión.</p>;
   if (!Number.isFinite(categoryId))
-    return <p className="home-error">Categoría no válida.</p>;
+    return <p className="home-error">Etiqueta no válida.</p>;
 
   return (
     <section className="category-recipes-page" onClick={() => setOpenMenuRecipeId(null)}>
@@ -182,7 +175,12 @@ export function CategoryRecipesPage() {
               type="button"
               className="btn btn--primary"
               onClick={() =>
-                navigate(`/home/recipes/new?categoryId=${categoryId}`)
+                navigate(
+                  appendRecipeReturnNav(`/home/recipes/new?categoryId=${categoryId}`, {
+                    kind: "category",
+                    categoryId,
+                  }),
+                )
               }
               disabled={initialLoading}
             >
@@ -197,8 +195,8 @@ export function CategoryRecipesPage() {
           className="form-input"
           value={recipeSearch}
           onChange={(e) => setRecipeSearch(e.target.value)}
-          placeholder="Buscar recetas en esta categoría"
-          aria-label="Buscar recetas en esta categoría"
+          placeholder="Buscar recetas en esta etiqueta"
+          aria-label="Buscar recetas en esta etiqueta"
           autoComplete="off"
         />
         {searchRefreshing && (
@@ -220,7 +218,7 @@ export function CategoryRecipesPage() {
           <p className="home-category-card__empty">Cargando recetas…</p>
         ) : recipes.length === 0 ? (
           <p className="home-category-card__empty">
-            No hay recetas en esta categoría.
+            No hay recetas en esta etiqueta.
           </p>
         ) : (
           recipes.map((r) => (
@@ -233,9 +231,12 @@ export function CategoryRecipesPage() {
                 type="button"
                 className="category-recipe-card__open"
                 onClick={() =>
-                  navigate(`/home/recipes/${r.recipeId}`, {
-                    state: { fromCategoryId: categoryId },
-                  })
+                  navigate(
+                    appendRecipeReturnNav(`/home/recipes/${r.recipeId}`, {
+                      kind: "category",
+                      categoryId,
+                    }),
+                  )
                 }
               >
               <RecipeMiniTile recipe={r} layout="comfortable" />
@@ -257,18 +258,25 @@ export function CategoryRecipesPage() {
                       role="menuitem"
                       className="recipe-detail__menu-item recipe-detail__menu-item--primary"
                       onClick={() => {
-                        setPendingImportRecipe(r);
+                        setImportPickerRecipe(r);
                         setOpenMenuRecipeId(null);
                       }}
-                      disabled={importingRecipeId === r.recipeId}
+                      disabled={deleting}
                     >
-                      {importingRecipeId === r.recipeId ? "Añadiendo..." : "Añadir a la cesta"}
+                      Añadir a la cesta
                     </button>
                     <button
                       type="button"
                       role="menuitem"
                       className="recipe-detail__menu-item"
-                      onClick={() => navigate(`/home/recipes/new?editId=${r.recipeId}`)}
+                      onClick={() =>
+                        navigate(
+                          `/home/recipes/new?${mergeSearchWithReturnNav(`editId=${r.recipeId}`, {
+                            kind: "category",
+                            categoryId,
+                          })}`,
+                        )
+                      }
                       disabled={deleting}
                     >
                       Editar
@@ -289,29 +297,23 @@ export function CategoryRecipesPage() {
           ))
         )}
       </div>
-      <ConfirmDialog
-        open={pendingImportRecipe != null}
-        title="¿Añadir ingredientes a la cesta?"
-        message="Se importarán los ingredientes de esta receta a tu lista de la compra."
-        cancelLabel="Cancelar"
-        confirmLabel={
-          importingRecipeId === pendingImportRecipe?.recipeId ? "Añadiendo..." : "Sí, añadir"
-        }
-        onCancel={() => {
-          if (importingRecipeId == null) setPendingImportRecipe(null);
-        }}
-        onConfirm={() => {
-          if (pendingImportRecipe) {
-            void handleImportToShopping(pendingImportRecipe);
-            setPendingImportRecipe(null);
+      {importPickerRecipe != null && userId != null && (
+        <ImportRecipeIngredientsDialog
+          open
+          userId={userId}
+          recipeId={importPickerRecipe.recipeId}
+          recipeTitle={importPickerRecipe.title}
+          onClose={() => setImportPickerRecipe(null)}
+          onSuccess={(msg) =>
+            setActionNotice(`"${importPickerRecipe.title}": ${msg}`)
           }
-        }}
-      />
+        />
+      )}
       {!isDefaultCategory && (
         <CreateCategoryModal
           open={editCategoryOpen}
           loading={updatingCategory}
-          title="Editar categoría"
+          title="Editar etiqueta"
           submitLabel="Guardar cambios"
           initialName={categoryName}
           onClose={() => setEditCategoryOpen(false)}

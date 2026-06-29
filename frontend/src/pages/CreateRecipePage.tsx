@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useOverlayDismiss } from "../hooks/useOverlayDismiss";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
+import {
+  appendRecipeReturnNav,
+  navigateAfterRecipeEditorExit,
+  parseRecipeReturnNav,
+} from "../utils/recipeReturnNav";
 import {
   addRecipeIngredient,
   addRecipeStep,
@@ -13,20 +19,23 @@ import {
   patchRecipe,
   patchRecipeStep,
   publishRecipe,
+  type RecipeImportPreviewDto,
 } from "../api/recipes";
 import {
   deleteRecipeMedia,
+  importRecipeMediaFromUrls,
   replaceRecipeMediaContent,
   reorderRecipeMedia,
   uploadRecipeMedia,
 } from "../api/recipeMedia";
 import { getRecipeCategories } from "../api/recipeCategories";
-import { getUnits, searchIngredients } from "../api/shopping";
-import type { IngredientDto, UnitOfMeasureDto } from "../types/shopping";
+import { getUnits, getIngredientsCatalog, searchIngredients, uploadOwnedIngredientImage } from "../api/shopping";
+import type { IngredientDto, IngredientCategoryCatalogDto, UnitOfMeasureDto } from "../types/shopping";
 import type { RecipeCategoryDto, RecipeDto, RecipeIngredientDto, RecipeMediaDto } from "../types/recipes";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { MediaStripEditor } from "../components/recipe/editor/MediaStripEditor";
 import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryDialog";
+import { IngredientRowThumb } from "../components/ingredient/IngredientRowThumb";
 import { UploadStagingDialog } from "../components/recipe/editor/UploadStagingDialog";
 import { ImageEditorDialog } from "../components/recipe/editor/ImageEditorDialog";
 import { resolveMediaUrl } from "../utils/mediaUrl";
@@ -36,8 +45,14 @@ import {
   isEditableImage,
   type ImageEdits,
 } from "../utils/imageEditing";
+import {
+  defaultIngredientCategoryId,
+  ingredientCategoriesForSelect,
+} from "../utils/ingredientCatalogUi";
+import { parseImportedIngredientLine } from "../utils/parseImportedIngredientLine";
+import { formatImportQuantityForInput } from "../components/recipe/importQuantity";
 
-const DEFAULT_CATEGORY = "Sin categoría";
+import { DEFAULT_RECIPE_TAG, isDefaultRecipeTag } from "../constants/recipeTags";
 const DRAFT_INIT_TITLE = "Receta nueva";
 const RESERVED_TITLES = new Set(["receta nueva", "borrador", "sin título", "nueva receta"]);
 
@@ -55,6 +70,11 @@ type IngredientRow = {
   ingredientName: string;
   quantity: string;
   measurementUnit: string;
+  /** URL del catálogo o de la receta cargada (misma que en detalle de receta). */
+  ingredientImageUrl?: string | null;
+  /** Solo al crear un nombre nuevo desde el modal; se envía al guardar la receta. */
+  ingredientCategoryId?: number | null;
+  pendingIngredientImage?: File | null;
 };
 
 function isGenericDraftTitle(t: string): boolean {
@@ -70,8 +90,8 @@ function isValidPublishTitle(t: string): boolean {
 function sortCategories(items: RecipeCategoryDto[]): RecipeCategoryDto[] {
   const copy = [...items];
   copy.sort((a, b) => {
-    const aDefault = a.name.trim().toLowerCase() === DEFAULT_CATEGORY.toLowerCase();
-    const bDefault = b.name.trim().toLowerCase() === DEFAULT_CATEGORY.toLowerCase();
+    const aDefault = isDefaultRecipeTag(a.name);
+    const bDefault = isDefaultRecipeTag(b.name);
     if (aDefault && !bDefault) return -1;
     if (!aDefault && bDefault) return 1;
     return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
@@ -79,27 +99,54 @@ function sortCategories(items: RecipeCategoryDto[]): RecipeCategoryDto[] {
   return copy;
 }
 
-/** Resolves existing category by id, exact match by name or new name to create in the backend. */
+/** Combines selected category ids and pending new names; resolves names that already exist in the catalog. */
 function buildCategoryPayload(
-  selectedCategoryId: number | null,
-  categoryQuery: string,
+  selectedCategoryIds: number[],
+  pendingNewNames: string[],
   allCategories: RecipeCategoryDto[],
 ): { categoryIds: number[] | null; newCategoryNames: string[] | null } {
+  const idSet = new Set(selectedCategoryIds.filter((id) => Number.isFinite(id)));
+
+  const normalizedNew = [
+    ...new Set(
+      pendingNewNames
+        .map((n) => (n == null ? "" : n.trim()))
+        .filter((n) => n.length > 0 && !isDefaultRecipeTag(n)),
+    ),
+  ];
+
+  const stillNew: string[] = [];
+  for (const n of normalizedNew) {
+    const exact = allCategories.find((c) => c.name.trim().toLowerCase() === n.toLowerCase());
+    if (exact) idSet.add(exact.categoryId);
+    else stillNew.push(n);
+  }
+
+  const categoryIds = idSet.size > 0 ? [...idSet] : null;
+  const newCategoryNames = stillNew.length > 0 ? stillNew : null;
+  if (categoryIds == null && newCategoryNames == null) {
+    return { categoryIds: null, newCategoryNames: null };
+  }
+  return { categoryIds, newCategoryNames };
+}
+
+/** Includes the category search text if the user hasn't yet pressed «add». */
+function effectivePendingCategoryNames(
+  pending: string[],
+  categoryQuery: string,
+  selectedIds: number[],
+  allCategories: RecipeCategoryDto[],
+): string[] {
   const q = categoryQuery.trim();
-  if (selectedCategoryId != null) {
-    return { categoryIds: [selectedCategoryId], newCategoryNames: null };
-  }
-  if (!q) {
-    return { categoryIds: null, newCategoryNames: null };
-  }
-  if (q.toLowerCase() === DEFAULT_CATEGORY.toLowerCase()) {
-    return { categoryIds: null, newCategoryNames: null };
-  }
-  const exact = allCategories.find((c) => c.name.trim().toLowerCase() === q.toLowerCase());
-  if (exact) {
-    return { categoryIds: [exact.categoryId], newCategoryNames: null };
-  }
-  return { categoryIds: null, newCategoryNames: [q] };
+  if (!q || isDefaultRecipeTag(q)) return [...pending];
+  const qLower = q.toLowerCase();
+  if (pending.some((n) => n.trim().toLowerCase() === qLower)) return [...pending];
+  const matchesSelected = selectedIds.some((id) => {
+    const name = allCategories.find((c) => c.categoryId === id)?.name.trim().toLowerCase();
+    return name === qLower;
+  });
+  if (matchesSelected) return [...pending];
+  return [...pending, q];
 }
 
 function applyStepsFromRecipe(sortedSteps: RecipeDto["steps"]): StepRow[] {
@@ -117,9 +164,55 @@ function applyIngredientsFromRecipe(sortedIngredients: RecipeIngredientDto[]): I
     key: String(i.recipeIngredientId),
     recipeIngredientId: i.recipeIngredientId,
     ingredientName: i.ingredient.name,
+    ingredientImageUrl: i.ingredient.imageUrl ?? null,
     quantity: Number.isFinite(i.quantity) ? String(i.quantity) : "",
     measurementUnit: i.unitOfMeasure?.name ?? "",
   }));
+}
+
+function applyIngredientsFromImport(
+  imported: RecipeImportPreviewDto["ingredients"],
+  catalogUnits: UnitOfMeasureDto[],
+): IngredientRow[] {
+  return imported
+    .map((i, idx) => {
+      const raw = (i.rawText ?? i.ingredientName ?? "").trim();
+      const parsed = parseImportedIngredientLine(
+        raw,
+        {
+          ingredientName: i.ingredientName,
+          quantity: i.quantity,
+          measurementUnit: i.measurementUnit,
+        },
+        catalogUnits,
+      );
+      const quantity =
+        parsed.quantity != null && Number.isFinite(parsed.quantity)
+          ? formatImportQuantityForInput(parsed.quantity)
+          : "";
+      return {
+        key: `import-ing-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+        ingredientName: parsed.ingredientName,
+        quantity,
+        measurementUnit: (parsed.measurementUnit ?? "").trim(),
+        ingredientImageUrl: null,
+        ingredientCategoryId: null,
+        pendingIngredientImage: null,
+      };
+    })
+    .filter((i) => i.ingredientName.length > 0 || i.quantity.length > 0 || i.measurementUnit.length > 0);
+}
+
+function applyStepsFromImport(imported: RecipeImportPreviewDto["steps"]): StepRow[] {
+  const sorted = [...imported].sort((a, b) => a.stepNumber - b.stepNumber);
+  return sorted
+    .map((s, idx) => ({
+      key: `import-step-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+      stepNumber: idx + 1,
+      content: s.content?.trim() ?? "",
+      media: [],
+    }))
+    .filter((s) => s.content.length > 0);
 }
 
 function makeLocalStep(stepNumber: number): StepRow {
@@ -147,9 +240,12 @@ type IngredientModalState =
       mode: "add" | "edit";
       rowKey?: string;
       ingredientName: string;
+      /** true = nombre nuevo (no elegido de la búsqueda); muestra categoría y foto. */
+      isNewCreation?: boolean;
     };
 
 export function CreateRecipePage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = getCurrentUserId();
@@ -160,6 +256,13 @@ export function CreateRecipePage() {
 
   const globalFileRef = useRef<HTMLInputElement>(null);
   const stepFileRef = useRef<HTMLInputElement>(null);
+  const pendingImportCoverUrlsRef = useRef<string[] | null>(null);
+  const importCoverStartedRef = useRef(false);
+  const importCoverDoneRef = useRef(false);
+  const importCoverInFlightRef = useRef<Promise<void> | null>(null);
+  const draftEnsurePromiseRef = useRef<Promise<number> | null>(null);
+  const recipeIdRef = useRef<number | null>(null);
+  const [importingCoverImage, setImportingCoverImage] = useState(false);
   const categoryWrapRef = useRef<HTMLDivElement | null>(null);
   const ingredientsWrapRef = useRef<HTMLDivElement | null>(null);
 
@@ -174,9 +277,12 @@ export function CreateRecipePage() {
   const [uploadingGlobal, setUploadingGlobal] = useState(false);
   const [categoryQuery, setCategoryQuery] = useState("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [pendingNewCategoryNames, setPendingNewCategoryNames] = useState<string[]>([]);
   const [ingredients, setIngredients] = useState<IngredientRow[]>([]);
   const [units, setUnits] = useState<UnitOfMeasureDto[]>([]);
+  const [loadingUnits, setLoadingUnits] = useState(true);
+  const [ingredientCatalog, setIngredientCatalog] = useState<IngredientCategoryCatalogDto[]>([]);
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [ingredientResults, setIngredientResults] = useState<IngredientDto[]>([]);
   const [ingredientSearchLoading, setIngredientSearchLoading] = useState(false);
@@ -184,13 +290,19 @@ export function CreateRecipePage() {
   const [ingredientModal, setIngredientModal] = useState<IngredientModalState>({ open: false });
   const [ingredientModalQuantity, setIngredientModalQuantity] = useState("");
   const [ingredientModalUnit, setIngredientModalUnit] = useState("");
+  const [ingredientModalCategoryId, setIngredientModalCategoryId] = useState<number | null>(null);
+  const [ingredientModalImageFile, setIngredientModalImageFile] = useState<File | null>(null);
+  const [ingredientModalImageUrl, setIngredientModalImageUrl] = useState<string | null>(null);
   const [ingredientModalSaving, setIngredientModalSaving] = useState(false);
   const [ingredientModalError, setIngredientModalError] = useState("");
   const [steps, setSteps] = useState<StepRow[]>([makeLocalStep(1)]);
+  const [showStepKeyboardHint, setShowStepKeyboardHint] = useState(false);
 
   const [submitError, setSubmitError] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
+  const [ingredientDeleteConfirmOpen, setIngredientDeleteConfirmOpen] = useState(false);
+  const [ingredientDiscardConfirmOpen, setIngredientDiscardConfirmOpen] = useState(false);
   const [exitBusy, setExitBusy] = useState(false);
   const [stepUploadTarget, setStepUploadTarget] = useState<number | null>(null);
   // Holds the picked files between OS dialog and actual upload, so the user
@@ -221,20 +333,22 @@ export function CreateRecipePage() {
     const hasMultipleSteps = steps.length > 1;
     const q = categoryQuery.trim();
     const hasCategory =
-      selectedCategoryId != null ||
-      (q.length > 0 && q.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase());
+      selectedCategoryIds.length > 0 ||
+      pendingNewCategoryNames.length > 0 ||
+      (q.length > 0 && !isDefaultRecipeTag(q));
     const hasIngredients = ingredients.some(
       (i) => i.ingredientName.trim().length > 0 || i.quantity.trim().length > 0 || i.measurementUnit.trim().length > 0,
     );
     const hasMedia = globalMedia.length > 0 || steps.some((s) => s.media.length > 0);
     return hasTitle || hasStepText || hasMultipleSteps || hasCategory || hasIngredients || hasMedia;
-  }, [title, steps, selectedCategoryId, categoryQuery, ingredients, globalMedia]);
+  }, [title, steps, selectedCategoryIds, pendingNewCategoryNames, categoryQuery, ingredients, globalMedia]);
 
   const currentStateKey = useMemo(
     () =>
       JSON.stringify({
         title: title.trim(),
-        selectedCategoryId,
+        selectedCategoryIds: [...selectedCategoryIds].sort((a, b) => a - b),
+        pendingNewCategoryNames: [...pendingNewCategoryNames].sort((a, b) => a.localeCompare(b, "es")),
         categoryQuery: categoryQuery.trim(),
         ingredients: ingredients.map((i) => ({
           id: i.recipeIngredientId ?? null,
@@ -248,24 +362,26 @@ export function CreateRecipePage() {
           c: s.content.trim(),
         })),
       }),
-    [title, selectedCategoryId, categoryQuery, ingredients, steps],
+    [title, selectedCategoryIds, pendingNewCategoryNames, categoryQuery, ingredients, steps],
   );
 
   const hasUnsavedChanges = baselineKey !== "" && currentStateKey !== baselineKey;
   const [pendingRouteExit, setPendingRouteExit] = useState(false);
   const [pendingRoutePath, setPendingRoutePath] = useState<string | null>(null);
 
-  const goHome = useCallback(() => {
-    navigate("/home");
-  }, [navigate]);
+  const ingredientCategorySelectOptions = useMemo(
+    () => ingredientCategoriesForSelect(ingredientCatalog),
+    [ingredientCatalog],
+  );
 
   const goAfterExit = useCallback(() => {
+    const ret = parseRecipeReturnNav(searchParams);
     if (isPublishedEditMode && recipeId != null) {
-      navigate(`/home/recipes/${recipeId}`);
+      navigate(appendRecipeReturnNav(`/home/recipes/${recipeId}`, ret));
       return;
     }
-    goHome();
-  }, [isPublishedEditMode, recipeId, navigate, goHome]);
+    navigateAfterRecipeEditorExit(navigate, searchParams);
+  }, [isPublishedEditMode, recipeId, navigate, searchParams]);
 
   useEffect(() => {
     if (!userId) return;
@@ -273,29 +389,52 @@ export function CreateRecipePage() {
     getRecipeCategories(userId)
       .then((cats) => setCategories(sortCategories(cats)))
       .catch((e) =>
-        setLoadError(e instanceof Error ? e.message : "No se pudieron cargar las categorías."),
+        setLoadError(e instanceof Error ? e.message : "No se pudieron cargar las etiquetas."),
       )
       .finally(() => setLoadingCats(false));
   }, [userId]);
 
   useEffect(() => {
-    void getUnits()
+    if (userId == null) return;
+    void getUnits(userId)
       .then((list) =>
         setUnits([...list].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))),
       )
       .catch(() => {
         setUnits([]);
-      });
+      })
+      .finally(() => setLoadingUnits(false));
+  }, [userId]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: fine)");
+    const sync = () => setShowStepKeyboardHint(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (!categoryWrapRef.current?.contains(e.target as Node)) setCategoryDropdownOpen(false);
-      if (!ingredientsWrapRef.current?.contains(e.target as Node)) setIngredientDropdownOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, []);
+    if (!userId) return;
+    void getIngredientsCatalog(userId)
+      .then(setIngredientCatalog)
+      .catch(() => setIngredientCatalog([]));
+  }, [userId]);
+
+  const closeCategoryDropdown = useCallback(() => setCategoryDropdownOpen(false), []);
+  const closeIngredientDropdown = useCallback(() => setIngredientDropdownOpen(false), []);
+
+  useOverlayDismiss({
+    enabled: categoryDropdownOpen,
+    containerRef: categoryWrapRef,
+    onDismiss: closeCategoryDropdown,
+  });
+
+  useOverlayDismiss({
+    enabled: ingredientDropdownOpen,
+    containerRef: ingredientsWrapRef,
+    onDismiss: closeIngredientDropdown,
+  });
 
   useEffect(() => {
     const q = ingredientSearch.trim();
@@ -321,10 +460,11 @@ export function CreateRecipePage() {
   const applyRecipe = useCallback((r: RecipeDto) => {
     setTitle(r.title);
     setGlobalMedia([...r.recipeLevelMedia].sort((a, b) => a.displayOrder - b.displayOrder));
-    const nonDefault = r.categories.find(
-      (c) => c.name.trim().toLowerCase() !== DEFAULT_CATEGORY.toLowerCase(),
-    );
-    setSelectedCategoryId(nonDefault?.categoryId ?? null);
+    const nonDefaultIds = r.categories
+      .filter((c) => !isDefaultRecipeTag(c.name))
+      .map((c) => c.categoryId);
+    setSelectedCategoryIds(nonDefaultIds);
+    setPendingNewCategoryNames([]);
     const sortedIngredients = [...r.ingredients].sort((a, b) => a.displayOrder - b.displayOrder);
     setIngredients(
       sortedIngredients.length > 0 ? applyIngredientsFromRecipe(sortedIngredients) : [makeLocalIngredient()],
@@ -336,17 +476,26 @@ export function CreateRecipePage() {
     setIsPublishedEditMode(r.publicationState === "PUBLISHED");
   }, []);
 
+  const reloadRecipeState = useCallback(
+    async (id: number) => {
+      if (!userId) return;
+      const r = await getRecipe(userId, id);
+      applyRecipe(r);
+      try {
+        const cats = await getRecipeCategories(userId);
+        setCategories(sortCategories(cats));
+      } catch {
+        // La receta ya está actualizada; el listado de categorías puede refrescarse al volver a home.
+      }
+    },
+    [userId, applyRecipe],
+  );
+
   const refreshRecipe = useCallback(async () => {
-    if (!userId || recipeId == null) return;
-    const r = await getRecipe(userId, recipeId);
-    applyRecipe(r);
-    try {
-      const cats = await getRecipeCategories(userId);
-      setCategories(sortCategories(cats));
-    } catch {
-      // La receta ya está actualizada; el listado de categorías puede refrescarse al volver a home.
-    }
-  }, [userId, recipeId, applyRecipe]);
+    const id = recipeIdRef.current ?? recipeId;
+    if (id == null) return;
+    await reloadRecipeState(id);
+  }, [recipeId, reloadRecipeState]);
 
   // Refresh "surgical" after uploading/deleting/reordering media: only updates the global gallery
   // and the media of each step, without touching the title, category, ingredients or text
@@ -406,7 +555,9 @@ export function CreateRecipePage() {
       try {
         const r = await getRecipe(userId, parsed);
         if (r.publicationState !== "DRAFT") {
-          navigate(`/home/recipes/${parsed}`, { replace: true });
+          navigate(appendRecipeReturnNav(`/home/recipes/${parsed}`, parseRecipeReturnNav(searchParams)), {
+            replace: true,
+          });
           return;
         }
         setRecipeId(parsed);
@@ -422,18 +573,57 @@ export function CreateRecipePage() {
     setTitle("");
     const parsedCategory =
       categoryIdParam != null && categoryIdParam !== "" ? Number(categoryIdParam) : NaN;
-    setSelectedCategoryId(Number.isFinite(parsedCategory) ? parsedCategory : null);
+    setSelectedCategoryIds(Number.isFinite(parsedCategory) ? [parsedCategory] : []);
+    setPendingNewCategoryNames([]);
     setIngredients([]);
     setIngredientSearch("");
     setIngredientResults([]);
     setIngredientDropdownOpen(false);
     setGlobalMedia([]);
-    setSteps([makeLocalStep(1)]);
+    const importPreview = (location.state as { importPreview?: RecipeImportPreviewDto } | null)?.importPreview;
+    if (importPreview != null) {
+      const importedTitle = importPreview.title?.trim() ?? "";
+      setTitle(importedTitle);
+      let catalogUnits: UnitOfMeasureDto[] = [];
+      try {
+        catalogUnits = await getUnits(userId);
+        setUnits(
+          [...catalogUnits].sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" })),
+        );
+        setLoadingUnits(false);
+      } catch {
+        catalogUnits = [];
+      }
+      const importedIngredients = applyIngredientsFromImport(
+        importPreview.ingredients ?? [],
+        catalogUnits,
+      );
+      setIngredients(importedIngredients.length > 0 ? importedIngredients : [makeLocalIngredient()]);
+      const importedSteps = applyStepsFromImport(importPreview.steps ?? []);
+      setSteps(importedSteps.length > 0 ? importedSteps : [makeLocalStep(1)]);
+      importCoverStartedRef.current = false;
+      importCoverDoneRef.current = false;
+      const seen = new Set<string>();
+      const coverCandidates: string[] = [];
+      const add = (raw?: string | null) => {
+        const u = raw?.trim();
+        if (!u || seen.has(u)) return;
+        seen.add(u);
+        coverCandidates.push(u);
+      };
+      add(importPreview.imageUrl);
+      for (const u of importPreview.imageUrls ?? []) add(u);
+      pendingImportCoverUrlsRef.current =
+        coverCandidates.length > 0 ? coverCandidates.slice(0, 3) : null;
+    } else {
+      pendingImportCoverUrlsRef.current = null;
+      setSteps([makeLocalStep(1)]);
+    }
     setInitialIngredientIds([]);
     setInitialStepIds([]);
     setIsPublishedEditMode(false);
     setBooting(false);
-  }, [userId, draftIdParam, editIdParam, categoryIdParam, navigate, applyRecipe]);
+  }, [userId, draftIdParam, editIdParam, categoryIdParam, navigate, applyRecipe, searchParams, location.state]);
 
   useEffect(() => {
     void bootstrap();
@@ -497,28 +687,161 @@ export function CreateRecipePage() {
     }
   }, [steps]);
 
+  useEffect(() => {
+    recipeIdRef.current = recipeId;
+  }, [recipeId]);
+
   const ensureDraftId = useCallback(async (): Promise<number> => {
     if (!userId) throw new Error("No hay usuario en sesión.");
-    if (recipeId != null) return recipeId;
-    const draftTitle =
-      title.trim().length > 0 && !isGenericDraftTitle(title) ? title.trim() : DRAFT_INIT_TITLE;
-    const cat = buildCategoryPayload(selectedCategoryId, categoryQuery, categories);
-    const created = await createRecipe(userId, {
-      title: draftTitle,
-      categoryIds: cat.categoryIds,
-      newCategoryNames: cat.newCategoryNames,
-      draft: true,
-    });
-    setCreatedDraftThisSession(true);
-    setRecipeId(created.recipeId);
+    if (recipeIdRef.current != null) return recipeIdRef.current;
+    if (draftEnsurePromiseRef.current) return draftEnsurePromiseRef.current;
+
+    const promise = (async () => {
+      const draftTitle =
+        title.trim().length > 0 && !isGenericDraftTitle(title) ? title.trim() : DRAFT_INIT_TITLE;
+      const cat = buildCategoryPayload(
+        selectedCategoryIds,
+        effectivePendingCategoryNames(pendingNewCategoryNames, categoryQuery, selectedCategoryIds, categories),
+        categories,
+      );
+      const created = await createRecipe(userId, {
+        title: draftTitle,
+        categoryIds: cat.categoryIds,
+        newCategoryNames: cat.newCategoryNames,
+        draft: true,
+      });
+      setCreatedDraftThisSession(true);
+      recipeIdRef.current = created.recipeId;
+      setRecipeId(created.recipeId);
+      try {
+        const cats = await getRecipeCategories(userId);
+        setCategories(sortCategories(cats));
+      } catch {
+        // ignorar
+      }
+      return created.recipeId;
+    })();
+
+    draftEnsurePromiseRef.current = promise;
     try {
-      const cats = await getRecipeCategories(userId);
-      setCategories(sortCategories(cats));
-    } catch {
-      // ignorar
+      return await promise;
+    } finally {
+      if (draftEnsurePromiseRef.current === promise) {
+        draftEnsurePromiseRef.current = null;
+      }
     }
-    return created.recipeId;
-  }, [userId, recipeId, title, selectedCategoryId, categoryQuery, categories]);
+  }, [userId, title, selectedCategoryIds, pendingNewCategoryNames, categoryQuery, categories]);
+
+  const importPendingCover = useCallback(
+    async (rid: number, urls: string[]) => {
+      if (!userId || urls.length === 0) return null;
+      const result = await importRecipeMediaFromUrls(userId, rid, urls);
+      if (result.media.length > 0) {
+        importCoverDoneRef.current = true;
+        pendingImportCoverUrlsRef.current = null;
+        setGlobalMedia((prev) => {
+          const byId = new Map(prev.map((m) => [m.mediaId, m]));
+          for (const m of result.media) byId.set(m.mediaId, m);
+          return [...byId.values()].sort((a, b) => a.displayOrder - b.displayOrder);
+        });
+      }
+      return result;
+    },
+    [userId],
+  );
+
+  useEffect(() => {
+    if (booting || !userId || importCoverStartedRef.current) return;
+    const coverUrls = pendingImportCoverUrlsRef.current;
+    if (!coverUrls || coverUrls.length === 0) return;
+    importCoverStartedRef.current = true;
+
+    const run = (async () => {
+      setImportingCoverImage(true);
+      setSubmitError("");
+      try {
+        const rid = await ensureDraftId();
+        const result = await importPendingCover(rid, coverUrls);
+        if (result && result.media.length === 0 && result.warnings.length > 0) {
+          setSubmitError(result.warnings[0] ?? "No se pudo importar la portada.");
+        }
+      } catch (e) {
+        setSubmitError(
+          e instanceof Error ? e.message : "No se pudo importar la portada de la receta.",
+        );
+      } finally {
+        setImportingCoverImage(false);
+      }
+    })();
+
+    importCoverInFlightRef.current = run;
+    void run.finally(() => {
+      if (importCoverInFlightRef.current === run) {
+        importCoverInFlightRef.current = null;
+      }
+    });
+  }, [booting, userId, ensureDraftId, importPendingCover]);
+
+  const parseQuantity = (raw: string): number => {
+    const value = Number(raw.replace(",", "."));
+    return Number.isFinite(value) && value >= 0 ? value : 0;
+  };
+
+  const syncIngredients = useCallback(
+    async (rid: number) => {
+      if (!userId) return;
+
+      const normalized = ingredients
+        .map((i) => ({
+          ...i,
+          ingredientName: i.ingredientName.trim(),
+          measurementUnit: i.measurementUnit.trim(),
+          quantityRaw: i.quantity.trim(),
+        }))
+        .filter((i) => i.ingredientName.length > 0);
+
+      const currentIds = new Set(
+        normalized.map((i) => i.recipeIngredientId).filter((id): id is number => id != null),
+      );
+
+      for (const oldId of initialIngredientIds) {
+        if (!currentIds.has(oldId)) {
+          await deleteRecipeIngredient(userId, rid, oldId);
+        }
+      }
+
+      for (const row of normalized) {
+        const quantity = parseQuantity(row.quantityRaw);
+        if (row.recipeIngredientId == null) {
+          const created = await addRecipeIngredient(userId, rid, {
+            ingredientName: row.ingredientName,
+            quantity,
+            measurementUnit: row.measurementUnit,
+            ...(row.ingredientCategoryId != null
+              ? { ingredientCategoryId: row.ingredientCategoryId }
+              : {}),
+          });
+          if (row.pendingIngredientImage) {
+            await uploadOwnedIngredientImage(
+              userId,
+              created.ingredient.ingredientId,
+              row.pendingIngredientImage,
+            );
+          }
+        } else {
+          await patchRecipeIngredient(userId, rid, row.recipeIngredientId, {
+            ingredientName: row.ingredientName,
+            quantity,
+            measurementUnit: row.measurementUnit,
+            ...(row.ingredientCategoryId != null
+              ? { ingredientCategoryId: row.ingredientCategoryId }
+              : {}),
+          });
+        }
+      }
+    },
+    [userId, ingredients, initialIngredientIds],
+  );
 
   const saveCurrentAsDraft = useCallback(async (): Promise<number | null> => {
     if (!userId) return null;
@@ -528,7 +851,11 @@ export function CreateRecipePage() {
     const finalTitle =
       title.trim().length > 0 && !isGenericDraftTitle(title) ? title.trim() : DRAFT_INIT_TITLE;
 
-    const cat = buildCategoryPayload(selectedCategoryId, categoryQuery, categories);
+    const cat = buildCategoryPayload(
+      selectedCategoryIds,
+      effectivePendingCategoryNames(pendingNewCategoryNames, categoryQuery, selectedCategoryIds, categories),
+      categories,
+    );
     await patchRecipe(userId, rid, {
       title: finalTitle,
       categoryIds: cat.categoryIds === null ? null : cat.categoryIds.length > 0 ? cat.categoryIds : [],
@@ -547,11 +874,21 @@ export function CreateRecipePage() {
       }
     }
 
-    await refreshRecipe();
+    if (importCoverInFlightRef.current) {
+      await importCoverInFlightRef.current;
+    } else if (!importCoverDoneRef.current) {
+      const pendingCover = pendingImportCoverUrlsRef.current;
+      if (pendingCover && pendingCover.length > 0) {
+        await importPendingCover(rid, pendingCover);
+      }
+    }
+
+    await reloadRecipeState(rid);
     setBaselineKey(
       JSON.stringify({
         title: finalTitle,
-        selectedCategoryId,
+        selectedCategoryIds: [...selectedCategoryIds].sort((a, b) => a - b),
+        pendingNewCategoryNames: [...pendingNewCategoryNames].sort((a, b) => a.localeCompare(b, "es")),
         categoryQuery: categoryQuery.trim(),
         ingredients: ingredients.map((i) => ({
           id: i.recipeIngredientId ?? null,
@@ -569,13 +906,14 @@ export function CreateRecipePage() {
     recipeId,
     ensureDraftId,
     title,
-    selectedCategoryId,
+    selectedCategoryIds,
+    pendingNewCategoryNames,
     categoryQuery,
     categories,
     ingredients,
-    initialIngredientIds,
     steps,
-    refreshRecipe,
+    reloadRecipeState,
+    importPendingCover,
     syncIngredients,
   ]);
 
@@ -586,7 +924,11 @@ export function CreateRecipePage() {
     const hasStep = steps.some((s) => s.content.trim().length > 0);
     if (!hasStep) throw new Error("Añade al menos un paso con texto.");
 
-    const cat = buildCategoryPayload(selectedCategoryId, categoryQuery, categories);
+    const cat = buildCategoryPayload(
+      selectedCategoryIds,
+      effectivePendingCategoryNames(pendingNewCategoryNames, categoryQuery, selectedCategoryIds, categories),
+      categories,
+    );
     await patchRecipe(userId, recipeId, {
       title: cleanTitle,
       categoryIds: cat.categoryIds === null ? null : cat.categoryIds.length > 0 ? cat.categoryIds : [],
@@ -620,11 +962,10 @@ export function CreateRecipePage() {
     userId,
     recipeId,
     title,
-    selectedCategoryId,
+    selectedCategoryIds,
+    pendingNewCategoryNames,
     categoryQuery,
     categories,
-    ingredients,
-    initialIngredientIds,
     initialStepIds,
     steps,
     refreshRecipe,
@@ -662,15 +1003,18 @@ export function CreateRecipePage() {
   }, [userId, recipeId, createdDraftThisSession, openedExistingDraft, hasMeaningfulChanges]);
 
   const selectableCategories = useMemo(
-    () => categories.filter((c) => c.name.trim().toLowerCase() !== DEFAULT_CATEGORY.toLowerCase()),
+    () => categories.filter((c) => !isDefaultRecipeTag(c.name)),
     [categories],
   );
 
   const categoryResults = useMemo(() => {
     const q = categoryQuery.trim().toLowerCase();
-    if (!q) return selectableCategories;
-    return selectableCategories.filter((c) => c.name.toLowerCase().includes(q));
-  }, [categoryQuery, selectableCategories]);
+    const base = !q
+      ? selectableCategories
+      : selectableCategories.filter((c) => c.name.toLowerCase().includes(q));
+    const sel = new Set(selectedCategoryIds);
+    return base.filter((c) => !sel.has(c.categoryId));
+  }, [categoryQuery, selectableCategories, selectedCategoryIds]);
 
   const trimmedCategoryQuery = categoryQuery.trim();
   const categoryExactMatch =
@@ -680,12 +1024,13 @@ export function CreateRecipePage() {
   const canOfferNewCategory =
     trimmedCategoryQuery.length > 0 &&
     !categoryExactMatch &&
-    trimmedCategoryQuery.toLowerCase() !== DEFAULT_CATEGORY.toLowerCase();
-
-  const selectedCategoryName =
-    selectedCategoryId != null
-      ? categories.find((c) => c.categoryId === selectedCategoryId)?.name ?? null
-      : null;
+    !isDefaultRecipeTag(trimmedCategoryQuery) &&
+    !pendingNewCategoryNames.some((n) => n.trim().toLowerCase() === trimmedCategoryQuery.toLowerCase()) &&
+    !selectedCategoryIds.some(
+      (id) =>
+        categories.find((c) => c.categoryId === id)?.name.trim().toLowerCase() ===
+        trimmedCategoryQuery.toLowerCase(),
+    );
 
   const updateStep = (key: string, content: string) => {
     setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, content } : s)));
@@ -695,53 +1040,18 @@ export function CreateRecipePage() {
     setIngredients((prev) => prev.filter((i) => i.key !== key));
   };
 
-  const parseQuantity = (raw: string): number => {
-    const value = Number(raw.replace(",", "."));
-    return Number.isFinite(value) && value >= 0 ? value : 0;
-  };
-
-  async function syncIngredients(rid: number) {
-    if (!userId) return;
-
-    const normalized = ingredients
-      .map((i) => ({
-        ...i,
-        ingredientName: i.ingredientName.trim(),
-        measurementUnit: i.measurementUnit.trim(),
-        quantityRaw: i.quantity.trim(),
-      }))
-      .filter((i) => i.ingredientName.length > 0);
-
-    const currentIds = new Set(
-      normalized.map((i) => i.recipeIngredientId).filter((id): id is number => id != null),
+  const openAddIngredientModal = (
+    ingredientName: string,
+    isNewCreation: boolean,
+    imageUrl?: string | null,
+  ) => {
+    const opts = ingredientCategoriesForSelect(ingredientCatalog);
+    setIngredientModalCategoryId(
+      isNewCreation ? defaultIngredientCategoryId(opts) : null,
     );
-
-    for (const oldId of initialIngredientIds) {
-      if (!currentIds.has(oldId)) {
-        await deleteRecipeIngredient(userId, rid, oldId);
-      }
-    }
-
-    for (const row of normalized) {
-      const quantity = parseQuantity(row.quantityRaw);
-      if (row.recipeIngredientId == null) {
-        await addRecipeIngredient(userId, rid, {
-          ingredientName: row.ingredientName,
-          quantity,
-          measurementUnit: row.measurementUnit,
-        });
-      } else {
-        await patchRecipeIngredient(userId, rid, row.recipeIngredientId, {
-          ingredientName: row.ingredientName,
-          quantity,
-          measurementUnit: row.measurementUnit,
-        });
-      }
-    }
-  }
-
-  const openAddIngredientModal = (ingredientName: string) => {
-    setIngredientModal({ open: true, mode: "add", ingredientName });
+    setIngredientModalImageFile(null);
+    setIngredientModalImageUrl(isNewCreation ? null : (imageUrl ?? null));
+    setIngredientModal({ open: true, mode: "add", ingredientName, isNewCreation });
     setIngredientModalQuantity("");
     setIngredientModalUnit("");
     setIngredientModalSaving(false);
@@ -756,9 +1066,13 @@ export function CreateRecipePage() {
       mode: "edit",
       rowKey: row.key,
       ingredientName: row.ingredientName,
+      isNewCreation: false,
     });
     setIngredientModalQuantity(row.quantity);
     setIngredientModalUnit(row.measurementUnit);
+    setIngredientModalCategoryId(null);
+    setIngredientModalImageFile(null);
+    setIngredientModalImageUrl(row.ingredientImageUrl ?? null);
     setIngredientModalSaving(false);
   };
 
@@ -766,6 +1080,9 @@ export function CreateRecipePage() {
     setIngredientModal({ open: false });
     setIngredientModalSaving(false);
     setIngredientModalError("");
+    setIngredientModalCategoryId(null);
+    setIngredientModalImageFile(null);
+    setIngredientModalImageUrl(null);
   };
 
   const requestCloseIngredientModal = () => {
@@ -776,12 +1093,21 @@ export function CreateRecipePage() {
         : undefined;
     const originalQty = original?.quantity ?? "";
     const originalUnit = original?.measurementUnit ?? "";
+    const defCat = defaultIngredientCategoryId(ingredientCategorySelectOptions);
+    const extrasDirty =
+      ingredientModal.mode === "add" &&
+      ingredientModal.isNewCreation &&
+      (ingredientModalImageFile != null ||
+        (defCat == null
+          ? ingredientModalCategoryId != null
+          : ingredientModalCategoryId !== defCat));
     const changed =
       ingredientModalQuantity.trim() !== originalQty.trim() ||
-      ingredientModalUnit.trim() !== originalUnit.trim();
+      ingredientModalUnit.trim() !== originalUnit.trim() ||
+      extrasDirty;
     if (changed) {
-      const ok = window.confirm("Tienes cambios sin guardar en este ingrediente. ¿Cerrar igualmente?");
-      if (!ok) return;
+      setIngredientDiscardConfirmOpen(true);
+      return;
     }
     closeIngredientModal();
   };
@@ -792,6 +1118,11 @@ export function CreateRecipePage() {
     setIngredientModalError("");
     const quantityRaw = ingredientModalQuantity.trim();
     const quantity = quantityRaw.length > 0 ? quantityRaw : "0";
+    const prev =
+      ingredientModal.mode === "edit" && ingredientModal.rowKey
+        ? ingredients.find((x) => x.key === ingredientModal.rowKey)
+        : undefined;
+    const isNewFlow = ingredientModal.mode === "add" && ingredientModal.isNewCreation;
     const normalized: IngredientRow = {
       key: ingredientModal.mode === "edit" && ingredientModal.rowKey ? ingredientModal.rowKey : makeLocalIngredient().key,
       recipeIngredientId:
@@ -801,6 +1132,13 @@ export function CreateRecipePage() {
       ingredientName: ingredientModal.ingredientName.trim(),
       quantity,
       measurementUnit: ingredientModalUnit.trim(),
+      ingredientImageUrl: isNewFlow
+        ? null
+        : ingredientModalImageUrl ?? prev?.ingredientImageUrl ?? null,
+      ingredientCategoryId: isNewFlow ? ingredientModalCategoryId ?? undefined : prev?.ingredientCategoryId,
+      pendingIngredientImage: isNewFlow
+        ? ingredientModalImageFile ?? undefined
+        : prev?.pendingIngredientImage,
     };
     if (!normalized.ingredientName) {
       setIngredientModalSaving(false);
@@ -815,11 +1153,18 @@ export function CreateRecipePage() {
     closeIngredientModal();
   };
 
-  const deleteIngredientFromModal = () => {
+  const requestDeleteIngredientFromModal = () => {
     if (!ingredientModal.open || ingredientModal.mode !== "edit" || !ingredientModal.rowKey) return;
-    const ok = window.confirm("¿Seguro que quieres borrar este ingrediente?");
-    if (!ok) return;
+    setIngredientDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteIngredientFromModal = () => {
+    if (!ingredientModal.open || ingredientModal.mode !== "edit" || !ingredientModal.rowKey) {
+      setIngredientDeleteConfirmOpen(false);
+      return;
+    }
     removeIngredientRow(ingredientModal.rowKey);
+    setIngredientDeleteConfirmOpen(false);
     closeIngredientModal();
   };
 
@@ -1013,7 +1358,7 @@ export function CreateRecipePage() {
     if (media.contentType.startsWith("video/")) return;
 
     try {
-      const res = await fetch(resolveMediaUrl(media.url));
+      const res = await fetch(resolveMediaUrl(media.url), { credentials: "include" });
       if (!res.ok) throw new Error(`Error (${res.status}) al leer la imagen.`);
       const blob = await res.blob();
       setEditExistingState({
@@ -1106,7 +1451,7 @@ export function CreateRecipePage() {
       const rid = await saveCurrentAsDraft();
       if (rid == null) throw new Error("No se pudo preparar la receta para publicar.");
       await publishRecipe(userId!, rid);
-      navigate(`/home/recipes/${rid}`);
+      navigate(appendRecipeReturnNav(`/home/recipes/${rid}`, parseRecipeReturnNav(searchParams)));
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudo publicar.");
     } finally {
@@ -1120,7 +1465,7 @@ export function CreateRecipePage() {
     setSubmitError("");
     try {
       const rid = await savePublishedChanges();
-      navigate(`/home/recipes/${rid}`);
+      navigate(appendRecipeReturnNav(`/home/recipes/${rid}`, parseRecipeReturnNav(searchParams)));
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "No se pudieron guardar los cambios.");
     } finally {
@@ -1170,17 +1515,23 @@ export function CreateRecipePage() {
           <div className="create-recipe-card create-recipe-card--gallery">
             <span className="create-recipe-label">Galería de la receta</span>
             <p className="create-recipe-hint">
-              Sube fotos o vídeos y ordénalas arrastrando. La primera será la portada en listados.
+              Sube fotos o vídeos y ordénalas arrastrando. La primera será la portada en listados. Al importar desde
+              un enlace, se intenta traer solo la portada de la página.
             </p>
             <MediaStripEditor
               media={[...globalMedia].sort((a, b) => a.displayOrder - b.displayOrder)}
-              disabled={uploadingGlobal}
+              disabled={uploadingGlobal || importingCoverImage}
               onAdd={() => globalFileRef.current?.click()}
               onRemove={handleGlobalRemove}
               onReorder={handleGlobalReorder}
               onEdit={(id) => void handleEditExistingMedia(id)}
             />
-            {uploadingGlobal && <p className="create-recipe-hint">Subiendo archivos…</p>}
+            {importingCoverImage && (
+              <p className="create-recipe-hint">Importando portada desde el enlace…</p>
+            )}
+            {uploadingGlobal && !importingCoverImage && (
+              <p className="create-recipe-hint">Subiendo archivos…</p>
+            )}
           </div>
 
           <div className="create-recipe-card">
@@ -1206,76 +1557,104 @@ export function CreateRecipePage() {
           </div>
 
           <div className="create-recipe-card">
-            <span className="create-recipe-label">Categoría</span>
+            <span className="create-recipe-label">Etiquetas</span>
             <p className="create-recipe-hint">
-              Opcional. Elige una categoría o escribe un nombre nuevo: se creará al guardar. Si lo dejas vacío, se
-              usará «{DEFAULT_CATEGORY}».
+              Opcional. Puedes marcar varias etiquetas o escribir nombres nuevos (se crearán al guardar). Si lo dejas
+              vacío, se usará «{DEFAULT_RECIPE_TAG}».
             </p>
 
-            {selectedCategoryName ? (
+            {(selectedCategoryIds.length > 0 || pendingNewCategoryNames.length > 0) && (
               <div className="create-recipe-chip-row">
-                <span className="create-recipe-chip">
-                  <span className="create-recipe-chip__label">{selectedCategoryName}</span>
-                  <button
-                    type="button"
-                    className="create-recipe-chip__remove"
-                    onClick={() => {
-                      setSelectedCategoryId(null);
-                      setCategoryQuery("");
-                    }}
-                    aria-label="Quitar categoría"
-                  >
-                    ×
-                  </button>
-                </span>
-              </div>
-            ) : (
-              <div className="create-recipe-category-wrap" ref={categoryWrapRef}>
-                <input
-                  className="create-recipe-input"
-                  value={categoryQuery}
-                  onChange={(e) => {
-                    setCategoryQuery(e.target.value);
-                    setCategoryDropdownOpen(true);
-                  }}
-                  onFocus={() => setCategoryDropdownOpen(true)}
-                  placeholder={loadingCats ? "Cargando categorías…" : "Buscar categoría…"}
-                  disabled={loadingCats || !!loadError}
-                  autoComplete="off"
-                />
-                {categoryDropdownOpen && !loadError && (
-                  <div className="create-recipe-category-dropdown" role="listbox" aria-label="Categorías">
-                    {canOfferNewCategory && (
+                {selectedCategoryIds.map((id) => {
+                  const label = categories.find((c) => c.categoryId === id)?.name ?? `#${id}`;
+                  return (
+                    <span key={`id-${id}`} className="create-recipe-chip">
+                      <span className="create-recipe-chip__label">{label}</span>
                       <button
                         type="button"
-                        className="create-recipe-category-option create-recipe-category-option--new"
-                        onClick={() => setCategoryDropdownOpen(false)}
+                        className="create-recipe-chip__remove"
+                        onClick={() => {
+                          setSelectedCategoryIds((prev) => prev.filter((x) => x !== id));
+                        }}
+                        aria-label={`Quitar ${label}`}
                       >
-                        Usar «{trimmedCategoryQuery}» (nueva categoría)
+                        ×
                       </button>
-                    )}
-                    {categoryResults.length === 0 && !canOfferNewCategory ? (
-                      <div className="create-recipe-category-empty">Sin coincidencias</div>
-                    ) : (
-                      categoryResults.map((c) => (
-                        <button
-                          key={c.categoryId}
-                          type="button"
-                          className="create-recipe-category-option"
-                          onClick={() => {
-                            setSelectedCategoryId(c.categoryId);
-                            setCategoryQuery("");
-                            setCategoryDropdownOpen(false);
-                          }}
-                        >
-                          {c.name}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
+                    </span>
+                  );
+                })}
+                {pendingNewCategoryNames.map((name) => (
+                  <span key={`new-${name}`} className="create-recipe-chip">
+                    <span className="create-recipe-chip__label">{name}</span>
+                    <button
+                      type="button"
+                      className="create-recipe-chip__remove"
+                      onClick={() => {
+                        setPendingNewCategoryNames((prev) => prev.filter((n) => n !== name));
+                      }}
+                      aria-label={`Quitar ${name}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
               </div>
             )}
+
+            <div className="create-recipe-category-wrap" ref={categoryWrapRef}>
+              <input
+                className="create-recipe-input"
+                value={categoryQuery}
+                onChange={(e) => {
+                  setCategoryQuery(e.target.value);
+                  setCategoryDropdownOpen(true);
+                }}
+                onFocus={() => setCategoryDropdownOpen(true)}
+                placeholder={loadingCats ? "Cargando etiquetas…" : "Buscar o añadir etiqueta…"}
+                disabled={loadingCats || !!loadError}
+                autoComplete="off"
+              />
+              {categoryDropdownOpen && !loadError && (
+                <div className="create-recipe-category-dropdown" role="listbox" aria-label="Etiquetas">
+                  {canOfferNewCategory && (
+                    <button
+                      type="button"
+                      className="create-recipe-category-option create-recipe-category-option--new"
+                      onClick={() => {
+                        const n = trimmedCategoryQuery;
+                        setPendingNewCategoryNames((prev) =>
+                          prev.some((x) => x.trim().toLowerCase() === n.toLowerCase()) ? prev : [...prev, n],
+                        );
+                        setCategoryQuery("");
+                        setCategoryDropdownOpen(false);
+                      }}
+                    >
+                      Usar «{trimmedCategoryQuery}» (nueva etiqueta)
+                    </button>
+                  )}
+                  {categoryResults.length === 0 && !canOfferNewCategory ? (
+                    <div className="create-recipe-category-empty">Sin coincidencias</div>
+                  ) : (
+                    categoryResults.map((c) => (
+                      <button
+                        key={c.categoryId}
+                        type="button"
+                        className="create-recipe-category-option"
+                        onClick={() => {
+                          setSelectedCategoryIds((prev) =>
+                            prev.includes(c.categoryId) ? prev : [...prev, c.categoryId],
+                          );
+                          setCategoryQuery("");
+                          setCategoryDropdownOpen(false);
+                        }}
+                      >
+                        {c.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="create-recipe-card create-recipe-card--ingredients">
@@ -1309,7 +1688,7 @@ export function CreateRecipePage() {
                         key={s.ingredientId}
                         type="button"
                         className="create-recipe-ingredient-suggest__item"
-                        onClick={() => openAddIngredientModal(s.name)}
+                        onClick={() => openAddIngredientModal(s.name, false, s.imageUrl)}
                       >
                         {s.name}
                       </button>
@@ -1321,7 +1700,7 @@ export function CreateRecipePage() {
                       <button
                         type="button"
                         className="create-recipe-ingredient-suggest__item create-recipe-ingredient-suggest__item--new"
-                        onClick={() => openAddIngredientModal(ingredientSearch.trim())}
+                        onClick={() => openAddIngredientModal(ingredientSearch.trim(), true)}
                       >
                         Añadir "{ingredientSearch.trim()}"
                       </button>
@@ -1339,7 +1718,12 @@ export function CreateRecipePage() {
                   onClick={() => openEditIngredientModal(row)}
                 >
                   <span className="create-recipe-ingredient-summary__imageWrap">
-                    <img src="/logoShoppingList.png" alt="" className="create-recipe-ingredient-summary__image" />
+                    <IngredientRowThumb
+                      name={row.ingredientName}
+                      imageUrl={row.ingredientImageUrl}
+                      pendingImageFile={row.pendingIngredientImage}
+                      size="card"
+                    />
                   </span>
                   <span className="create-recipe-ingredient-summary__name">{row.ingredientName}</span>
                   <span className="create-recipe-ingredient-summary__bottom">
@@ -1420,7 +1804,7 @@ export function CreateRecipePage() {
                     onInput={(e) => autoGrowTextarea(e.currentTarget)}
                     onKeyDown={(e) => handleStepKeyDown(e, index === steps.length - 1)}
                     placeholder={
-                      index === steps.length - 1
+                      index === steps.length - 1 && showStepKeyboardHint
                         ? "Describe este paso… (Ctrl+Enter para añadir otro)"
                         : "Describe este paso…"
                     }
@@ -1433,7 +1817,7 @@ export function CreateRecipePage() {
               type="button"
               className="create-recipe-add-step create-recipe-add-step--bottom"
               onClick={() => void addStepRowAndFocus()}
-              title="También puedes pulsar Ctrl+Enter en el último paso"
+              title={showStepKeyboardHint ? "También puedes pulsar Ctrl+Enter en el último paso" : undefined}
             >
               + Añadir paso
             </button>
@@ -1473,6 +1857,8 @@ export function CreateRecipePage() {
           open
           file={editExistingState.file}
           fileName={editExistingState.fileName}
+          previewContext="recipe"
+          recipeTitle={isGenericDraftTitle(title) ? "Tu receta" : title.trim() || "Tu receta"}
           saving={editExistingState.saving}
           errorMessage={editExistingState.error}
           onCancel={() => setEditExistingState(null)}
@@ -1490,6 +1876,8 @@ export function CreateRecipePage() {
               ? `Paso ${steps.findIndex((s) => s.stepId === (stagingState.target as { stepId: number }).stepId) + 1 || ""}`.trim() || "Paso"
               : undefined
         }
+        recipeTitle={isGenericDraftTitle(title) ? "Tu receta" : title.trim() || "Tu receta"}
+        isCoverCandidate={stagingState?.target === "global" && globalMedia.length === 0}
         onCancel={() => setStagingState(null)}
         onConfirm={(items) => void handleStagingConfirm(items)}
       />
@@ -1501,6 +1889,7 @@ export function CreateRecipePage() {
         quantityText={ingredientModalQuantity}
         unitText={ingredientModalUnit}
         units={units}
+        loadingUnits={loadingUnits}
         saving={ingredientModalSaving}
         error={ingredientModalError}
         quantityLabel="Cantidad"
@@ -1510,12 +1899,53 @@ export function CreateRecipePage() {
         confirmLabel={ingredientModal.open && ingredientModal.mode === "edit" ? "Guardar" : "Añadir"}
         showDelete={ingredientModal.open && ingredientModal.mode === "edit"}
         deleteLabel="Borrar"
+        showCreateExtras={
+          ingredientModal.open && ingredientModal.mode === "add" && Boolean(ingredientModal.isNewCreation)
+        }
+        ingredientCategoryOptions={ingredientCategorySelectOptions}
+        selectedIngredientCategoryId={ingredientModalCategoryId}
+        onSelectedIngredientCategoryIdChange={setIngredientModalCategoryId}
+        createExtrasLabels={{
+          imageHint:
+            "Opcional. Puedes recortar y ajustar la foto como en las imágenes de la receta.",
+        }}
+        createImageFile={ingredientModalImageFile}
+        onCreateImageFileChange={setIngredientModalImageFile}
         onQuantityChange={setIngredientModalQuantity}
         onUnitChange={setIngredientModalUnit}
         onRequestClose={requestCloseIngredientModal}
         onCancel={closeIngredientModal}
         onConfirm={saveIngredientFromModal}
-        onDelete={deleteIngredientFromModal}
+        onDelete={requestDeleteIngredientFromModal}
+      />
+
+      <ConfirmDialog
+        open={ingredientDeleteConfirmOpen}
+        title="¿Eliminar este ingrediente?"
+        message={
+          ingredientModal.open
+            ? `Se quitará "${ingredientModal.ingredientName}" de la receta. Podrás volver a añadirlo después.`
+            : ""
+        }
+        cancelLabel="Cancelar"
+        confirmLabel="Sí, eliminar"
+        confirmVariant="danger"
+        onCancel={() => setIngredientDeleteConfirmOpen(false)}
+        onConfirm={confirmDeleteIngredientFromModal}
+      />
+
+      <ConfirmDialog
+        open={ingredientDiscardConfirmOpen}
+        title="¿Cerrar sin guardar?"
+        message="Tienes cambios sin guardar en este ingrediente. Si cierras ahora, se perderán."
+        cancelLabel="Seguir editando"
+        confirmLabel="Cerrar igualmente"
+        confirmVariant="danger"
+        onCancel={() => setIngredientDiscardConfirmOpen(false)}
+        onConfirm={() => {
+          setIngredientDiscardConfirmOpen(false);
+          closeIngredientModal();
+        }}
       />
 
       <ConfirmDialog

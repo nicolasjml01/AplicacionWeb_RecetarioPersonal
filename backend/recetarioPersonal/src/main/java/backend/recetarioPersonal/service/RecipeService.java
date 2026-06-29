@@ -37,14 +37,15 @@ import java.util.stream.Collectors;
 @Service
 public class RecipeService {
 
-    private static final String DEFAULT_CATEGORY_NAME = "Sin categoría";
+    private static final String DEFAULT_TAG_NAME = "Sin etiqueta";
     private final RecipeStepRepository recipeStepRepository;
     private final RecipeMediaRepository recipeMediaRepository;
     private final RecipeIngredientRepository recipeIngredientRepository;
-
+    private final IngredientService ingredientService;
     private final RecipeRepository recipeRepository;
     private final RecipeCategoryRepository recipeCategoryRepository;
     private final UserRepository userRepository;
+    private final CalendarHousekeepingService calendarHousekeepingService;
 
     public RecipeService(
             RecipeStepRepository recipeStepRepository,
@@ -52,7 +53,9 @@ public class RecipeService {
             RecipeIngredientRepository recipeIngredientRepository,
             RecipeRepository recipeRepository,
             RecipeCategoryRepository recipeCategoryRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            IngredientService ingredientService,
+            CalendarHousekeepingService calendarHousekeepingService
     ) {
         this.recipeStepRepository = recipeStepRepository;
         this.recipeMediaRepository = recipeMediaRepository;
@@ -60,6 +63,8 @@ public class RecipeService {
         this.recipeRepository = recipeRepository;
         this.recipeCategoryRepository = recipeCategoryRepository;
         this.userRepository = userRepository;
+        this.ingredientService = ingredientService;
+        this.calendarHousekeepingService = calendarHousekeepingService;
     }
 
     @Transactional
@@ -152,6 +157,7 @@ public class RecipeService {
         Recipe recipe = recipeRepository.findByRecipeIdAndOwner_UserId(recipeId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Receta no encontrada: " + recipeId));
         recipeRepository.delete(recipe);
+        calendarHousekeepingService.pruneOrphanLayoutsForUser(userId);
     }
 
     private Set<RecipeCategory> resolveCategories(long userId, List<Long> categoryIds, List<String> newCategoryNames) {
@@ -179,8 +185,8 @@ public class RecipeService {
                     continue;
                 }
     
-                if (DEFAULT_CATEGORY_NAME.equalsIgnoreCase(normalized)) {
-                    throw new IllegalArgumentException("El nombre 'Sin categoría' está reservado.");
+                if (isReservedDefaultTagName(normalized)) {
+                    throw new IllegalArgumentException("El nombre 'Sin etiqueta' está reservado.");
                 }
     
                 RecipeCategory category = recipeCategoryRepository
@@ -196,22 +202,29 @@ public class RecipeService {
             }
         }
     
-        // If there are no categories, assign "Sin categoría"
+        // If there are no categories, assign default tag
         if (result.isEmpty()) {
-            RecipeCategory defaultCategory = recipeCategoryRepository
-                    .findByOwner_UserIdAndNameIgnoreCase(userId, DEFAULT_CATEGORY_NAME)
-                    .orElseGet(() -> createDefaultCategory(userId));
-            result.add(defaultCategory);
+            result.add(resolveDefaultCategory(userId));
         }
     
         return result;
+    }
+
+    private boolean isReservedDefaultTagName(String normalized) {
+        return DEFAULT_TAG_NAME.equalsIgnoreCase(normalized);
+    }
+
+    private RecipeCategory resolveDefaultCategory(long userId) {
+        return recipeCategoryRepository
+                .findByOwner_UserIdAndNameIgnoreCase(userId, DEFAULT_TAG_NAME)
+                .orElseGet(() -> createDefaultCategory(userId));
     }
 
     private RecipeCategory createDefaultCategory(long userId) {
         User ownerRef = userRepository.getReferenceById(userId);
         RecipeCategory c = new RecipeCategory();
         c.setOwner(ownerRef);
-        c.setName(DEFAULT_CATEGORY_NAME);
+        c.setName(DEFAULT_TAG_NAME);
         return recipeCategoryRepository.save(c);
     }
 
@@ -302,17 +315,13 @@ public class RecipeService {
                 .stream()
                 .map(ri -> {
                     var ing = ri.getIngredient();
-                    IngredientDto ingDto = new IngredientDto(
-                            ing.getIngredientId(),
-                            ing.getName(),
-                            ing.getCategory() != null ? ing.getCategory().getCategoryId() : null,
-                            ing.getCategory() != null ? ing.getCategory().getName() : null
-                    );
+                    IngredientDto ingDto = ingredientService.toDto(ing);
 
                     UnitOfMeasureDto unitDto = ri.getUnitOfMeasure() == null ? null : new UnitOfMeasureDto(
                             ri.getUnitOfMeasure().getUnitId(),
                             ri.getUnitOfMeasure().getName(),
-                            ri.getUnitOfMeasure().getSymbol()
+                            ri.getUnitOfMeasure().getSymbol(),
+                            ri.getUnitOfMeasure().getOwner() != null
                     );
 
                     return new RecipeIngredientDto(

@@ -3,27 +3,30 @@ package backend.recetarioPersonal.service.util;
 public final class PasswordValidator {
     private static final int MIN_LENGTH = 8;
     private static final int MAX_LENGTH = 72;
+
+    private PasswordValidator() {}
+
     /**
-     * Validates the password. Returns null if valid, or an error message if not.
+     * Validates password strength. Returns {@code null} if valid, or a Spanish message for the client.
      */
     public static String validate(String password) {
         if (password == null || password.isBlank()) {
-            return "Password cannot be empty.";
+            return "La contraseña no puede estar vacía.";
         }
         if (password.length() < MIN_LENGTH) {
-            return "Password must be at least " + MIN_LENGTH + " characters.";
+            return "La contraseña debe tener al menos " + MIN_LENGTH + " caracteres.";
         }
         if (password.length() > MAX_LENGTH) {
-            return "Password cannot exceed " + MAX_LENGTH + " characters.";
+            return "La contraseña no puede superar " + MAX_LENGTH + " caracteres.";
         }
         if (!password.chars().anyMatch(Character::isUpperCase)) {
-            return "Password must contain at least one uppercase letter.";
+            return "La contraseña debe incluir al menos una mayúscula.";
         }
         if (!password.chars().anyMatch(Character::isLowerCase)) {
-            return "Password must contain at least one lowercase letter.";
+            return "La contraseña debe incluir al menos una minúscula.";
         }
         if (!password.chars().anyMatch(Character::isDigit)) {
-            return "Password must contain at least one number.";
+            return "La contraseña debe incluir al menos un número.";
         }
         return null;
     }

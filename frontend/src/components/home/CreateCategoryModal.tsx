@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { ModalBackdrop, ModalPanel } from "../ui/ModalBackdrop";
 
 type Props = {
   open: boolean;
@@ -11,25 +11,18 @@ type Props = {
   initialName?: string;
 };
 
-export function CreateCategoryModal({
-  open,
+type FormProps = Omit<Props, "open">;
+
+function CreateCategoryForm({
   loading,
   onClose,
   onSubmit,
-  title = "Nueva categoría",
+  title = "Nueva etiqueta",
   submitLabel = "Guardar",
   initialName = "",
-}: Props) {
-  const [name, setName] = useState("");
+}: FormProps) {
+  const [name, setName] = useState(initialName);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    setName(initialName);
-    setError("");
-  }, [open, initialName]);
-
-  if (!open) return null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -41,13 +34,13 @@ export function CreateCategoryModal({
       setName("");
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear categoría.");
+      setError(err instanceof Error ? err.message : "Error al crear etiqueta.");
     }
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="home-modal home-modal--category">
+    <ModalBackdrop onDismiss={onClose} disabled={loading}>
+      <ModalPanel className="home-modal home-modal--category">
         <h3 className="home-modal__title">{title}</h3>
         <form className="home-modal__form" onSubmit={handleSubmit}>
           <input
@@ -57,10 +50,11 @@ export function CreateCategoryModal({
             placeholder="Ej: Vegetariano"
             maxLength={120}
             autoFocus
+            disabled={loading}
           />
           {error && <p className="home-error">{error}</p>}
           <div className="home-modal__actions">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={loading}>
               Cancelar
             </button>
             <button type="submit" className="btn btn--primary" disabled={loading}>
@@ -68,7 +62,12 @@ export function CreateCategoryModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </ModalPanel>
+    </ModalBackdrop>
   );
+}
+
+export function CreateCategoryModal({ open, initialName = "", ...rest }: Props) {
+  if (!open) return null;
+  return <CreateCategoryForm key={initialName} initialName={initialName} {...rest} />;
 }

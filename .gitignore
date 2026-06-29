@@ -1,7 +1,3 @@
-# Documentación interna (no va a main / entrega)
-docs/
-
-# Config del editor (opcional: quita el comentario si no quieres subirla)
 .vscode/
 
 # OS
@@ -9,8 +5,8 @@ docs/
 Thumbs.db
 desktop.ini
 
-# Frontend (por si añades luego)
 node_modules/
+backend/**/target/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -20,13 +16,12 @@ out/
 
 # Entornos y secretos
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 *.pem
-application-*.local.properties
-application-local.properties
 
-# Logs y temporales en raíz
-*.log
+# Medios generados en local (copia de catálogo + subidas de usuario)
+media/
+backend/recetarioPersonal/media/
 tmp/
 temp/

@@ -6,11 +6,12 @@ type BottomNavProps = {
   mode?: BottomNavMode;
 };
 
+/** User-facing labels (Spanish). Icon paths must match `public/` filenames (case-sensitive on many servers). */
 const NAV_ITEMS = [
-  { path: "/home", label: "Home", icon: "/logoHome.png" },
-  { path: "/calendar", label: "Calendar", icon: "/logoCalendar.png" },
-  { path: "/shopping", label: "Shopping", icon: "/logoShoppingList.png" },
-  { path: "/account", label: "Account", icon: "/logoMyAccount.png" },
+  { path: "/home", label: "Inicio", icon: "/logoHome.png" },
+  { path: "/calendar", label: "Calendario", icon: "/logoCalendar.png" },
+  { path: "/shopping", label: "Cesta", icon: "/logoShoppingList.png" },
+  { path: "/account", label: "Cuenta", icon: "/LogoMyAccount.png" },
 ] as const;
 
 export function BottomNav({ mode = "bottom" }: BottomNavProps) {
@@ -19,7 +20,7 @@ export function BottomNav({ mode = "bottom" }: BottomNavProps) {
   const linkClassBase = `bottom-nav__link bottom-nav__link--${mode}`;
 
   return (
-    <nav className={navClass} role="navigation" aria-label="Main navigation">
+    <nav className={navClass} role="navigation" aria-label="Navegación principal">
       <ul className={listClass}>
         {NAV_ITEMS.map(({ path, label, icon }) => (
           <li key={path} className="bottom-nav__item">

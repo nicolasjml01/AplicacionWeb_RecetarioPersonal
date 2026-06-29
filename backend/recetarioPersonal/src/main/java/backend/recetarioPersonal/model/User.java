@@ -2,10 +2,7 @@ package backend.recetarioPersonal.model;
 
 import jakarta.persistence.*;
 
-/**
- * Persisted user account (PostgreSQL via JPA).
- * Field names in English; column names in snake_case to match Flyway migrations.
- */
+/** Application user; columns match Flyway {@code users} table. */
 @Entity
 @Table(name = "users")
 public class User {

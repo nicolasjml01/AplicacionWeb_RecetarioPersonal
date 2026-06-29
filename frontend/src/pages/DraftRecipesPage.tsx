@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useModalDismiss } from "../hooks/useModalDismiss";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
-import { deleteRecipe, getRecipes, importRecipeIngredientsToShoppingList } from "../api/recipes";
+import { deleteRecipe, getRecipes } from "../api/recipes";
 import type { RecipeDto } from "../types/recipes";
 import { RecipeMiniTile } from "../components/recipe/RecipeMiniTile";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
+import { ImportRecipeIngredientsDialog } from "../components/recipe/ImportRecipeIngredientsDialog";
+import { mergeSearchWithReturnNav } from "../utils/recipeReturnNav";
 
 /**
  * Lists draft recipes until the user publishes them (then they appear on Home).
@@ -17,9 +20,8 @@ export function DraftRecipesPage() {
   const [error, setError] = useState("");
   const [openMenuRecipeId, setOpenMenuRecipeId] = useState<number | null>(null);
   const [pendingDeleteRecipe, setPendingDeleteRecipe] = useState<RecipeDto | null>(null);
-  const [pendingImportRecipe, setPendingImportRecipe] = useState<RecipeDto | null>(null);
+  const [importPickerRecipe, setImportPickerRecipe] = useState<RecipeDto | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [importingRecipeId, setImportingRecipeId] = useState<number | null>(null);
   const [actionNotice, setActionNotice] = useState("");
 
   useEffect(() => {
@@ -39,20 +41,10 @@ export function DraftRecipesPage() {
     return () => window.clearTimeout(t);
   }, [actionNotice]);
 
-  const handleImportToShopping = async (recipe: RecipeDto) => {
-    if (!userId) return;
-    setImportingRecipeId(recipe.recipeId);
-    setActionNotice("");
-    try {
-      await importRecipeIngredientsToShoppingList(userId, recipe.recipeId);
-      setActionNotice(`"${recipe.title}" añadida a la cesta.`);
-    } catch (e) {
-      setActionNotice(e instanceof Error ? e.message : "No se pudieron importar los ingredientes.");
-    } finally {
-      setImportingRecipeId(null);
-      setOpenMenuRecipeId(null);
-    }
-  };
+  useModalDismiss({
+    enabled: openMenuRecipeId != null,
+    onDismiss: () => setOpenMenuRecipeId(null),
+  });
 
   const handleDeleteRecipe = async () => {
     if (!userId || !pendingDeleteRecipe) return;
@@ -83,7 +75,7 @@ export function DraftRecipesPage() {
       </header>
 
       <p className="create-recipe-hint" style={{ marginTop: "0.5rem" }}>
-        Las recetas en borrador no aparecen en el inicio ni en las categorías hasta que pulses{" "}
+        Las recetas en borrador no aparecen en el inicio ni en las etiquetas hasta que pulses{" "}
         <strong>Publicar</strong> al editarlas.
       </p>
 
@@ -92,9 +84,11 @@ export function DraftRecipesPage() {
 
       <div className="home-grid" style={{ marginTop: "1rem" }}>
         {loading ? (
-          <p className="home-category-card__empty">Cargando…</p>
+          <p className="home-category-card__empty home-category-card__empty--full-row">Cargando…</p>
         ) : drafts.length === 0 ? (
-          <p className="home-category-card__empty">No tienes borradores. Crea una receta desde el botón +.</p>
+          <p className="home-category-card__empty home-category-card__empty--full-row">
+            No tienes borradores. Crea una receta desde el botón +.
+          </p>
         ) : (
           drafts.map((r) => (
             <article
@@ -105,7 +99,9 @@ export function DraftRecipesPage() {
               <button
                 type="button"
                 className="category-recipe-card__open"
-                onClick={() => navigate(`/home/recipes/new?draftId=${r.recipeId}`)}
+                onClick={() =>
+                  navigate(`/home/recipes/new?${mergeSearchWithReturnNav(`draftId=${r.recipeId}`, { kind: "drafts" })}`)
+                }
               >
               <RecipeMiniTile recipe={r} layout="comfortable" />
               </button>
@@ -126,18 +122,20 @@ export function DraftRecipesPage() {
                       role="menuitem"
                       className="recipe-detail__menu-item recipe-detail__menu-item--primary"
                       onClick={() => {
-                        setPendingImportRecipe(r);
+                        setImportPickerRecipe(r);
                         setOpenMenuRecipeId(null);
                       }}
-                      disabled={importingRecipeId === r.recipeId}
+                      disabled={deleting}
                     >
-                      {importingRecipeId === r.recipeId ? "Añadiendo..." : "Añadir a la cesta"}
+                      Añadir a la cesta
                     </button>
                     <button
                       type="button"
                       role="menuitem"
                       className="recipe-detail__menu-item"
-                      onClick={() => navigate(`/home/recipes/new?editId=${r.recipeId}`)}
+                      onClick={() =>
+                        navigate(`/home/recipes/new?${mergeSearchWithReturnNav(`editId=${r.recipeId}`, { kind: "drafts" })}`)
+                      }
                       disabled={deleting}
                     >
                       Editar
@@ -158,24 +156,18 @@ export function DraftRecipesPage() {
           ))
         )}
       </div>
-      <ConfirmDialog
-        open={pendingImportRecipe != null}
-        title="¿Añadir ingredientes a la cesta?"
-        message="Se importarán los ingredientes de esta receta a tu lista de la compra."
-        cancelLabel="Cancelar"
-        confirmLabel={
-          importingRecipeId === pendingImportRecipe?.recipeId ? "Añadiendo..." : "Sí, añadir"
-        }
-        onCancel={() => {
-          if (importingRecipeId == null) setPendingImportRecipe(null);
-        }}
-        onConfirm={() => {
-          if (pendingImportRecipe) {
-            void handleImportToShopping(pendingImportRecipe);
-            setPendingImportRecipe(null);
+      {importPickerRecipe != null && userId != null && (
+        <ImportRecipeIngredientsDialog
+          open
+          userId={userId}
+          recipeId={importPickerRecipe.recipeId}
+          recipeTitle={importPickerRecipe.title}
+          onClose={() => setImportPickerRecipe(null)}
+          onSuccess={(msg) =>
+            setActionNotice(`"${importPickerRecipe.title}": ${msg}`)
           }
-        }}
-      />
+        />
+      )}
       <ConfirmDialog
         open={pendingDeleteRecipe != null}
         title="¿Eliminar esta receta?"

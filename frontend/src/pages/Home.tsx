@@ -1,21 +1,30 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useModalDismiss } from "../hooks/useModalDismiss";
+import { useOverlayDismiss } from "../hooks/useOverlayDismiss";
 import { getCurrentUserId } from "../auth/session";
-import { getRecipes } from "../api/recipes";
-import { createRecipeCategory, getRecipeCategories, updateRecipeCategory } from "../api/recipeCategories";
+import { getRecipes, previewRecipeFromUrl } from "../api/recipes";
+import {
+  createRecipeCategory,
+  deleteRecipeCategory,
+  getRecipeCategories,
+  updateRecipeCategory,
+} from "../api/recipeCategories";
 import type { RecipeCategoryDto, RecipeDto } from "../types/recipes";
 import { CategoryCard } from "../components/home/CategoryCard";
 import { FabMenu } from "../components/home/FabMenu";
 import { CreateCategoryModal } from "../components/home/CreateCategoryModal";
-import { useNavigate } from "react-router-dom";
+import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { appendRecipeReturnNav, type RecipeReturnNav } from "../utils/recipeReturnNav";
+import { isDefaultRecipeTag } from "../constants/recipeTags";
 
 type SearchResult =
   | { type: "category"; id: number; label: string }
   | { type: "recipe"; id: number; label: string };
 
-const DEFAULT_CATEGORY = "Sin categoría";
-
 export function Home() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const userId = getCurrentUserId();
   const [categories, setCategories] = useState<RecipeCategoryDto[]>([]);
   const [recipes, setRecipes] = useState<RecipeDto[]>([]);
@@ -26,9 +35,21 @@ export function Home() {
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<RecipeCategoryDto | null>(null);
   const [updatingCategory, setUpdatingCategory] = useState(false);
+  const [pendingDeleteCategory, setPendingDeleteCategory] = useState<RecipeCategoryDto | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState(false);
   const [error, setError] = useState("");
+  const [importError, setImportError] = useState("");
+  const [importingFromUrl, setImportingFromUrl] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q != null && q.length > 0) {
+      setSearch(q);
+      setIsSearchOpen(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!userId) return;
@@ -77,28 +98,29 @@ export function Home() {
     return [...catMatches, ...recMatches]; // First category matches, then recipe matches
   }, [search, categories, recipes]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!searchContainerRef.current) return;
-      const target = event.target as Node;
-      if (!searchContainerRef.current.contains(target)) {
-        setIsSearchOpen(false);
-      }
-    };
+  const searchTrimmed = search.trim();
+  const isSearchUrl = useMemo(() => {
+    if (!searchTrimmed) return false;
+    try {
+      const parsed = new URL(searchTrimmed);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, [searchTrimmed]);
 
-    const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsSearchOpen(false);
-      }
-    };
+  const closeSearchDropdown = useCallback(() => setIsSearchOpen(false), []);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEsc);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEsc);
-    };
-  }, []);
+  useOverlayDismiss({
+    enabled: isSearchOpen,
+    containerRef: searchContainerRef,
+    onDismiss: closeSearchDropdown,
+  });
+
+  useModalDismiss({
+    enabled: fabOpen,
+    onDismiss: () => setFabOpen(false),
+  });
 
   const handleCreateCategory = async (name: string) => {
     if (!userId) return;
@@ -130,9 +152,52 @@ export function Home() {
     }
   };
 
+  const handleConfirmDeleteCategory = async () => {
+    if (!userId || !pendingDeleteCategory) return;
+    setDeletingCategory(true);
+    setError("");
+    try {
+      await deleteRecipeCategory(userId, pendingDeleteCategory.categoryId);
+      const deletedId = pendingDeleteCategory.categoryId;
+      setCategories((prev) => prev.filter((c) => c.categoryId !== deletedId));
+      setRecipes((prev) =>
+        prev.map((r) => ({
+          ...r,
+          categories: r.categories.filter((c) => c.categoryId !== deletedId),
+        })),
+      );
+      setPendingDeleteCategory(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo eliminar la etiqueta.");
+      setPendingDeleteCategory(null);
+    } finally {
+      setDeletingCategory(false);
+    }
+  };
+
   const handleOpenRecipe = (recipeId: number) => {
     setIsSearchOpen(false);
-    navigate(`/home/recipes/${recipeId}`);
+    const trimmed = search.trim();
+    const ret: RecipeReturnNav = trimmed ? { kind: "home", q: trimmed } : { kind: "home" };
+    navigate(appendRecipeReturnNav(`/home/recipes/${recipeId}`, ret));
+  };
+
+  const handleImportFromSearchUrl = async () => {
+    if (!userId || !isSearchUrl || importingFromUrl) return;
+    setImportError("");
+    setImportingFromUrl(true);
+    try {
+      const preview = await previewRecipeFromUrl(userId, searchTrimmed);
+      setIsSearchOpen(false);
+      navigate("/home/recipes/new", {
+        state: { importPreview: preview },
+      });
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "No se pudo importar la receta.");
+      setIsSearchOpen(true);
+    } finally {
+      setImportingFromUrl(false);
+    }
   };
 
   if (!userId) return <p className="home-error">No hay usuario en sesión.</p>;
@@ -146,15 +211,43 @@ export function Home() {
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
+              setImportError("");
               setIsSearchOpen(true);
             }}
             onFocus={() => setIsSearchOpen(true)}
-            placeholder="Buscar categorías o recetas"
-            aria-label="Buscar categorías o recetas"
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+              e.preventDefault();
+              if (isSearchUrl && !importingFromUrl) {
+                void handleImportFromSearchUrl();
+                return;
+              }
+              const first = searchResults[0];
+              if (!first) return;
+              if (first.type === "category") {
+                handleOpenCategory(first.id);
+              } else {
+                handleOpenRecipe(first.id);
+              }
+            }}
+            placeholder="Buscar etiqueta / receta / Importar receta desde enlace"
+            aria-label="Buscar etiqueta / receta / Importar receta desde enlace"
           />
           {search.trim() && isSearchOpen && (
             <div className="home-search__dropdown" role="listbox" aria-label="Resultados de búsqueda">
-              {searchResults.length === 0 && <div className="home-search__empty">Sin coincidencias</div>}
+              {importError && (
+                <p className="home-search__import-error" role="alert">
+                  {importError}
+                </p>
+              )}
+              {isSearchUrl && (
+                <button type="button" onClick={handleImportFromSearchUrl} disabled={importingFromUrl}>
+                  {importingFromUrl ? "⏳ Importando receta..." : "🌐 Importar receta desde este enlace"}
+                </button>
+              )}
+              {!isSearchUrl && searchResults.length === 0 && (
+                <div className="home-search__empty">Sin coincidencias</div>
+              )}
               {searchResults.map((r) =>
                 r.type === "category" ? (
                   <button type="button" key={`c-${r.id}`} onClick={() => handleOpenCategory(r.id)}>
@@ -191,6 +284,7 @@ export function Home() {
       </div>
 
       {error && <p className="home-error">{error}</p>}
+      {importError && !isSearchOpen && <p className="home-error">{importError}</p>}
 
       <div className="home-grid">
         {categories.map((c) => (
@@ -200,8 +294,14 @@ export function Home() {
             previewRecipes={recipesByCategoryId.get(c.categoryId) ?? []}
             onOpenCategory={handleOpenCategory}
             onEditCategory={(category) => setEditingCategory(category)}
+            onDeleteCategory={(category) => setPendingDeleteCategory(category)}
             onCreateRecipeInCategory={(categoryId) =>
-              navigate(`/home/recipes/new?categoryId=${categoryId}`)
+              navigate(
+                appendRecipeReturnNav(`/home/recipes/new?categoryId=${categoryId}`, {
+                  kind: "category",
+                  categoryId,
+                }),
+              )
             }
           />
         ))}
@@ -216,11 +316,34 @@ export function Home() {
       <CreateCategoryModal
         open={editingCategory != null}
         loading={updatingCategory}
-        title="Editar categoría"
+        title="Editar etiqueta"
         submitLabel="Guardar cambios"
         initialName={editingCategory?.name ?? ""}
         onClose={() => setEditingCategory(null)}
         onSubmit={handleEditCategory}
+      />
+
+      <ConfirmDialog
+        open={pendingDeleteCategory != null}
+        title="¿Eliminar esta etiqueta?"
+        message={
+          pendingDeleteCategory
+            ? (() => {
+                const count = recipesByCategoryId.get(pendingDeleteCategory.categoryId)?.length ?? 0;
+                if (count > 0) {
+                  return `Se eliminará "${pendingDeleteCategory.name}". Las ${count} receta${count === 1 ? "" : "s"} de esta etiqueta no se borrarán; solo dejarán de estar agrupadas aquí.`;
+                }
+                return `Se eliminará la etiqueta "${pendingDeleteCategory.name}". Esta acción no se puede deshacer.`;
+              })()
+            : ""
+        }
+        cancelLabel="Cancelar"
+        confirmLabel={deletingCategory ? "Eliminando…" : "Sí, eliminar"}
+        confirmVariant="danger"
+        onCancel={() => {
+          if (!deletingCategory) setPendingDeleteCategory(null);
+        }}
+        onConfirm={() => void handleConfirmDeleteCategory()}
       />
     </section>
   );
@@ -229,8 +352,8 @@ export function Home() {
 function sortCategories(items: RecipeCategoryDto[]): RecipeCategoryDto[] {
   const copy = [...items];
   copy.sort((a, b) => {
-    const aDefault = a.name.trim().toLowerCase() === DEFAULT_CATEGORY.toLowerCase();
-    const bDefault = b.name.trim().toLowerCase() === DEFAULT_CATEGORY.toLowerCase();
+    const aDefault = isDefaultRecipeTag(a.name);
+    const bDefault = isDefaultRecipeTag(b.name);
     if (aDefault && !bDefault) return -1;
     if (!aDefault && bDefault) return 1;
     return a.name.localeCompare(b.name, "es", { sensitivity: "base" });

@@ -106,6 +106,4 @@ public class Recipe {
     public void setCategories(Set<RecipeCategory> categories) {
         this.categories = categories;
     }
-
-    // getters/setters
 }

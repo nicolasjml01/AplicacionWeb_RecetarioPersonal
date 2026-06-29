@@ -1,6 +1,8 @@
 // Image edits modeled as plain data so we can keep them in the upload queue
 // without rasterizing, and re-open the editor on previous values.
 
+import type { CSSProperties } from "react";
+
 export type ImageEdits = {
   // Crop in the rotated/flipped image space (pixels).
   crop: { x: number; y: number; width: number; height: number } | null;
@@ -139,4 +141,55 @@ function loadImage(source: File | Blob): Promise<HTMLImageElement> {
     };
     img.src = url;
   });
+}
+
+function loadImageFromUrl(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("No se pudo cargar la imagen."));
+    img.src = url;
+  });
+}
+
+/** Small raster of the crop + filters — same pipeline as applyImageEdits (step 2–4). */
+export async function renderCroppedPreviewBlob(
+  transformedImageUrl: string,
+  crop: ImageEdits["crop"],
+  filters: Pick<ImageEdits, "brightness" | "contrast" | "saturation">,
+  maxLongEdge = 220,
+): Promise<Blob> {
+  const img = await loadImageFromUrl(transformedImageUrl);
+  const src = crop ?? {
+    x: 0,
+    y: 0,
+    width: img.naturalWidth,
+    height: img.naturalHeight,
+  };
+
+  let scale = 1;
+  const longEdge = Math.max(src.width, src.height);
+  if (longEdge > maxLongEdge) scale = maxLongEdge / longEdge;
+  const outW = Math.max(1, Math.round(src.width * scale));
+  const outH = Math.max(1, Math.round(src.height * scale));
+
+  const out = document.createElement("canvas");
+  out.width = outW;
+  out.height = outH;
+  const ctx = out.getContext("2d");
+  if (!ctx) throw new Error("No se pudo crear el lienzo de vista previa.");
+  ctx.filter = `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturation}%)`;
+  ctx.drawImage(img, src.x, src.y, src.width, src.height, 0, 0, outW, outH);
+
+  return canvasToBlob(out, "image/jpeg", 0.88);
+}
+
+/** CSS filter for live preview of brightness/contrast/saturation edits. */
+export function editsToFilter(edits: ImageEdits | null | undefined): CSSProperties | undefined {
+  if (!edits) return undefined;
+  const { brightness, contrast, saturation } = edits;
+  if (brightness === 100 && contrast === 100 && saturation === 100) return undefined;
+  return {
+    filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`,
+  };
 }

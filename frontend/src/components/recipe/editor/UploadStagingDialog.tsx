@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { RecipeUploadLayoutPreview } from "../../media/UploadLayoutPreview";
+import { ModalBackdrop } from "../../ui/ModalBackdrop";
 import { ImageEditorDialog } from "./ImageEditorDialog";
 import { hasEdits, isEditableImage, type ImageEdits } from "../../../utils/imageEditing";
 
@@ -17,51 +19,85 @@ type Props = {
   // Files just picked in the OS dialog.
   files: File[];
   contextLabel?: string;
+  /** Shown on the listado/cover preview tile. */
+  recipeTitle?: string;
+  /** False when the gallery already has media (new files are not auto-cover). */
+  isCoverCandidate?: boolean;
   onCancel: () => void;
   // Parent rasterizes and uploads in the order received.
   onConfirm: (items: Array<{ file: File; edits: ImageEdits | null }>) => void;
 };
 
+function stagingBatchKey(files: File[]): string {
+  return files.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join("|");
+}
+
+function buildStagingItems(files: File[]): StagingItem[] {
+  return files.map((f, i) => ({
+    id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+    file: f,
+    edits: null,
+    previewUrl: URL.createObjectURL(f),
+    editable: isEditableImage(f),
+  }));
+}
+
 // Pre-upload queue: lets the user edit / remove each file before sending.
-// Edits are kept as data (no rasterization yet) so reopening the editor on a
-// row keeps its previous values.
-export function UploadStagingDialog({ open, files, contextLabel, onCancel, onConfirm }: Props) {
-  const [items, setItems] = useState<StagingItem[]>([]);
+export function UploadStagingDialog({
+  open,
+  files,
+  contextLabel,
+  recipeTitle = "Tu receta",
+  isCoverCandidate = true,
+  onCancel,
+  onConfirm,
+}: Props) {
+  if (!open) return null;
+
+  return (
+    <UploadStagingDialogBody
+      key={stagingBatchKey(files)}
+      files={files}
+      contextLabel={contextLabel}
+      recipeTitle={recipeTitle}
+      isCoverCandidate={isCoverCandidate}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
+function UploadStagingDialogBody({
+  files,
+  contextLabel,
+  recipeTitle,
+  isCoverCandidate,
+  onCancel,
+  onConfirm,
+}: Omit<Props, "open">) {
+  const [items, setItems] = useState(() => buildStagingItems(files));
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const itemsSnapshotRef = useRef(items);
 
-  // Build rows + preview URLs whenever a new batch comes in.
   useEffect(() => {
-    if (!open) return;
-    const next: StagingItem[] = files.map((f, i) => ({
-      id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
-      file: f,
-      edits: null,
-      previewUrl: URL.createObjectURL(f),
-      editable: isEditableImage(f),
-    }));
-    setItems(next);
-    setEditingIndex(null);
+    itemsSnapshotRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
     return () => {
-      for (const it of next) URL.revokeObjectURL(it.previewUrl);
+      for (const it of itemsSnapshotRef.current) URL.revokeObjectURL(it.previewUrl);
     };
-  }, [open, files]);
-
-  // Esc cancels (but not while the editor child dialog is open).
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && editingIndex == null) onCancel();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, editingIndex, onCancel]);
+  }, []);
 
   const editedCount = useMemo(
     () => items.reduce((acc, it) => acc + (it.edits && hasEdits(it.edits) ? 1 : 0), 0),
     [items],
   );
 
-  if (!open) return null;
+  const layoutPreviewItem = useMemo(
+    () => items.find((it) => !it.file.type.startsWith("video/")) ?? null,
+    [items],
+  );
 
   const removeAt = (idx: number) => {
     setItems((prev) => {
@@ -87,12 +123,32 @@ export function UploadStagingDialog({ open, files, contextLabel, onCancel, onCon
   const editingItem = editingIndex != null ? items[editingIndex] : null;
 
   return (
-    <div className="upload-staging-backdrop" role="dialog" aria-modal="true" aria-label="Confirmar subida">
-      <div className="upload-staging-dialog">
+    <ModalBackdrop
+      className="upload-staging-backdrop"
+      role="dialog"
+      onDismiss={onCancel}
+      disabled={editingIndex != null}
+    >
+      <div
+        className="upload-staging-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Confirmar subida"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <header className="upload-staging__header">
           <h2 className="upload-staging__title">Subir archivos</h2>
           {contextLabel && <p className="upload-staging__context">{contextLabel}</p>}
         </header>
+
+        {layoutPreviewItem && (
+          <RecipeUploadLayoutPreview
+            previewSrc={layoutPreviewItem.previewUrl}
+            edits={layoutPreviewItem.edits}
+            recipeTitle={recipeTitle}
+            isCoverCandidate={isCoverCandidate}
+          />
+        )}
 
         {items.length === 0 ? (
           <p className="upload-staging__empty">No quedan archivos por subir.</p>
@@ -183,11 +239,14 @@ export function UploadStagingDialog({ open, files, contextLabel, onCancel, onCon
           file={editingItem.file}
           fileName={editingItem.file.name}
           initialEdits={editingItem.edits}
+          previewContext="recipe"
+          recipeTitle={recipeTitle}
+          showCoverTile={isCoverCandidate}
           onCancel={() => setEditingIndex(null)}
           onApply={handleApplyEdits}
         />
       )}
-    </div>
+    </ModalBackdrop>
   );
 }
 

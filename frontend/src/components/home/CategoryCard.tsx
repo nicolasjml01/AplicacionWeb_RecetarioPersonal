@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useOverlayDismiss } from "../../hooks/useOverlayDismiss";
+import { isDefaultRecipeTag } from "../../constants/recipeTags";
 import type { RecipeDto, RecipeCategoryDto } from "../../types/recipes";
 import { RecipeMiniTile } from "../recipe/RecipeMiniTile";
 
@@ -7,6 +9,7 @@ type Props = {
   previewRecipes: RecipeDto[];
   onOpenCategory: (categoryId: number) => void;
   onEditCategory: (category: RecipeCategoryDto) => void;
+  onDeleteCategory: (category: RecipeCategoryDto) => void;
   onCreateRecipeInCategory: (categoryId: number) => void;
 };
 
@@ -15,24 +18,20 @@ export function CategoryCard({
   previewRecipes,
   onOpenCategory,
   onEditCategory,
+  onDeleteCategory,
   onCreateRecipeInCategory,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuWrapRef = useRef<HTMLDivElement | null>(null);
-  const isDefaultCategory = category.name.trim().toLowerCase() === "sin categoría";
+  const isDefaultCategory = isDefaultRecipeTag(category.name);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handleMouseDown = (event: MouseEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (menuWrapRef.current && !menuWrapRef.current.contains(target)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [menuOpen]);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  useOverlayDismiss({
+    enabled: menuOpen,
+    containerRef: menuWrapRef,
+    onDismiss: closeMenu,
+  });
 
   return (
     <article className="home-category-card home-category-card--with-menu">
@@ -81,7 +80,18 @@ export function CategoryCard({
                   onEditCategory(category);
                 }}
               >
-                Editar categoría
+                Editar etiqueta
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="recipe-detail__menu-item recipe-detail__menu-item--danger"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDeleteCategory(category);
+                }}
+              >
+                Eliminar etiqueta
               </button>
             </div>
           )}

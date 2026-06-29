@@ -8,6 +8,7 @@ import backend.recetarioPersonal.repository.RecipeIngredientRepository;
 import backend.recetarioPersonal.repository.RecipeRepository;
 import backend.recetarioPersonal.repository.UserRepository;
 import backend.recetarioPersonal.view.CreateRecipeIngredientRequest;
+import backend.recetarioPersonal.view.ImportRecipeIngredientItemRequest;
 import backend.recetarioPersonal.view.IngredientDto;
 import backend.recetarioPersonal.view.RecipeIngredientDto;
 import backend.recetarioPersonal.view.UnitOfMeasureDto;
@@ -15,7 +16,9 @@ import backend.recetarioPersonal.view.UpdateRecipeIngredientRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class RecipeIngredientService {
@@ -56,11 +59,14 @@ public class RecipeIngredientService {
     public RecipeIngredientDto add(long userId, long recipeId, CreateRecipeIngredientRequest request) {
         Recipe recipe = ensureUserAndRecipeOwner(userId, recipeId);
 
-        Ingredient ingredient = ingredientService.findOrCreateByName(request.ingredientName(), userId);
+        Ingredient ingredient = ingredientService.findOrCreateByName(
+            request.ingredientName(),
+            userId,
+            request.ingredientCategoryId());
 
         UnitOfMeasure unit = null;
         if (request.measurementUnit() != null && !request.measurementUnit().isBlank()) {
-            unit = unitOfMeasureService.findOrCreateByName(request.measurementUnit().trim());
+            unit = unitOfMeasureService.findOrCreateByName(request.measurementUnit().trim(), userId);
         }
 
         int nextOrder = recipeIngredientRepository.findByRecipe_RecipeIdOrderByDisplayOrderAsc(recipeId)
@@ -89,7 +95,10 @@ public class RecipeIngredientService {
                 .orElseThrow(() -> new IllegalArgumentException("Ingrediente de receta no encontrado: " + recipeIngredientId));
 
         if (request.ingredientName() != null && !request.ingredientName().isBlank()) {
-            row.setIngredient(ingredientService.findOrCreateByName(request.ingredientName(), userId));
+            row.setIngredient(ingredientService.findOrCreateByName(
+                request.ingredientName(),
+                userId,
+                request.ingredientCategoryId()));
         }
         if (request.quantity() != null) {
             row.setQuantity(request.quantity());
@@ -98,7 +107,7 @@ public class RecipeIngredientService {
             if (request.measurementUnit().isBlank()) {
                 row.setUnitOfMeasure(null);
             } else {
-                row.setUnitOfMeasure(unitOfMeasureService.findOrCreateByName(request.measurementUnit().trim()));
+                row.setUnitOfMeasure(unitOfMeasureService.findOrCreateByName(request.measurementUnit().trim(), userId));
             }
         }
         return toDto(recipeIngredientRepository.save(row));
@@ -116,25 +125,73 @@ public class RecipeIngredientService {
     }
 
     @Transactional
-    public void importToShoppingList(long userId, long recipeId, Float factor) {
+    public void importToShoppingList(
+            long userId,
+            long recipeId,
+            Float factor,
+            List<Long> recipeIngredientIds,
+            List<ImportRecipeIngredientItemRequest> items) {
         ensureUserAndRecipeOwner(userId, recipeId);
-        float f = (factor == null || factor <= 0f) ? 1.0f : factor;
-    
+
         List<RecipeIngredient> rows = recipeIngredientRepository.findByRecipe_RecipeIdOrderByDisplayOrderAsc(recipeId);
         if (rows.isEmpty()) {
             throw new IllegalArgumentException("La receta no tiene ingredientes para importar.");
         }
-    
-        for (RecipeIngredient r : rows) {
+
+        var byId = rows.stream()
+                .collect(java.util.stream.Collectors.toMap(RecipeIngredient::getRecipeIngredientId, r -> r));
+
+        if (items != null && !items.isEmpty()) {
+            for (var item : items) {
+                RecipeIngredient r = byId.get(item.recipeIngredientId());
+                if (r == null) {
+                    throw new IllegalArgumentException(
+                            "Ingrediente de receta no encontrado: " + item.recipeIngredientId());
+                }
+                String unitName = resolveImportUnitName(item.unitName(), r);
+                shoppingListService.addOrMergeItem(
+                        userId,
+                        r.getIngredient().getName(),
+                        item.quantity(),
+                        unitName,
+                        null);
+            }
+            return;
+        }
+
+        float f = (factor == null || factor <= 0f) ? 1.0f : factor;
+        List<RecipeIngredient> toImport;
+        if (recipeIngredientIds == null) {
+            toImport = rows;
+        } else {
+            if (recipeIngredientIds.isEmpty()) {
+                throw new IllegalArgumentException("Selecciona al menos un ingrediente para añadir.");
+            }
+            Set<Long> wanted = new HashSet<>(recipeIngredientIds);
+            toImport = rows.stream()
+                    .filter(r -> wanted.contains(r.getRecipeIngredientId()))
+                    .toList();
+            if (toImport.isEmpty()) {
+                throw new IllegalArgumentException("Ningún ingrediente seleccionado pertenece a esta receta.");
+            }
+        }
+
+        for (RecipeIngredient r : toImport) {
             String unitName = r.getUnitOfMeasure() != null ? r.getUnitOfMeasure().getName() : null;
-    
             shoppingListService.addOrMergeItem(
                     userId,
                     r.getIngredient().getName(),
                     r.getQuantity() * f,
-                    unitName
-            );
+                    unitName,
+                    null);
         }
+    }
+
+    private static String resolveImportUnitName(String requestedUnit, RecipeIngredient row) {
+        if (requestedUnit != null && !requestedUnit.isBlank()) {
+            return requestedUnit.trim();
+        }
+        return row.getUnitOfMeasure() != null ? row.getUnitOfMeasure().getName() : null;
     }
 
     private Recipe ensureUserAndRecipeOwner(long userId, long recipeId) {
@@ -146,18 +203,11 @@ public class RecipeIngredientService {
 
     private RecipeIngredientDto toDto(RecipeIngredient row) {
         Ingredient i = row.getIngredient();
-        IngredientDto ingredientDto = new IngredientDto(
-                i.getIngredientId(),
-                i.getName(),
-                i.getCategory() != null ? i.getCategory().getCategoryId() : null,
-                i.getCategory() != null ? i.getCategory().getName() : null
-        );
+        IngredientDto ingredientDto = ingredientService.toDto(i);
 
-        UnitOfMeasureDto unitDto = row.getUnitOfMeasure() == null ? null : new UnitOfMeasureDto(
-                row.getUnitOfMeasure().getUnitId(),
-                row.getUnitOfMeasure().getName(),
-                row.getUnitOfMeasure().getSymbol()
-        );
+        UnitOfMeasureDto unitDto = row.getUnitOfMeasure() == null
+                ? null
+                : unitOfMeasureService.toDto(row.getUnitOfMeasure());
 
         return new RecipeIngredientDto(
                 row.getRecipeIngredientId(),

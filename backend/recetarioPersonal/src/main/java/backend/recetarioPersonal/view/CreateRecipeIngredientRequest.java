@@ -5,7 +5,9 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 public record CreateRecipeIngredientRequest(
-    @NotBlank @Size(max = 255) String ingredientName,
-    @PositiveOrZero float quantity,
-    @Size(max = 80) String measurementUnit
+        @NotBlank @Size(max = 255) String ingredientName,
+        @PositiveOrZero float quantity,
+        @Size(max = 80) String measurementUnit,
+        /** null → "Propios" when creating a new user ingredient. */
+        Long ingredientCategoryId
 ) {}

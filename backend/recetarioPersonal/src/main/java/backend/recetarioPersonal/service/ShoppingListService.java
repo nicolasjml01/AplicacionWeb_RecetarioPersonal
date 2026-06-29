@@ -49,10 +49,11 @@ public class ShoppingListService {
             throw new IllegalArgumentException("ingredientName is required");
         }
         return addOrMergeItem(
-                userId,
-                request.ingredientName(),
-                request.quantity(),
-                request.measurementUnit()
+            userId,
+            request.ingredientName(),
+            request.quantity(),
+            request.measurementUnit(),
+            request.ingredientCategoryId()
         );
     }
 
@@ -67,6 +68,17 @@ public class ShoppingListService {
             float quantity,
             String measurementUnit
     ) {
+        return addOrMergeItem(userId, ingredientName, quantity, measurementUnit, null);
+    }
+
+    @Transactional
+    public ShoppingListItemDto addOrMergeItem(
+            long userId,
+            String ingredientName,
+            float quantity,
+            String measurementUnit,
+            Long ingredientCategoryIdForCreate
+    ) {
         if (ingredientName == null || ingredientName.isBlank()) {
             throw new IllegalArgumentException("ingredientName is required");
         }
@@ -77,11 +89,11 @@ public class ShoppingListService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        Ingredient ingredient = ingredientService.findOrCreateByName(ingredientName, userId);
+        Ingredient ingredient = ingredientService.findOrCreateByName(ingredientName, userId, ingredientCategoryIdForCreate);
 
         UnitOfMeasure unit = null;
         if (measurementUnit != null && !measurementUnit.isBlank()) {
-            unit = unitOfMeasureService.findOrCreateByName(measurementUnit.trim());
+            unit = unitOfMeasureService.findOrCreateByName(measurementUnit.trim(), userId);
         }
 
         Long unitId = unit != null ? unit.getUnitId() : null;
@@ -137,7 +149,7 @@ public class ShoppingListService {
             if (request.measurementUnit().isBlank()) {
                 item.setUnitOfMeasure(null);
             } else {
-                item.setUnitOfMeasure(unitOfMeasureService.findOrCreateByName(request.measurementUnit()));
+                item.setUnitOfMeasure(unitOfMeasureService.findOrCreateByName(request.measurementUnit(), userId));
             }
         }
 
@@ -161,11 +173,7 @@ public class ShoppingListService {
         IngredientDto ingredientDto = ingredientToDto(item.getIngredient());
 
         UnitOfMeasureDto unitDto = item.getUnitOfMeasure() != null
-                ? new UnitOfMeasureDto(
-                item.getUnitOfMeasure().getUnitId(),
-                item.getUnitOfMeasure().getName(),
-                item.getUnitOfMeasure().getSymbol()
-        )
+                ? unitOfMeasureService.toDto(item.getUnitOfMeasure())
                 : null;
 
         return new ShoppingListItemDto(
@@ -179,8 +187,6 @@ public class ShoppingListService {
     }
 
     private IngredientDto ingredientToDto(Ingredient ing) {
-        Long catId = ing.getCategory() != null ? ing.getCategory().getCategoryId() : null;
-        String catName = ing.getCategory() != null ? ing.getCategory().getName() : null;
-        return new IngredientDto(ing.getIngredientId(), ing.getName(), catId, catName);
+        return ingredientService.toDto(ing);
     }
 }
