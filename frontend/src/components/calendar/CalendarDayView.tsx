@@ -5,6 +5,7 @@ import type { RecipeIngredientDto } from "../../types/recipes";
 import type { RecipeReturnNav } from "../../utils/recipeReturnNav";
 import { CalendarDayEntryRow } from "./CalendarDayEntryRow";
 import { ReorderButtons } from "./ReorderButtons";
+import { collectRecipeIngredientImageUrls, preloadImages } from "../../utils/preloadImages";
 
 type Props = {
   userId: number;
@@ -71,6 +72,9 @@ export function CalendarDayView({
         }
         setIngredientsByRecipeId(map);
         setLoadedRecipeIdsKey(recipeIdsKey);
+        preloadImages(
+          collectRecipeIngredientImageUrls(pairs.flatMap(([, list]) => list)),
+        );
       })
       .catch(() => {
         if (!cancelled) {

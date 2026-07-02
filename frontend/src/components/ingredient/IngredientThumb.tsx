@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { hasIngredientImage, ingredientInitialLetter } from "../../utils/ingredientImage";
 
@@ -13,6 +13,7 @@ type Props = {
   size?: Size;
   alt?: string;
   className?: string;
+  loading?: "eager" | "lazy";
 };
 
 /**
@@ -25,12 +26,12 @@ export function IngredientThumb({
   size = "card",
   alt = "",
   className = "",
+  loading = "eager",
 }: Props) {
   const [imageFailed, setImageFailed] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
-  useEffect(() => {
-    setImageFailed(false);
-  }, [imageUrl, previewSrc]);
   const preview = previewSrc?.trim();
   const hasPreview = Boolean(preview);
   const hasRemoteImage = hasIngredientImage(imageUrl) && !imageFailed;
@@ -38,6 +39,28 @@ export function IngredientThumb({
   const label = name?.trim() || alt.trim();
   const letter = ingredientInitialLetter(label);
   const imageAlt = alt || label || "Ingrediente";
+  const src = showImage
+    ? hasPreview
+      ? preview!
+      : resolveMediaUrl(imageUrl!.trim())
+    : "";
+
+  useEffect(() => {
+    setImageFailed(false);
+    setImageLoaded(false);
+  }, [imageUrl, previewSrc]);
+
+  useEffect(() => {
+    if (!showImage) return;
+    if (hasPreview) {
+      setImageLoaded(true);
+      return;
+    }
+    const el = imgRef.current;
+    if (el?.complete && el.naturalWidth > 0) {
+      setImageLoaded(true);
+    }
+  }, [showImage, hasPreview, src]);
 
   const rootClass = ["ingredient-thumb", `ingredient-thumb--${size}`, className]
     .filter(Boolean)
@@ -51,17 +74,29 @@ export function IngredientThumb({
     );
   }
 
-  const src = hasPreview ? preview! : resolveMediaUrl(imageUrl!.trim());
-
   return (
     <div className={rootClass}>
+      {!imageLoaded && (
+        <span className="ingredient-thumb__avatar ingredient-thumb__avatar--placeholder" aria-hidden>
+          {letter}
+        </span>
+      )}
       <img
+        ref={imgRef}
         src={src}
         alt={imageAlt}
-        className="ingredient-thumb__img"
-        loading="lazy"
+        className={[
+          "ingredient-thumb__img",
+          imageLoaded ? "ingredient-thumb__img--loaded" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        loading={loading}
+        decoding="async"
+        onLoad={() => setImageLoaded(true)}
         onError={() => {
           setImageFailed(true);
+          setImageLoaded(false);
         }}
       />
     </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useOverlayDismiss } from "../hooks/useOverlayDismiss";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getCurrentUserId } from "../auth/session";
@@ -6,6 +6,7 @@ import { deleteRecipe, getRecipe } from "../api/recipes";
 import type { RecipeDto } from "../types/recipes";
 import { RECIPE_DEFAULT_COVER_PATH } from "../constants/recipeAssets";
 import { IngredientThumb } from "../components/ingredient/IngredientThumb";
+import { usePreloadImages } from "../hooks/usePreloadImages";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { ImportRecipeIngredientsDialog } from "../components/recipe/ImportRecipeIngredientsDialog";
@@ -157,6 +158,12 @@ export function RecipeDetailPage() {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [actionNotice, setActionNotice] = useState("");
   const actionsRef = useRef<HTMLDivElement | null>(null);
+
+  const ingredientImageUrls = useMemo(
+    () => recipe?.ingredients.map((ing) => ing.ingredient.imageUrl) ?? [],
+    [recipe],
+  );
+  usePreloadImages(ingredientImageUrls);
 
   useEffect(() => {
     if (!userId || !Number.isFinite(recipeId)) {

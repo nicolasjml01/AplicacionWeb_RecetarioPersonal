@@ -21,6 +21,11 @@ import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryD
 import { IngredientCatalogTile } from "../components/ingredient/IngredientCatalogTile";
 import { IngredientThumb } from "../components/ingredient/IngredientThumb";
 import {
+  collectCatalogImageUrls,
+  collectIngredientImageUrls,
+  preloadImages,
+} from "../utils/preloadImages";
+import {
   defaultIngredientCategoryId,
   ingredientCategoriesForSelect,
 } from "../utils/ingredientCatalogUi";
@@ -94,6 +99,7 @@ export function Shopping() {
     try {
       const data = await getShoppingList(userId);
       setShoppingItems(data);
+      preloadImages(collectIngredientImageUrls(data.map((item) => item.ingredient)));
     } catch (e) {
       setListError(
         e instanceof Error ? e.message : "No se pudo cargar la lista de la compra.",
@@ -124,6 +130,7 @@ export function Shopping() {
     try {
       const data = await getIngredientsCatalog(userId);
       setCatalogCategories(data);
+      preloadImages(collectCatalogImageUrls(data));
 
       // Keep previous accordion state. New categories start collapsed.
       setExpandedCategories((prev) => {
@@ -176,6 +183,7 @@ export function Shopping() {
       try {
         const results = await searchIngredients(userId, q);
         setIngredientResults(results);
+        preloadImages(collectIngredientImageUrls(results));
       } catch (e) {
         setSearchError(
           e instanceof Error ? e.message : "No se pudieron buscar ingredientes.",
@@ -361,8 +369,7 @@ export function Shopping() {
                         <span>{isOpen ? "▾" : "▸"}</span>
                       </button>
 
-                      {isOpen && (
-                        <div className="shopping-accordion__body">
+                      <div className="shopping-accordion__body" hidden={!isOpen}>
                           {cat.ingredients.length === 0 ? (
                             isOwn ? (
                               <div className="shopping-hint">Aún no hay ingredientes.</div>
@@ -381,8 +388,7 @@ export function Shopping() {
                               ))}
                             </div>
                           )}
-                        </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })

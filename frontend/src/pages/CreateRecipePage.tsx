@@ -38,7 +38,7 @@ import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryD
 import { IngredientRowThumb } from "../components/ingredient/IngredientRowThumb";
 import { UploadStagingDialog } from "../components/recipe/editor/UploadStagingDialog";
 import { ImageEditorDialog } from "../components/recipe/editor/ImageEditorDialog";
-import { resolveMediaUrl } from "../utils/mediaUrl";
+import { usePreloadImages } from "../hooks/usePreloadImages";
 import {
   applyImageEdits,
   hasEdits,
@@ -49,6 +49,8 @@ import {
   defaultIngredientCategoryId,
   ingredientCategoriesForSelect,
 } from "../utils/ingredientCatalogUi";
+import { collectCatalogImageUrls, preloadImages } from "../utils/preloadImages";
+import { resolveMediaUrl } from "../utils/mediaUrl";
 import { parseImportedIngredientLine } from "../utils/parseImportedIngredientLine";
 import { formatImportQuantityForInput } from "../components/recipe/importQuantity";
 
@@ -327,6 +329,16 @@ export function CreateRecipePage() {
   const [initialStepIds, setInitialStepIds] = useState<number[]>([]);
   const [baselineKey, setBaselineKey] = useState("");
 
+  const preloadIngredientUrls = useMemo(
+    () => [
+      ...ingredients.map((row) => row.ingredientImageUrl),
+      ...collectCatalogImageUrls(ingredientCatalog),
+      ...ingredientResults.map((result) => result.imageUrl),
+    ],
+    [ingredients, ingredientCatalog, ingredientResults],
+  );
+  usePreloadImages(preloadIngredientUrls);
+
   const hasMeaningfulChanges = useMemo(() => {
     const hasTitle = title.trim().length > 0 && !isGenericDraftTitle(title);
     const hasStepText = steps.some((s) => s.content.trim().length > 0);
@@ -417,7 +429,10 @@ export function CreateRecipePage() {
   useEffect(() => {
     if (!userId) return;
     void getIngredientsCatalog(userId)
-      .then(setIngredientCatalog)
+      .then((catalog) => {
+        setIngredientCatalog(catalog);
+        preloadImages(collectCatalogImageUrls(catalog));
+      })
       .catch(() => setIngredientCatalog([]));
   }, [userId]);
 

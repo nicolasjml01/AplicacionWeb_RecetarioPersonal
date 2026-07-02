@@ -5,6 +5,7 @@ import { ModalBackdrop, ModalPanel } from "../ui/ModalBackdrop";
 import { ImportIngredientEditDialog } from "./ImportIngredientEditDialog";
 import { ImportShoppingIngredientCard } from "./ImportShoppingIngredientCard";
 import { defaultUnitName, displayUnitLabel } from "./importUnitDisplay";
+import { collectRecipeIngredientImageUrls, preloadImages } from "../../utils/preloadImages";
 import { useShoppingUnits } from "./useShoppingUnits";
 
 type Props = {
@@ -80,6 +81,7 @@ export function ImportRecipeIngredientsDialog({
         setUnitNames(buildInitialUnitNames(sorted));
         setRemovedStack([]);
         setEditingId(null);
+        preloadImages(collectRecipeIngredientImageUrls(sorted));
       })
       .catch((e) => {
         if (!cancelled) {

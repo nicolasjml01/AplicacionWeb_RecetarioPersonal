@@ -20,12 +20,17 @@ import { EditOwnedIngredientModal } from "../components/account/EditOwnedIngredi
 import { EditMealTypeModal } from "../components/account/EditMealTypeModal";
 import { EditUnitModal } from "../components/account/EditUnitModal";
 import { IngredientThumb } from "../components/ingredient/IngredientThumb";
+import { usePreloadImages } from "../hooks/usePreloadImages";
 import type { MealTypeDto } from "../types/calendar";
 import type { IngredientDto, UnitOfMeasureDto } from "../types/shopping";
 import {
   ingredientCategoriesForSelect,
   type IngredientCategoryOption,
 } from "../utils/ingredientCatalogUi";
+import {
+  collectIngredientImageUrls,
+  preloadImages,
+} from "../utils/preloadImages";
 
 type Panel = "main" | "ingredients" | "mealTypes" | "units";
 
@@ -85,6 +90,12 @@ export function Account() {
   const [deleting, setDeleting] = useState(false);
   const [listSearch, setListSearch] = useState("");
 
+  const ownedIngredientImageUrls = useMemo(
+    () => ownedIngredients.map((ingredient) => ingredient.imageUrl),
+    [ownedIngredients],
+  );
+  usePreloadImages(ownedIngredientImageUrls);
+
   const loadCategoryOptions = useCallback(async () => {
     if (userId == null) return;
     const catalog = await getIngredientsCatalog(userId);
@@ -98,6 +109,7 @@ export function Account() {
     try {
       const data = await getOwnedIngredients(userId);
       setOwnedIngredients(data);
+      preloadImages(collectIngredientImageUrls(data));
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudieron cargar tus ingredientes.");
     } finally {
