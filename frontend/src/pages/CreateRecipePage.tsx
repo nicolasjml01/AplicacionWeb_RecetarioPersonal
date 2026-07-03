@@ -49,7 +49,6 @@ import {
   defaultIngredientCategoryId,
   ingredientCategoriesForSelect,
 } from "../utils/ingredientCatalogUi";
-import { collectCatalogImageUrls, preloadImages } from "../utils/preloadImages";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { parseImportedIngredientLine } from "../utils/parseImportedIngredientLine";
 import { formatImportQuantityForInput } from "../components/recipe/importQuantity";
@@ -329,15 +328,16 @@ export function CreateRecipePage() {
   const [initialStepIds, setInitialStepIds] = useState<number[]>([]);
   const [baselineKey, setBaselineKey] = useState("");
 
-  const preloadIngredientUrls = useMemo(
-    () => [
-      ...ingredients.map((row) => row.ingredientImageUrl),
-      ...collectCatalogImageUrls(ingredientCatalog),
-      ...ingredientResults.map((result) => result.imageUrl),
-    ],
-    [ingredients, ingredientCatalog, ingredientResults],
+  const recipeIngredientImageUrls = useMemo(
+    () => ingredients.map((row) => row.ingredientImageUrl),
+    [ingredients],
   );
-  usePreloadImages(preloadIngredientUrls);
+  const ingredientSearchImageUrls = useMemo(
+    () => ingredientResults.map((result) => result.imageUrl),
+    [ingredientResults],
+  );
+  usePreloadImages(recipeIngredientImageUrls, "high");
+  usePreloadImages(ingredientSearchImageUrls, "normal");
 
   const hasMeaningfulChanges = useMemo(() => {
     const hasTitle = title.trim().length > 0 && !isGenericDraftTitle(title);
@@ -431,7 +431,6 @@ export function CreateRecipePage() {
     void getIngredientsCatalog(userId)
       .then((catalog) => {
         setIngredientCatalog(catalog);
-        preloadImages(collectCatalogImageUrls(catalog));
       })
       .catch(() => setIngredientCatalog([]));
   }, [userId]);

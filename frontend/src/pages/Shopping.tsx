@@ -21,9 +21,10 @@ import { IngredientEntryDialog } from "../components/ingredient/IngredientEntryD
 import { IngredientCatalogTile } from "../components/ingredient/IngredientCatalogTile";
 import { IngredientThumb } from "../components/ingredient/IngredientThumb";
 import {
-  collectCatalogImageUrls,
   collectIngredientImageUrls,
-  preloadImages,
+  preloadIngredientImages,
+  preloadWhenIdle,
+  type PreloadPriority,
 } from "../utils/preloadImages";
 import {
   defaultIngredientCategoryId,
@@ -92,6 +93,15 @@ export function Shopping() {
     [catalogCategories],
   );
 
+  const preloadCategoryImages = useCallback(
+    (categoryId: number, priority: PreloadPriority) => {
+      const category = catalogCategories.find((cat) => cat.categoryId === categoryId);
+      if (!category) return;
+      preloadIngredientImages(collectIngredientImageUrls(category.ingredients), priority);
+    },
+    [catalogCategories],
+  );
+
   async function loadList() {
     if (userId == null) return;
     setLoadingList(true);
@@ -99,7 +109,10 @@ export function Shopping() {
     try {
       const data = await getShoppingList(userId);
       setShoppingItems(data);
-      preloadImages(collectIngredientImageUrls(data.map((item) => item.ingredient)));
+      preloadIngredientImages(
+        collectIngredientImageUrls(data.map((item) => item.ingredient)),
+        "high",
+      );
     } catch (e) {
       setListError(
         e instanceof Error ? e.message : "No se pudo cargar la lista de la compra.",
@@ -130,7 +143,11 @@ export function Shopping() {
     try {
       const data = await getIngredientsCatalog(userId);
       setCatalogCategories(data);
-      preloadImages(collectCatalogImageUrls(data));
+
+      const recientes = data.find((cat) => cat.categoryId === -999);
+      if (recientes) {
+        preloadWhenIdle(collectIngredientImageUrls(recientes.ingredients), "low");
+      }
 
       // Keep previous accordion state. New categories start collapsed.
       setExpandedCategories((prev) => {
@@ -156,12 +173,7 @@ export function Shopping() {
 
   useEffect(() => {
     if (userId == null) return;
-    loadCatalog();
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId == null) return;
-    loadList();
+    void loadList().then(() => loadCatalog());
   }, [userId]);
 
   // Debounced ingredient search
@@ -183,7 +195,7 @@ export function Shopping() {
       try {
         const results = await searchIngredients(userId, q);
         setIngredientResults(results);
-        preloadImages(collectIngredientImageUrls(results));
+        preloadIngredientImages(collectIngredientImageUrls(results), "normal");
       } catch (e) {
         setSearchError(
           e instanceof Error ? e.message : "No se pudieron buscar ingredientes.",
@@ -254,10 +266,19 @@ export function Shopping() {
     setNewIngredientImageFile(null);
   }
 
+  function handleCategoryPointerDown(categoryId: number) {
+    if (expandedCategories[categoryId]) return;
+    preloadCategoryImages(categoryId, "high");
+  }
+
   function toggleCategory(categoryId: number) {
+    const willOpen = !(expandedCategories[categoryId] ?? false);
+    if (willOpen) {
+      preloadCategoryImages(categoryId, "high");
+    }
     setExpandedCategories((prev) => ({
       ...prev,
-      [categoryId]: !prev[categoryId],
+      [categoryId]: willOpen,
     }));
   }
 
@@ -363,6 +384,7 @@ export function Shopping() {
                       <button
                         type="button"
                         className="shopping-accordion__header"
+                        onPointerDown={() => handleCategoryPointerDown(cat.categoryId)}
                         onClick={() => toggleCategory(cat.categoryId)}
                       >
                         <span>{cat.categoryName}</span>
@@ -427,6 +449,7 @@ export function Shopping() {
                           imageUrl={item.ingredient.imageUrl}
                           size="card"
                           alt={item.ingredient.name}
+                          loading="eager"
                         />
                       </button>
 

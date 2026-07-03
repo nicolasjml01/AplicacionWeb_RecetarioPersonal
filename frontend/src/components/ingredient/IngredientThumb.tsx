@@ -26,7 +26,7 @@ export function IngredientThumb({
   size = "card",
   alt = "",
   className = "",
-  loading = "eager",
+  loading = "lazy",
 }: Props) {
   const [imageFailed, setImageFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);

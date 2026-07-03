@@ -29,7 +29,7 @@ import {
 } from "../utils/ingredientCatalogUi";
 import {
   collectIngredientImageUrls,
-  preloadImages,
+  preloadIngredientImages,
 } from "../utils/preloadImages";
 
 type Panel = "main" | "ingredients" | "mealTypes" | "units";
@@ -94,7 +94,7 @@ export function Account() {
     () => ownedIngredients.map((ingredient) => ingredient.imageUrl),
     [ownedIngredients],
   );
-  usePreloadImages(ownedIngredientImageUrls);
+  usePreloadImages(ownedIngredientImageUrls, "normal");
 
   const loadCategoryOptions = useCallback(async () => {
     if (userId == null) return;
@@ -109,7 +109,7 @@ export function Account() {
     try {
       const data = await getOwnedIngredients(userId);
       setOwnedIngredients(data);
-      preloadImages(collectIngredientImageUrls(data));
+      preloadIngredientImages(collectIngredientImageUrls(data), "normal");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudieron cargar tus ingredientes.");
     } finally {

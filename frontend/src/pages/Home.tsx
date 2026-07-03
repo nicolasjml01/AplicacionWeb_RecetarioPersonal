@@ -17,6 +17,12 @@ import { ConfirmDialog } from "../components/recipe/editor/ConfirmDialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { appendRecipeReturnNav, type RecipeReturnNav } from "../utils/recipeReturnNav";
 import { isDefaultRecipeTag } from "../constants/recipeTags";
+import {
+  collectRecipeCoverUrls,
+  collectVisibleHomeCoverUrls,
+  preloadImages,
+  preloadWhenIdle,
+} from "../utils/preloadImages";
 
 type SearchResult =
   | { type: "category"; id: number; label: string }
@@ -74,6 +80,19 @@ export function Home() {
     }
     return map;
   }, [categories, recipes]);
+
+  useEffect(() => {
+    if (loading || recipes.length === 0) return;
+
+    const visibleCovers = collectVisibleHomeCoverUrls(categories, recipesByCategoryId);
+    preloadImages(visibleCovers, "high");
+
+    const visibleSet = new Set(visibleCovers);
+    const remainingCovers = collectRecipeCoverUrls(recipes).filter((url) => !visibleSet.has(url));
+    if (remainingCovers.length > 0) {
+      preloadWhenIdle(remainingCovers, "low");
+    }
+  }, [loading, recipes, categories, recipesByCategoryId]);
 
   const searchResults = useMemo(() => {
     const q = search.trim().toLowerCase();

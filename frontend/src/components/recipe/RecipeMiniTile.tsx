@@ -49,12 +49,13 @@ export function RecipeMiniTilePreview({
     <div className={rootClass}>
       <div className="recipe-mini-tile__media">
         {hasCover ? (
-          <img
-            className="recipe-mini-tile__img"
-            src={resolveMediaUrl(coverImageUrl!.trim())}
-            alt=""
-            loading="lazy"
-          />
+            <img
+              className="recipe-mini-tile__img"
+              src={resolveMediaUrl(coverImageUrl!.trim())}
+              alt=""
+              loading="lazy"
+              fetchPriority="high"
+            />
         ) : (
           <div className="recipe-mini-tile__fallback" aria-hidden>
             <img
@@ -109,6 +110,7 @@ export function RecipeMiniTile({ recipe, layout = "comfortable", className = "" 
               src={resolveMediaUrl(cover.url)}
               alt=""
               loading="lazy"
+              fetchPriority="high"
             />
           )
         ) : (

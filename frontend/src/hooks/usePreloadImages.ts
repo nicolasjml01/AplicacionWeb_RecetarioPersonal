@@ -1,8 +1,14 @@
 import { useEffect } from "react";
-import { preloadImages } from "../utils/preloadImages";
+import {
+  preloadIngredientImages,
+  type PreloadPriority,
+} from "../utils/preloadImages";
 
 /** Preloads ingredient image URLs when the list changes (stable dedupe inside preloadImages). */
-export function usePreloadImages(urls: (string | null | undefined)[]): void {
+export function usePreloadImages(
+  urls: (string | null | undefined)[],
+  priority: PreloadPriority = "normal",
+): void {
   const key = urls
     .map((url) => url?.trim() ?? "")
     .filter(Boolean)
@@ -11,6 +17,6 @@ export function usePreloadImages(urls: (string | null | undefined)[]): void {
 
   useEffect(() => {
     if (!key) return;
-    preloadImages(key.split("\0"));
-  }, [key]);
+    preloadIngredientImages(key.split("\0"), priority);
+  }, [key, priority]);
 }

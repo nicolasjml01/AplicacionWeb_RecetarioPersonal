@@ -10,7 +10,13 @@ type Props = {
 export function IngredientCatalogTile({ name, imageUrl, onClick }: Props) {
   return (
     <button type="button" className="ingredient-catalog-tile" onClick={onClick}>
-      <IngredientThumb name={name} imageUrl={imageUrl} size="card" alt={name} />
+      <IngredientThumb
+        name={name}
+        imageUrl={imageUrl}
+        size="card"
+        alt={name}
+        loading="eager"
+      />
       <span className="ingredient-catalog-tile__name">{name}</span>
     </button>
   );

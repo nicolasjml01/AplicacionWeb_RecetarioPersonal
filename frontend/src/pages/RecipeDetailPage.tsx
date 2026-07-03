@@ -163,7 +163,7 @@ export function RecipeDetailPage() {
     () => recipe?.ingredients.map((ing) => ing.ingredient.imageUrl) ?? [],
     [recipe],
   );
-  usePreloadImages(ingredientImageUrls);
+  usePreloadImages(ingredientImageUrls, "high");
 
   useEffect(() => {
     if (!userId || !Number.isFinite(recipeId)) {
